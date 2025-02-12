@@ -5,6 +5,7 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
@@ -52,7 +53,7 @@ public class WorldTargeter extends Targeter {
 
         // User may have typed the name of the world wrong... It is case-sensitive
         if (worldCache == null) {
-            MechanicsCore.debug.warn("There was an error getting the world for '" + worldName + "'");
+            MechanicsCore.getInstance().getDebugger().warning("There was an error getting the world for '" + worldName + "'");
             return Collections.emptyIterator();
         }
 
@@ -73,8 +74,8 @@ public class WorldTargeter extends Targeter {
     }
 
     @Override
-    public String getKeyword() {
-        return "World";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "world");
     }
 
     @Nullable @Override

@@ -2,7 +2,12 @@ package me.deecaad.core.mechanics.targeters;
 
 import java.util.Iterator;
 
-public class SingleIterator<E> implements Iterator<E> {
+/**
+ * An iterator that has a single element.
+ *
+ * @param <E> the type of elements in the iterator
+ */
+public final class SingleIterator<E> implements Iterator<E> {
 
     private final E value;
     private boolean calledNext;

@@ -9,20 +9,21 @@ dependencies {
     compileOnly(libs.packetEvents)
 
     // External "hooks" or plugins that we might interact with
-    compileOnly(libs.geyser)
     compileOnly(libs.placeholderApi)
-    compileOnly(libs.mythicMobs)
 
     // Shaded dependencies
     compileOnly(libs.adventureApi)
     compileOnly(libs.adventureBukkit)
     compileOnly(libs.adventureTextLegacy)
     compileOnly(libs.adventureTextMinimessage)
+    compileOnly(libs.annotations)
+    compileOnly(libs.bstats)
     compileOnly(libs.commandApi)
     compileOnly(libs.fastUtil)
     compileOnly(libs.foliaScheduler)
     compileOnly(libs.hikariCp)
     compileOnly(libs.jsonSimple)
+    compileOnly(libs.spigotUpdateChecker)
     compileOnly(libs.xSeries)
 
     // Testing dependencies

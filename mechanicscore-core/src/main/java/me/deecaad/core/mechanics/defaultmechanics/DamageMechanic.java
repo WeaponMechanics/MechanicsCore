@@ -4,6 +4,7 @@ import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.jetbrains.annotations.NotNull;
@@ -46,8 +47,8 @@ public class DamageMechanic extends Mechanic {
     }
 
     @Override
-    public String getKeyword() {
-        return "Damage";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "damage");
     }
 
     @Override

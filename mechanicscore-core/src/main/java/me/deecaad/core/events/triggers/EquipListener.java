@@ -120,8 +120,8 @@ public class EquipListener implements Listener {
             };
 
             // Register, then unregister in 1 tick
-            Bukkit.getPluginManager().registerEvents(listener, MechanicsCore.getPlugin());
-            MechanicsCore.getPlugin().getFoliaScheduler().global().run(() -> HandlerList.unregisterAll(listener));
+            Bukkit.getPluginManager().registerEvents(listener, MechanicsCore.getInstance());
+            MechanicsCore.getInstance().getFoliaScheduler().global().run(() -> HandlerList.unregisterAll(listener));
         }
     }
 
@@ -252,7 +252,7 @@ public class EquipListener implements Listener {
         final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
         Optional<StackWalker.StackFrame> optional = STACK_WALKER.walk(stream -> stream.filter(frame -> isPlugin(frame.getDeclaringClass())).findFirst());
         if (optional.isEmpty()) {
-            MechanicsCore.debug.log(LogLevel.WARN, "Unknown async call to add inventory", new Throwable());
+            MechanicsCore.getInstance().getDebugger().warning("Unknown async call to add inventory", new Throwable());
             return true;
         }
 
@@ -267,7 +267,7 @@ public class EquipListener implements Listener {
         // our job to fix other people's bad code.
         plugin.getLogger().log(Level.SEVERE, String.format("Nag author(s) %s of %s-%s about their async inventory modification at %s",
             desc.getAuthors(), desc.getName(), desc.getVersion(), location));
-        MechanicsCore.debug.error("Found a bad plugin '" + desc.getName() + "' for modifying inventory async.");
+        MechanicsCore.getInstance().getDebugger().severe("Found plugin '" + desc.getName() + "' modifying inventory async.");
         return true;
     }
 

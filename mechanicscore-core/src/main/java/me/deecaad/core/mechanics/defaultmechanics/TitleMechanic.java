@@ -9,6 +9,7 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import net.kyori.adventure.util.Ticks;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -53,13 +54,13 @@ public class TitleMechanic extends Mechanic {
         Component titleComponent = title == null ? Component.empty() : title.replaceAndDeserialize(cast);
         Component subtitleComponent = subtitle == null ? Component.empty() : subtitle.replaceAndDeserialize(cast);
         Title title = Title.title(titleComponent, subtitleComponent, times);
-        Audience audience = MechanicsCore.getPlugin().adventure.player(player);
+        Audience audience = MechanicsCore.getInstance().getAdventure().player(player);
         audience.showTitle(title);
     }
 
     @Override
-    public String getKeyword() {
-        return "Title";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "title");
     }
 
     @Override

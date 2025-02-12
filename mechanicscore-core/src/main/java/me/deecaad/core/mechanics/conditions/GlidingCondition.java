@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -22,8 +23,8 @@ public class GlidingCondition extends Condition {
     }
 
     @Override
-    public String getKeyword() {
-        return "Gliding";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "gliding");
     }
 
     @Override

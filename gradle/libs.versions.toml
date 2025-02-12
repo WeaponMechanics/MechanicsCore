@@ -7,7 +7,10 @@ packetEvents = "2.7.0"
 geyser = "2.2.0-SNAPSHOT"
 mythicMobs = "5.7.2"
 placeholderApi = "2.11.6"
+vault = "1.7"
 vivecraft = "3.0.0"
+worldedit = "7.4.0-SNAPSHOT"
+worldguard = "7.0.13-SNAPSHOT"
 
 # Shaded dependencies
 adventureApi = "4.18.0"
@@ -21,6 +24,7 @@ gson = "2.10.1"
 hikariCp = "5.1.0"
 jsonSimple = "1.1.1"
 kotlin = "1.9.21"
+spigotUpdateChecker = "3.0.4"
 xSeries = "13.0.0"
 
 
@@ -31,9 +35,12 @@ packetEvents   = { module = "com.github.retrooper:packetevents-spigot", version.
 
 # External "hooks" or plugins that we might interact with
 geyser         = { module = "org.geysermc.geyser:api", version.ref = "geyser" }
-placeholderApi = { module = "me.clip:placeholderapi", version.ref = "placeholderApi" }
 mythicMobs     = { module = "io.lumine:Mythic-Dist", version.ref = "mythicMobs" }
+placeholderApi = { module = "me.clip:placeholderapi", version.ref = "placeholderApi" }
+vault          = { module = "com.github.MilkBowl:VaultAPI", version.ref = "vault" }
 vivecraft      = { module = "com.cjcrafter:vivecraft", version.ref = "vivecraft" }
+worldedit      = { module = "com.sk89q.worldedit:worldedit-bukkit", version.ref = "worldedit" }
+worldguard     = { module = "com.sk89q.worldguard:worldguard-bukkit", version.ref = "worldguard" }
 
 # Shaded dependencies
 adventureApi             = { module = "net.kyori:adventure-api", version.ref = "adventureApi" }
@@ -51,4 +58,5 @@ gson                     = { module = "com.google.code.gson:gson", version.ref =
 hikariCp                 = { module = "com.zaxxer:HikariCP", version.ref = "hikariCp" }
 jsonSimple               = { module = "com.googlecode.json-simple:json-simple", version.ref = "jsonSimple" }
 kotlinStdlib             = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+spigotUpdateChecker      = { module = "com.jeff_media:SpigotUpdateChecker", version.ref = "spigotUpdateChecker" }
 xSeries                  = { module = "com.github.cryptomorin:XSeries", version.ref = "xSeries" }

@@ -1,7 +1,6 @@
 package me.deecaad.core.file;
 
-import me.deecaad.core.utils.Debugger;
-import me.deecaad.core.utils.LogLevel;
+import me.deecaad.core.MechanicsLogger;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
@@ -13,14 +12,14 @@ import java.util.stream.Collectors;
 
 public class FileReader {
 
-    private final Debugger debug;
+    private final MechanicsLogger debug;
     private final List<PathToSerializer> pathToSerializers;
     private final List<NestedPathToSerializer> nestedPathToSerializers;
     private final Map<String, Serializer<?>> serializers;
     private final List<ValidatorData> validatorDatas;
     private final Map<String, IValidator> validators;
 
-    public FileReader(@NotNull Debugger debug, @Nullable List<Serializer<?>> serializers, @Nullable List<IValidator> validators) {
+    public FileReader(@NotNull MechanicsLogger debug, @Nullable List<Serializer<?>> serializers, @Nullable List<IValidator> validators) {
         this.debug = debug;
         this.serializers = new HashMap<>();
         this.validators = new HashMap<>();
@@ -61,7 +60,7 @@ public class FileReader {
         if (alreadyAdded != null) {
             // Check if already added serializer isn't assignable with the new one
             if (!alreadyAdded.getClass().isAssignableFrom(serializer.getClass())) {
-                debug.log(LogLevel.ERROR,
+                debug.severe(
                     "Can't add serializer with keyword of " + serializer.getKeyword() + " because other serializer already has same keyword.",
                     "Already added serializer is located at " + alreadyAdded.getClass().getName() + " and this new one was located at " + serializer.getClass().getName() + ".",
                     "To override existing serializer either make new serializer extend existing serializer or implement Serializer<same data type as the existing one>.");
@@ -69,7 +68,7 @@ public class FileReader {
             }
 
             // If code reaches this point, it was assignable from new serializer
-            debug.log(LogLevel.DEBUG,
+            debug.fine(
                 "New serializer " + serializer.getClass().getName() + " will now override already added serializer " + alreadyAdded.getClass().getName());
         }
         this.serializers.put(keyword.toLowerCase(Locale.ROOT), serializer);
@@ -102,14 +101,14 @@ public class FileReader {
 
             // Check if already added validator isn't assignable with the new one
             if (!alreadyAdded.getClass().isAssignableFrom(validator.getClass())) {
-                debug.log(LogLevel.ERROR,
+                debug.severe(
                     "Can't add validator with keyword of " + validator.getKeyword() + " because other validator already has same keyword.",
                     "Already added validators is located at " + alreadyAdded.getClass().getName() + " and this new one was located at " + validator.getClass().getName() + ".");
                 return;
             }
 
             // If code reaches this point, it was assignable from new validator
-            debug.log(LogLevel.DEBUG,
+            debug.fine(
                 "New validator " + validator.getClass().getName() + " will now override already added validator " + alreadyAdded.getClass().getName());
         }
         this.validators.put(validatorLowerCase, validator);
@@ -164,13 +163,13 @@ public class FileReader {
                     filledMap.copyFrom(fillAllFilesLoop(directoryFile));
                 }
             } catch (DuplicateKeyException ex) {
-                debug.log(LogLevel.ERROR, "Found duplicate keys in configuration!",
+                debug.severe("Found duplicate keys in configuration!",
                     "This occurs when you have 2 lines in configuration with the same name",
                     "This is a huge error and WILL 100% cause issues in your guns.",
                     "Duplicates Found: " + Arrays.toString(ex.getKeys()),
                     "Found in file: " + name);
 
-                debug.log(LogLevel.DEBUG, "Duplicate Key Exception: ", ex);
+                debug.finer("Duplicate Key Exception: ", ex);
             }
         }
         return filledMap;
@@ -239,7 +238,7 @@ public class FileReader {
                     }
 
                     if (!serializer.shouldSerialize(new SerializeData(serializer, file, key, new BukkitConfig(configuration)))) {
-                        debug.debug("Skipping " + key + " due to skip");
+                        debug.finest("Skipping " + key + " due to skip");
                         continue;
                     }
 
@@ -336,7 +335,7 @@ public class FileReader {
             data.setPathToConfig(filledMap);
 
             if (!validatorData.validator.shouldValidate(data)) {
-                debug.debug("Skipping " + validatorData.path + " due to skip");
+                debug.finest("Skipping " + validatorData.path + " due to skip");
                 continue;
             }
 

@@ -5,6 +5,7 @@ import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.placeholder.PlaceholderData;
 import me.deecaad.core.utils.LogLevel;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -18,8 +19,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-
-import static me.deecaad.core.MechanicsCore.debug;
 
 public class CastData implements Cloneable, PlaceholderData {
 
@@ -71,7 +70,7 @@ public class CastData implements Cloneable, PlaceholderData {
 
     private String getName(LivingEntity entity) {
         TextComponent component = LegacyComponentSerializer.legacySection().deserialize(entity.getName());
-        return MechanicsCore.getPlugin().message.serialize(component);
+        return MiniMessage.miniMessage().serialize(component);
     }
 
     @NotNull public LivingEntity getSource() {
@@ -115,7 +114,7 @@ public class CastData implements Cloneable, PlaceholderData {
 
     @Nullable public Location getTargetLocation() {
         if (targetLocation == null && targetEntity == null) {
-            debug.log(LogLevel.WARN, "Not targeting either entity nor location", new Throwable());
+            MechanicsCore.getInstance().getDebugger().warning("Not targeting either entity nor location", new Throwable());
         }
         return targetLocation != null ? targetLocation.get() : targetEntity.getLocation();
     }

@@ -3,7 +3,9 @@ package me.deecaad.core.mechanics.targeters;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.mechanics.CastData;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -26,8 +28,8 @@ public class WorldPlayersTargeter extends WorldTargeter {
     }
 
     @Override
-    public String getKeyword() {
-        return "WorldPlayers";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "world_players");
     }
 
     @Override
@@ -37,7 +39,7 @@ public class WorldPlayersTargeter extends WorldTargeter {
 
         // User may have typed the name of the world wrong... It is case-sensitive
         if (getWorldCache() == null) {
-            MechanicsCore.debug.warn("There was an error getting the world for '" + getWorldName() + "'");
+            MechanicsCore.getInstance().getDebugger().warning("There was an error getting the world for '" + getWorldName() + "'");
             return Collections.emptyIterator();
         }
 

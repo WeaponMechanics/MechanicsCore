@@ -1,10 +1,10 @@
 package me.deecaad.core.file
 
-import me.deecaad.core.utils.Debugger
+import me.deecaad.core.MechanicsLogger
 import me.deecaad.core.utils.EnumUtil
-import me.deecaad.core.utils.LogLevel
 import me.deecaad.core.utils.StringUtil
 import java.io.File
+import java.util.logging.Level
 import kotlin.math.abs
 
 /**
@@ -25,8 +25,8 @@ open class SerializerException(
 ) : Exception() {
     @JvmOverloads
     fun log(
-        debug: Debugger,
-        level: LogLevel = LogLevel.ERROR,
+        debug: MechanicsLogger,
+        level: Level = Level.SEVERE,
     ) {
         val fullError = mutableListOf<String>()
         fullError.add("A mistake was found in your config!")
@@ -34,7 +34,7 @@ open class SerializerException(
         fullError.add(location)
         fullError.add("") // An empty line to separate the error from the rest of the log
 
-        debug.log(level, fullError)
+        debug.log(level, *fullError.toTypedArray())
     }
 
     class Builder {

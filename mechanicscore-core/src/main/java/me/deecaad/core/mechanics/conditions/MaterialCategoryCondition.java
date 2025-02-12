@@ -6,6 +6,7 @@ import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Waterlogged;
 import org.jetbrains.annotations.NotNull;
@@ -37,8 +38,8 @@ public class MaterialCategoryCondition extends Condition {
     }
 
     @Override
-    public String getKeyword() {
-        return "Material_Category";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "material_category");
     }
 
     @Override

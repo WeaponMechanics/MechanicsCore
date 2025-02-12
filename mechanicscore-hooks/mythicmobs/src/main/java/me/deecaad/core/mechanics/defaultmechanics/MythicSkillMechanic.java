@@ -1,7 +1,6 @@
 package me.deecaad.core.mechanics.defaultmechanics;
 
 import io.lumine.mythic.bukkit.MythicBukkit;
-import me.deecaad.core.file.JarSearcherExempt;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
@@ -15,7 +14,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 
-public class MythicSkillMechanic extends Mechanic implements JarSearcherExempt {
+public class MythicSkillMechanic extends Mechanic {
 
     private String skillName;
     private float power;

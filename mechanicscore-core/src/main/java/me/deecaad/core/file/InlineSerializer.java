@@ -1,8 +1,10 @@
 package me.deecaad.core.file;
 
-import me.deecaad.core.utils.Keyable;
 import me.deecaad.core.utils.StringUtil;
+import org.bukkit.Keyed;
+import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,7 +13,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public interface InlineSerializer<T> extends Serializer<T>, Keyable {
+public interface InlineSerializer<T> extends Keyed, Serializer<T> {
 
     Pattern NAME_FINDER = Pattern.compile(".+?(?=\\{)");
     String UNIQUE_IDENTIFIER = "uniqueIdentifier";
@@ -23,9 +25,11 @@ public interface InlineSerializer<T> extends Serializer<T>, Keyable {
     }
 
     @Override
-    default @NotNull String getKey() {
-        return getInlineKeyword();
+    default @Nullable String getKeyword() {
+        return getKey().getKey();
     }
+
+    @NotNull NamespacedKey getKey();
 
     /**
      * Reformats the <u>Upper_Snake_Case</u> YAML config key to <u>UpperCamelCase</u> inline key. This

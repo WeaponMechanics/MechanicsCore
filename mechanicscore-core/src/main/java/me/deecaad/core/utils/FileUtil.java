@@ -1,6 +1,7 @@
 package me.deecaad.core.utils;
 
 import com.cjcrafter.foliascheduler.util.MinecraftVersions;
+import me.deecaad.core.MechanicsCore;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
@@ -17,8 +18,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 import java.util.Map;
 import java.util.jar.JarFile;
-
-import static me.deecaad.core.MechanicsCore.debug;
 
 /**
  * This final utility class outlines static methods that work with files, resources, and streams.
@@ -105,18 +104,18 @@ public final class FileUtil {
                     method.setAccessible(true);
                     jar = (File) method.invoke(plugin);
                 } catch (Exception e1) {
-                    debug.log(LogLevel.ERROR, "Failed to invoke JavaPlugin#getFile()", e1);
+                    MechanicsCore.getInstance().getDebugger().severe("Failed to invoke JavaPlugin#getFile()", e1);
                 }
             }
             if (jar == null) {
-                debug.log(LogLevel.WARN, "Could not locate " + plugin.getDescription().getName() + " jar file...");
+                MechanicsCore.getInstance().getDebugger().severe("Could not locate " + plugin.getDescription().getName() + " jar file...");
                 throw new InternalError();
             }
         }
         try {
             return new JarFile(jar);
         } catch (IOException e) {
-            debug.log(LogLevel.ERROR, "Failed to create jar file: " + jar, e);
+            MechanicsCore.getInstance().getDebugger().severe("Failed to create jar file: " + jar, e);
             throw new InternalError(e);
         }
     }
@@ -183,7 +182,7 @@ public final class FileUtil {
             in.close();
 
         } catch (IOException e) {
-            debug.log(LogLevel.ERROR, "Some error occurred when downloading: " + link, e);
+            MechanicsCore.getInstance().getDebugger().severe("Some error occurred when downloading: " + link, e);
         }
     }
 

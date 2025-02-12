@@ -1,6 +1,7 @@
 package me.deecaad.core.file;
 
 import com.cjcrafter.foliascheduler.util.ConstructorInvoker;
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.utils.LogLevel;
 import org.jetbrains.annotations.NotNull;
 
@@ -8,8 +9,6 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.jar.JarFile;
-
-import static me.deecaad.core.MechanicsCore.debug;
 
 public class SerializerInstancer extends JarSearcher {
 
@@ -29,7 +28,7 @@ public class SerializerInstancer extends JarSearcher {
             } catch (NoSuchMethodException e) {
                 try {
                     validClass.getDeclaredMethod("getKeyword");
-                    debug.log(LogLevel.ERROR,
+                    MechanicsCore.getInstance().getDebugger().severe(
                         "Found a serializer that uses getKeyword() but is missing an empty constructor!",
                         "Please add empty constructor for class " + validClass.getSimpleName());
                 } catch (NoSuchMethodException ex) {

@@ -97,7 +97,7 @@ public class JarSearcher {
                 int runtimeVersion = 44 + ServerVersions.getJavaVersion(); // ! THIS MAY NOT ALWAYS BE TRUE, but it is true for java 1.2+, so it is probably fine forever
                 int classVersion = (((bytes[6] & 0xFF) << 8) | (bytes[6 + 1] & 0xFF));
                 if (classVersion > runtimeVersion) {
-                    MechanicsCore.debug.debug("Skipping " + name + " because it has class version " + classVersion + "(We are expecting " + runtimeVersion + ")");
+                    MechanicsCore.getInstance().getDebugger().fine("Skipping " + name + " because it has class version " + classVersion + "(We are expecting " + runtimeVersion + ")");
                     continue;
                 }
 
@@ -110,15 +110,13 @@ public class JarSearcher {
 
                 subclass = Class.forName(name, false, clazzLoader);
             } catch (Throwable ex) {
-                MechanicsCore.debug.log(LogLevel.DEBUG, "Error for class '" + name + "'", ex);
+                MechanicsCore.getInstance().getDebugger().finest("Error for class '" + name + "'", ex);
                 continue;
             }
 
             // Check for inheritance and abstraction
             int mod = subclass.getModifiers();
-            if (JarSearcherExempt.class.isAssignableFrom(subclass))
-                continue;
-            else if (!clazz.isAssignableFrom(subclass))
+            if (!clazz.isAssignableFrom(subclass))
                 continue;
             else if (isIgnoreAbstract && (Modifier.isAbstract(mod) || Modifier.isInterface(mod)))
                 continue;

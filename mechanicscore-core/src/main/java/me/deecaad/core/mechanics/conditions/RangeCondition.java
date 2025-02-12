@@ -4,6 +4,7 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,8 +45,8 @@ public class RangeCondition extends Condition {
     }
 
     @Override
-    public String getKeyword() {
-        return "Range";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "range");
     }
 
     @Override

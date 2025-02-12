@@ -10,10 +10,3 @@ dependencies {
 
     paperweight.paperDevBundle("1.21.4-R0.1-SNAPSHOT")
 }
-
-tasks {
-    compileJava {
-        options.encoding = Charsets.UTF_8.name() // We want UTF-8 for everything
-        options.release.set(21)
-    }
-}

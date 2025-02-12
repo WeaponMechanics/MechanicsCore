@@ -24,7 +24,7 @@ public class GeyserCondition extends Condition {
         try {
             return GeyserApi.api().isBedrockPlayer(cast.getTarget().getUniqueId());
         } catch (Throwable ex) {
-            MechanicsCore.debug.error("Tried to use GeyserCondition but GeyserMC is not installed!");
+            MechanicsCore.getInstance().getDebugger().severe("Tried to use GeyserCondition but Geyser is not installed!", ex);
             return false;
         }
     }

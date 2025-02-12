@@ -9,7 +9,7 @@ import me.deecaad.core.mechanics.CastData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class MythicMobsEntityCondition extends Condition implements JarSearcherExempt {
+public class MythicMobsEntityCondition extends Condition {
 
     private String name;
 

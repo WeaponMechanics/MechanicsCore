@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.EntityType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,8 +28,8 @@ public class EntityTypeCondition extends Condition {
     }
 
     @Override
-    public String getKeyword() {
-        return "EntityType";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "entity_type");
     }
 
     @Override

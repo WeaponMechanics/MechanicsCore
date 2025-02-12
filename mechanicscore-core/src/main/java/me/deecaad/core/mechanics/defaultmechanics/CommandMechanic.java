@@ -6,6 +6,7 @@ import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.placeholder.PlaceholderMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -47,8 +48,8 @@ public class CommandMechanic extends Mechanic {
     }
 
     @Override
-    public String getKeyword() {
-        return "Command";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "command");
     }
 
     @Override

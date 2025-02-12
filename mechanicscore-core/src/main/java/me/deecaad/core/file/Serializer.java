@@ -1,13 +1,11 @@
 package me.deecaad.core.file;
 
-import me.deecaad.core.utils.LogLevel;
+import me.deecaad.core.MechanicsCore;
 import org.bukkit.configuration.ConfigurationSection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-
-import static me.deecaad.core.MechanicsCore.debug;
 
 public interface Serializer<T> {
 
@@ -87,7 +85,7 @@ public interface Serializer<T> {
         Object obj = filledMap.getObject(pathTo);
         if (!this.getClass().isInstance(obj)) {
             String[] splittedWhereToStore = pathWhereToStore.split("\\.");
-            debug.log(LogLevel.ERROR, "Tried to use path to, but didn't find correct object.",
+            MechanicsCore.getInstance().getDebugger().severe("Tried to use path to, but didn't find correct object.",
                 "1) Make sure that you wrote path to correctly (" + pathTo + ")",
                 "2) Make sure that the object at path to actually exists.",
                 "3) Make sure that the object at path to doesn't also use path to as this may cause conflicts.",
@@ -145,8 +143,8 @@ public interface Serializer<T> {
 
     /**
      * Instantiates a new Object to be added into the finalized configuration. The object should be
-     * built off of {@link SerializeData#config}. If there is any misconfiguration (or any other issue
-     * preventing the construction of an object), then this method should throw a
+     * built off of {@link SerializeData#getConfig()}. If there is any misconfiguration (or any other
+     * issue preventing the construction of an object), then this method should throw a
      * {@link SerializerException}. This method may not return null.
      *
      * @param data The non-null data containing config

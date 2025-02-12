@@ -1,9 +1,9 @@
-import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
+import xyz.jpenilla.resourcefactory.bukkit.BukkitPluginYaml
 
 plugins {
     `java-library`
     id("com.gradleup.shadow") version "8.3.5"
-    id("net.minecrell.plugin-yml.bukkit") version "0.6.0"
+    id("xyz.jpenilla.resource-factory-bukkit-convention") version "1.2.0"
 }
 
 dependencies {
@@ -23,14 +23,16 @@ dependencies {
     implementation(libs.adventureBukkit)
     implementation(libs.adventureTextLegacy)
     implementation(libs.adventureTextMinimessage)
+    implementation(libs.bstats)
     implementation(libs.commandApiShade)
     implementation(libs.foliaScheduler)
     implementation(libs.hikariCp)
     implementation(libs.kotlinStdlib)
+    implementation(libs.spigotUpdateChecker)
     implementation(libs.xSeries)
 }
 
-bukkit {
+bukkitPluginYaml {
     val versionProperty = findProperty("mechanicscore.version") as? String ?: throw IllegalArgumentException("mechanicscore.version was null")
 
     main = "me.deecaad.core.MechanicsCore"
@@ -39,7 +41,7 @@ bukkit {
     apiVersion = "1.13"  // Use 1.13, since apiVersion was added in 1.13
     foliaSupported = true
 
-    load = BukkitPluginDescription.PluginLoadOrder.STARTUP
+    load = BukkitPluginYaml.PluginLoadOrder.STARTUP
     authors = listOf("DeeCaaD", "CJCrafter")
     loadBefore = listOf("WorldEdit", "WorldGuard", "PlaceholderAPI", "MythicMobs", "Geyser-Spigot")
 }

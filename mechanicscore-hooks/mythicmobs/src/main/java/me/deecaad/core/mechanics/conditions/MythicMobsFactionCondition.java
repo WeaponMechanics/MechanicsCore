@@ -16,7 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
 import java.util.Optional;
 
-public class MythicMobsFactionCondition extends Condition implements JarSearcherExempt {
+public class MythicMobsFactionCondition extends Condition {
 
     private String faction;
 

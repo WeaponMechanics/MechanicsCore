@@ -11,6 +11,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.Plugin;
@@ -99,7 +100,7 @@ public final class MechanicsCoreCommand {
             })
             .build();
 
-        MechanicsCore.getPlugin().adventure.sender(sender).sendMessage(table);
+        MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(table);
     }
 
     public static void tableColors(CommandSender sender) {
@@ -158,20 +159,18 @@ public final class MechanicsCoreCommand {
             .withHeader("MISCELLANEOUS")
             .withHeaderStyle(Style.style(NamedTextColor.GOLD))
             .withConstraints(TableBuilder.DEFAULT_CONSTRAINTS.setRows(3).setColumns(1))
-            .withSupplier(i -> {
-                return switch (i) {
-                    case 0 ->
-                        new ColorData("&#7D5A2D", "<#7D5A2D>", TextColor.color(125, 90, 45)).alt("The five boxing wizards jump quickly").build();
-                    case 1 ->
-                        text("<rainbow> = ").append(MechanicsCore.getPlugin().message.deserialize("<rainbow>The quick brown fox jumps over the lazy dog"));
-                    case 2 ->
-                        text("<gradient:green:#ff0000> = ").append(MechanicsCore.getPlugin().message.deserialize("<gradient:green:#ff0000>A wizard's job is to vex chumps"));
-                    default -> throw new RuntimeException("unreachable code");
-                };
+            .withSupplier(i -> switch (i) {
+                case 0 ->
+                    new ColorData("&#7D5A2D", "<#7D5A2D>", TextColor.color(125, 90, 45)).alt("The five boxing wizards jump quickly").build();
+                case 1 ->
+                    text("<rainbow> = ").append(MiniMessage.miniMessage().deserialize("<rainbow>The quick brown fox jumps over the lazy dog"));
+                case 2 ->
+                    text("<gradient:green:#ff0000> = ").append(MiniMessage.miniMessage().deserialize("<gradient:green:#ff0000>A wizard's job is to vex chumps"));
+                default -> throw new RuntimeException("unreachable code");
             })
             .build();
 
-        Audience audience = MechanicsCore.getPlugin().adventure.sender(sender);
+        Audience audience = MechanicsCore.getInstance().getAdventure().sender(sender);
         audience.sendMessage(colorComponent.append(decorationComponent).append(miscComponent).append(new TableBuilder.Line('=', Style.style(NamedTextColor.GRAY, TextDecoration.STRIKETHROUGH))
             .build()));
     }

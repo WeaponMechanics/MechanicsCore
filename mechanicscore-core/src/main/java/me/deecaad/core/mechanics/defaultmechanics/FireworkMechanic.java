@@ -11,8 +11,10 @@ import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.SimpleSerializer;
 import me.deecaad.core.file.serializers.ColorSerializer;
 import me.deecaad.core.mechanics.CastData;
-import me.deecaad.core.mechanics.Mechanics;
+import me.deecaad.core.mechanics.Conditions;
+import me.deecaad.core.mechanics.MechanicManager;
 import me.deecaad.core.mechanics.PlayerEffectMechanic;
+import me.deecaad.core.mechanics.Targeters;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.targeters.Targeter;
 import me.deecaad.core.mechanics.targeters.WorldTargeter;
@@ -22,6 +24,7 @@ import org.bukkit.EntityEffect;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -56,8 +59,8 @@ public class FireworkMechanic extends PlayerEffectMechanic {
         }
 
         @Override
-        public String getKeyword() {
-            return "Firework";
+        public @NotNull NamespacedKey getKey() {
+            return new NamespacedKey("mechanicscore", "firework_effect");
         }
 
         @NotNull @Override
@@ -171,8 +174,8 @@ public class FireworkMechanic extends PlayerEffectMechanic {
     }
 
     @Override
-    public String getKeyword() {
-        return "Firework";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "firework");
     }
 
     @Override
@@ -190,8 +193,8 @@ public class FireworkMechanic extends PlayerEffectMechanic {
         meta.setPower(flightTime);
         fireworkItem.setItemMeta(meta);
 
-        Targeter viewers = data.of("Viewers").getRegistry(Mechanics.TARGETERS).orElse(null);
-        List<Condition> viewerConditions = data.of("Viewer_Conditions").getRegistryList(Mechanics.CONDITIONS);
+        Targeter viewers = data.of("Viewers").getRegistry(Targeters.REGISTRY).orElse(null);
+        List<Condition> viewerConditions = data.of("Viewer_Conditions").getRegistryList(Conditions.REGISTRY);
 
         // If the user wants to use listener conditions, be sure to use a
         // targeter for listeners (Otherwise these conditions are ignored).
@@ -220,7 +223,7 @@ public class FireworkMechanic extends PlayerEffectMechanic {
         }
 
         // Schedule a task to explode the firework later.
-        MechanicsCore.getPlugin().getFoliaScheduler().region(targetLoc).runDelayed(() -> {
+        MechanicsCore.getInstance().getFoliaScheduler().region(targetLoc).runDelayed(() -> {
             fakeEntity.playEffect(EntityEffect.FIREWORK_EXPLODE);
             fakeEntity.remove();
         }, flightTime);

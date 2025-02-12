@@ -8,6 +8,7 @@ import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.placeholder.PlaceholderMessage;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,7 +51,7 @@ public class ActionBarMechanic extends Mechanic {
         // Parse and send the message to the 1 player
         // TODO this method would benefit from having access to the target list
         Component component = message.replaceAndDeserialize(cast);
-        Audience audience = MechanicsCore.getPlugin().adventure.player(player);
+        Audience audience = MechanicsCore.getInstance().getAdventure().player(player);
         audience.sendActionBar(component);
 
         // Action Bars are *NOT* timed in vanilla Minecraft. To get around this,
@@ -58,7 +59,7 @@ public class ActionBarMechanic extends Mechanic {
         // 40 ticks before fading, the interval we resend the action bar is 40
         // ticks.
         if (time > 40) {
-            MechanicsCore.getPlugin().getFoliaScheduler().entity(player).runAtFixedRate(new Consumer<>() {
+            MechanicsCore.getInstance().getFoliaScheduler().entity(player).runAtFixedRate(new Consumer<>() {
                 int ticker = 0;
 
                 @Override
@@ -76,8 +77,8 @@ public class ActionBarMechanic extends Mechanic {
     }
 
     @Override
-    public String getKeyword() {
-        return "Action_Bar";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "action_bar");
     }
 
     @Override

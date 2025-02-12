@@ -3,13 +3,16 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
-import me.deecaad.core.mechanics.Mechanics;
+import me.deecaad.core.mechanics.Conditions;
+import me.deecaad.core.mechanics.MechanicManager;
 import me.deecaad.core.mechanics.PlayerEffectMechanic;
+import me.deecaad.core.mechanics.Targeters;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.targeters.Targeter;
 import me.deecaad.core.mechanics.targeters.WorldTargeter;
 import me.deecaad.core.utils.RandomUtil;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -113,8 +116,8 @@ public class CustomSoundMechanic extends PlayerEffectMechanic {
     }
 
     @Override
-    public String getKeyword() {
-        return "Custom_Sound";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "custom_sound");
     }
 
     @Override
@@ -130,8 +133,8 @@ public class CustomSoundMechanic extends PlayerEffectMechanic {
         float noise = (float) data.of("Noise").assertRange(0.0, 1.5).getDouble().orElse(0.0);
         SoundCategory category = data.of("Category").getEnum(SoundCategory.class).orElse(SoundCategory.PLAYERS);
 
-        Targeter listeners = data.of("Listeners").getRegistry(Mechanics.TARGETERS).orElse(null);
-        List<Condition> listenerConditions = data.of("Listener_Conditions").getRegistryList(Mechanics.CONDITIONS);
+        Targeter listeners = data.of("Listeners").getRegistry(Targeters.REGISTRY).orElse(null);
+        List<Condition> listenerConditions = data.of("Listener_Conditions").getRegistryList(Conditions.REGISTRY);
 
         // If the user wants to use listener conditions, be sure to use a
         // targeter for listeners (Otherwise these conditions are ignored).

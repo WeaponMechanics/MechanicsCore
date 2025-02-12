@@ -7,6 +7,7 @@ import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.placeholder.PlaceholderMessage;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -37,13 +38,13 @@ public class MessageMechanic extends Mechanic {
         // Parse and send the message to the 1 player
         // TODO this method would benefit from having access to the target list
         Component chat = message.replaceAndDeserialize(cast);
-        Audience audience = MechanicsCore.getPlugin().adventure.player(player);
+        Audience audience = MechanicsCore.getInstance().getAdventure().player(player);
         audience.sendMessage(chat);
     }
 
     @Override
-    public String getKeyword() {
-        return "Message";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "message");
     }
 
     @Override

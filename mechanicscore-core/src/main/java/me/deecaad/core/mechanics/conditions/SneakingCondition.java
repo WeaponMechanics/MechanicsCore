@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -26,8 +27,8 @@ public class SneakingCondition extends Condition {
     }
 
     @Override
-    public String getKeyword() {
-        return "Sneaking";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "sneaking");
     }
 
     @Override

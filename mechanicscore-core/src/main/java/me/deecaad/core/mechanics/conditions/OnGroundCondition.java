@@ -5,6 +5,7 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.simple.RegistryValueSerializer;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockType;
 import org.jetbrains.annotations.NotNull;
@@ -38,8 +39,8 @@ public class OnGroundCondition extends Condition {
     }
 
     @Override
-    public String getKeyword() {
-        return "On_Ground";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "on_ground");
     }
 
     @Override

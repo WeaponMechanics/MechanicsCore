@@ -11,6 +11,7 @@ import me.deecaad.core.utils.EntityTransform;
 import me.deecaad.core.utils.ImmutableVector;
 import me.deecaad.core.utils.Quaternion;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -49,8 +50,8 @@ public class DropItemMechanic extends Mechanic {
     }
 
     @Override
-    public String getKeyword() {
-        return "Drop_Item";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "drop_item");
     }
 
     @Override

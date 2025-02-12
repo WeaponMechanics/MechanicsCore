@@ -90,7 +90,7 @@ public abstract class Mechanic implements InlineSerializer<Mechanic> {
         else
             location = cast.getSourceLocation();
 
-        TaskImplementation<Void> task = MechanicsCore.getPlugin().getFoliaScheduler().region(location).runAtFixedRate(new Consumer<>() {
+        TaskImplementation<Void> task = MechanicsCore.getInstance().getFoliaScheduler().region(location).runAtFixedRate(new Consumer<>() {
             int runs = 0;
 
             @Override

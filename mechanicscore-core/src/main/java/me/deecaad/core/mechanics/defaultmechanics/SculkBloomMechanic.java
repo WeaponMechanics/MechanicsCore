@@ -1,16 +1,15 @@
 package me.deecaad.core.mechanics.defaultmechanics;
 
-import com.cjcrafter.foliascheduler.util.MinecraftVersions;
-import me.deecaad.core.file.JarSearcherExempt;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.SculkCatalyst;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class SculkBloomMechanic extends ActivateBlockMechanic<SculkCatalyst> implements JarSearcherExempt {
+public class SculkBloomMechanic extends ActivateBlockMechanic<SculkCatalyst> {
 
     private int charge;
 
@@ -27,8 +26,8 @@ public class SculkBloomMechanic extends ActivateBlockMechanic<SculkCatalyst> imp
     }
 
     @Override
-    public @Nullable String getKeyword() {
-        return "SculkBloom";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "sculk_bloom");
     }
 
     @Override
@@ -47,11 +46,6 @@ public class SculkBloomMechanic extends ActivateBlockMechanic<SculkCatalyst> imp
 
     @Override
     public @NotNull Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
-        // This should never be true since we only register this Mechanic in 1.20.2+
-        if (!MinecraftVersions.TRAILS_AND_TAILS.get(2).isAtLeast()) {
-            throw data.exception(null, "The SculkBloom{} Mechanic is only available in 1.20.2+");
-        }
-
         int charge = data.of("Charge").assertRange(1, null).getInt().orElse(5);
         return applyParentArgs(data, new SculkBloomMechanic(charge));
     }

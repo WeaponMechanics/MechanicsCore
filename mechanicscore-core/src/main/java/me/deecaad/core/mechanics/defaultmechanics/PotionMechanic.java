@@ -4,6 +4,7 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.simple.RegistryValueSerializer;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
@@ -36,8 +37,8 @@ public class PotionMechanic extends Mechanic {
     }
 
     @Override
-    public String getKeyword() {
-        return "Potion";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "potion");
     }
 
     @Override

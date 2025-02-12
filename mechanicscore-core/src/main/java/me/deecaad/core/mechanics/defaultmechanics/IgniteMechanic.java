@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,8 +22,8 @@ public class IgniteMechanic extends Mechanic {
     }
 
     @Override
-    public String getKeyword() {
-        return "Ignite";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "ignite");
     }
 
     @Override

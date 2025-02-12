@@ -326,7 +326,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
 
                 // Attributes need a completely unique key to avoid attributes
                 // overridding each other.
-                NamespacedKey key = new NamespacedKey(MechanicsCore.getPlugin(), attribute.getKey().getKey() + "-" + slot);
+                NamespacedKey key = new NamespacedKey(MechanicsCore.getInstance(), attribute.getKey().getKey() + "-" + slot);
                 AttributeModifier modifier = new AttributeModifier(key, amount, operation, slot);
                 itemMeta.addAttributeModifier(attribute, modifier);
             }
@@ -492,7 +492,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
         result.setAmount(resultAmount);
 
         // Namespaced keys for recipes were added in MC 1.12
-        ShapedRecipe recipe = new ShapedRecipe(new NamespacedKey(MechanicsCore.getPlugin(), data.getKey()), result);
+        ShapedRecipe recipe = new ShapedRecipe(new NamespacedKey(MechanicsCore.getInstance(), data.getKey()), result);
 
         // Bukkit.getRecipe was added in 1.16. We have a try-catch block
         // below in this method to handle 1.12 through 1.15

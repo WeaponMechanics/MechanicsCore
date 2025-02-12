@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.targeters;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,8 +29,8 @@ public class SourceTargeter extends Targeter {
     }
 
     @Override
-    public String getKeyword() {
-        return "Source";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "source");
     }
 
     @Nullable @Override
