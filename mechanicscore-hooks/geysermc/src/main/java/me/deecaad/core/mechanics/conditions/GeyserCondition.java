@@ -4,6 +4,7 @@ import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.geysermc.geyser.api.GeyserApi;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,8 +31,8 @@ public class GeyserCondition extends Condition {
     }
 
     @Override
-    public String getKeyword() {
-        return "Geyser";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "geyser");
     }
 
     @Override

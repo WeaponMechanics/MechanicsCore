@@ -51,7 +51,7 @@ public final class DistanceUtil {
         try {
             return world.getViewDistance() << 4;
         } catch (Throwable ex) {
-            MechanicsCore.debug.error("Looks like you are on a CraftBukkit server! Skipping world.getViewDistance()");
+            MechanicsCore.getInstance().getDebugger().warning("Looks like you are on a CraftBukkit server! Skipping world.getViewDistance()");
             return getRange();
         }
     }

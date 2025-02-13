@@ -6,6 +6,7 @@ import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
 import me.deecaad.core.mechanics.targeters.WorldTargeter;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -28,6 +29,11 @@ public final class PlayerEffectMechanicList extends Mechanic {
 
     public PlayerEffectMechanicList() {
         mechanics = new LinkedList<>(); // LinkedList for smaller memory footprint
+    }
+
+    @Override
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "playereffectmechaniclist");
     }
 
     public void addMechanic(PlayerEffectMechanic mechanic) {

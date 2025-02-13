@@ -36,7 +36,7 @@ public class Mechanics {
      * The registry for all globally registered mechanics.
      */
     public static final @NotNull MutableRegistry<Mechanic> REGISTRY
-        = new MutableRegistry.SimpleMutableRegistry<>(new HashMap<>());
+            = new MutableRegistry.SimpleMutableRegistry<>(new HashMap<>());
 
     public static final @NotNull Mechanic ACTION_BAR = register(new ActionBarMechanic());
     public static final @NotNull Mechanic BOSS_BAR = register(new BossBarMechanic());

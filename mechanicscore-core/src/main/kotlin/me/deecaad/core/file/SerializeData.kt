@@ -9,9 +9,11 @@ import me.deecaad.core.file.SerializerException.Companion.builder
 import me.deecaad.core.file.simple.DoubleSerializer
 import me.deecaad.core.file.simple.EnumValueSerializer
 import me.deecaad.core.file.simple.RegistryValueSerializer
+import me.deecaad.core.utils.RegistryUtil
 import me.deecaad.core.utils.SerializerUtil.foundAt
 import me.deecaad.core.utils.StringUtil.colorAdventure
 import me.deecaad.core.utils.StringUtil.split
+import me.deecaad.core.utils.matchAny
 import org.bukkit.Bukkit
 import org.bukkit.Keyed
 import org.bukkit.Material
@@ -945,7 +947,7 @@ class SerializeData {
          * @throws SerializerException If there are any errors in config.
          */
         @Throws(SerializerException::class)
-        fun <T : InlineSerializer<T>> getRegistry(registry: me.deecaad.core.mechanics.Registry<T>): Optional<T> {
+        fun <T : InlineSerializer<T>> serializeRegistry(registry: Registry<T>): Optional<T> {
             if (config !is MapConfigLike) throw UnsupportedOperationException("Cannot use registries with $config")
             if (!has(relative)) {
                 return Optional.empty()
@@ -958,17 +960,16 @@ class SerializeData {
             val nested = SerializeData(serializer, file, null, temp)
 
             val key = nested.of(InlineSerializer.UNIQUE_IDENTIFIER).assertExists().get(String::class.java).get()
-            val base =
-                registry[key]
-                    ?: throw builder()
-                        .locationRaw(location)
-                        .buildInvalidOption(key, registry.options)
+            val base = registry.matchAny(key)
+                ?: throw builder()
+                    .locationRaw(location)
+                    .buildInvalidRegistryOption(key, registry)
 
             return Optional.of(base.serialize(nested))
         }
 
         /**
-         * This method is similar to [getRegistry], but instead of allowing every type from
+         * This method is similar to [serializeRegistry], but instead of allowing every type from
          * a registry, 1 specific type is allowed.
          *
          * @param impliedType The serializer.
@@ -977,7 +978,7 @@ class SerializeData {
          * @throws SerializerException If there are any errors in config.
          */
         @Throws(SerializerException::class)
-        fun <T : Any> getImplied(impliedType: Serializer<T>): Optional<T> {
+        fun <T : Any> serializeRegistryImplied(impliedType: InlineSerializer<T>): Optional<T> {
             if (config !is MapConfigLike) throw UnsupportedOperationException("Cannot use registries with $config")
             if (!has(relative)) {
                 return Optional.empty()
@@ -987,15 +988,10 @@ class SerializeData {
             val identifier = map[InlineSerializer.UNIQUE_IDENTIFIER]
 
             // We have to make sure that the user used the "JSON Format" in the string.
-            if (identifier != null &&
-                !me.deecaad.core.mechanics.Registry.matches(
-                    identifier.toString(),
-                    impliedType.keyword,
-                )
-            ) {
+            if (identifier != null && RegistryUtil.matches(identifier.toString(), impliedType)) {
                 throw exception(
                     relative,
-                    "Expected a '${impliedType.keyword}' but got a '$identifier'",
+                    "Expected a '${impliedType.key}' but got a '$identifier'",
                 )
             }
 
@@ -1011,7 +1007,7 @@ class SerializeData {
         }
 
         @Throws(SerializerException::class)
-        fun <T : InlineSerializer<T>> getRegistryList(registry: me.deecaad.core.mechanics.Registry<T>): List<T> {
+        fun <T : InlineSerializer<T>> getRegistryList(registry: Registry<T>): List<T> {
             if (config !is MapConfigLike) throw UnsupportedOperationException("Cannot use registries with $config")
             if (!has(relative)) return listOf()
 
@@ -1034,11 +1030,10 @@ class SerializeData {
                             "Missing name for a(n) '$serializer'",
                         )
 
-                val serializer: T =
-                    registry[id]
-                        ?: throw builder()
-                            .locationRaw(location)
-                            .buildInvalidOption(id, registry.options)
+                val serializer: T = registry.matchAny(id)
+                    ?: throw builder()
+                        .locationRaw(location)
+                        .buildInvalidRegistryOption(id, registry)
 
                 val temp: ConfigLike =
                     MapConfigLike(map as Map<String, MapConfigLike.Holder>).setDebugInfo(
@@ -1071,12 +1066,7 @@ class SerializeData {
                     )
 
                 val identifier = map[InlineSerializer.UNIQUE_IDENTIFIER]
-                if (identifier != null &&
-                    !me.deecaad.core.mechanics.Registry.matches(
-                        identifier.toString(),
-                        impliedType.keyword,
-                    )
-                ) {
+                if (identifier != null && !RegistryUtil.matches(identifier.toString(), impliedType)) {
                     throw listException(
                         relative,
                         i,

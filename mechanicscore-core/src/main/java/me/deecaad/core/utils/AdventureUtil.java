@@ -7,6 +7,7 @@ import com.cjcrafter.foliascheduler.util.ReflectionUtil;
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.deecaad.core.MechanicsCore;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
@@ -102,7 +103,7 @@ public final class AdventureUtil {
      */
     public static void setNameUnparsed(@NotNull ItemMeta meta, @NotNull String name) {
         // <!italic> effectively strips away Minecraft's predefined formatting
-        setName(meta, MechanicsCore.getPlugin().message.deserialize("<!italic>" + name));
+        setName(meta, MiniMessage.miniMessage().deserialize("<!italic>" + name));
     }
 
     /**
@@ -199,7 +200,7 @@ public final class AdventureUtil {
         List<Object> lore = new ArrayList<>(unparsedText.size());
         for (Object obj : unparsedText) {
             // <!italic> effectively strips away Minecraft's predefined formatting
-            Component component = MechanicsCore.getPlugin().message.deserialize("<!italic>" + StringUtil.colorAdventure(obj.toString()));
+            Component component = MiniMessage.miniMessage().deserialize("<!italic>" + StringUtil.colorAdventure(obj.toString()));
             if (MinecraftVersions.TRAILS_AND_TAILS.get(5).isAtLeast()) {
                 String json = GsonComponentSerializer.gson().serialize(component);
                 Object componentObj = fromJsonMethod.invoke(null, json);

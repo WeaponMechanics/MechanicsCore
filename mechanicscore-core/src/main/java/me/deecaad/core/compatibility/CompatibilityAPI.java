@@ -25,12 +25,11 @@ public final class CompatibilityAPI {
 
             // When we don't have a compatibility interface for this version
             if (compatibility == null) {
-                MechanicsCore.debug.error("Unsupported server version: " + MinecraftVersions.getCurrent() + " (" + Bukkit.getBukkitVersion() + ")",
+                MechanicsCore.getInstance().getDebugger().severe("Unsupported server version: " + MinecraftVersions.getCurrent() + " (" + Bukkit.getBukkitVersion() + ")",
                     "If you are running a new version of Minecraft, make sure to update",
                     "!!! CRITICAL ERROR !!!");
             }
 
-            // * ----- World Guard ----- * //
             WorldGuardCompatibility worldGuardCompatibility1;
             try {
                 // Check if WorldGuard is there
@@ -42,7 +41,7 @@ public final class CompatibilityAPI {
             }
             worldGuardCompatibility = worldGuardCompatibility1;
         } catch (Throwable ex) {
-            MechanicsCore.debug.log(LogLevel.ERROR, "Failed to init CompatibilityAPI", ex);
+            MechanicsCore.getInstance().getDebugger().severe("Failed to init CompatibilityAPI", ex);
         }
     }
 
@@ -68,7 +67,6 @@ public final class CompatibilityAPI {
 
     public static IVaultCompatibility getVaultCompatibility() {
         if (vaultCompatibility == null) {
-            // * ----- Vault ----- * //
             boolean hasVault = Bukkit.getPluginManager().getPlugin("Vault") != null;
             String path = "me.deecaad.core.compatibility.vault." + (hasVault ? "VaultCompatibility" : "NoVaultCompatibility");
             ConstructorInvoker<?> vaultCompatibilityConstructor = ReflectionUtil.getConstructor(ReflectionUtil.getClass(path));

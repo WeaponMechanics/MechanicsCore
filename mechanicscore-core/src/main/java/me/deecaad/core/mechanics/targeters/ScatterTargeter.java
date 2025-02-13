@@ -6,6 +6,7 @@ import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.utils.RandomUtil;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
@@ -43,7 +44,7 @@ public class ScatterTargeter extends ShapeTargeter {
         Location origin = cast.getTargetLocation();
         World world = cast.getTargetWorld();
         if (origin == null || world == null) {
-            MechanicsCore.debug.error("Tried to use useTarget=true with Scatter{}, but there was no target");
+            MechanicsCore.getInstance().getDebugger().severe("Tried to use useTarget=true with Scatter{}, but there was no target");
             return EmptyIterator.emptyIterator();
         }
 
@@ -97,8 +98,8 @@ public class ScatterTargeter extends ShapeTargeter {
     }
 
     @Override
-    public String getKeyword() {
-        return "Scatter";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "scatter");
     }
 
     @NotNull @Override

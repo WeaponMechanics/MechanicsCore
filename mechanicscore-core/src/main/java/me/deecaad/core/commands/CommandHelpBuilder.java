@@ -53,7 +53,7 @@ public class CommandHelpBuilder {
         if (parent.getSubcommands().isEmpty()) {
             help.executes((sender, args) -> {
                 TextComponent.Builder helpResponse = showArguments(help, parent);
-                MechanicsCore.getPlugin().adventure.sender(sender).sendMessage(helpResponse);
+                MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(helpResponse);
             });
 
             // When there is a required argument, we can show the help for
@@ -67,7 +67,7 @@ public class CommandHelpBuilder {
 
                 friend.executes((sender, args) -> {
                     TextComponent.Builder helpResponse = showArguments(help, parent);
-                    MechanicsCore.getPlugin().adventure.sender(sender).sendMessage(helpResponse);
+                    MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(helpResponse);
                 });
             }
         }
@@ -77,7 +77,7 @@ public class CommandHelpBuilder {
         else {
             help.executes((sender, args) -> {
                 TextComponent.Builder helpResponse = showSubcommands(help, parent);
-                MechanicsCore.getPlugin().adventure.sender(sender).sendMessage(helpResponse);
+                MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(helpResponse);
             });
 
             // When the command only has subcommands, we can show help when the
@@ -85,7 +85,7 @@ public class CommandHelpBuilder {
             if (!parent.getExecutor().hasAnyExecutors()) {
                 parent.executes((sender, args) -> {
                     TextComponent.Builder helpResponse = showSubcommands(help, parent);
-                    MechanicsCore.getPlugin().adventure.sender(sender).sendMessage(helpResponse);
+                    MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(helpResponse);
                 });
             }
         }

@@ -6,6 +6,7 @@ import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.mechanics.conditions.Condition;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Entity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,8 +36,8 @@ public class MythicSkillMechanic extends Mechanic {
     }
 
     @Override
-    public String getKeyword() {
-        return "MythicSkill";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "mythic_skill");
     }
 
     @Override

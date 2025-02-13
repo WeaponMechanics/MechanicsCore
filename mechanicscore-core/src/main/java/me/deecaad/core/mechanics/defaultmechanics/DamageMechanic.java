@@ -65,7 +65,7 @@ public class DamageMechanic extends Mechanic {
 
         LivingEntity target = cast.getTarget();
         if (requiresEvent)
-            target.setMetadata(METADATA_KEY, new FixedMetadataValue(MechanicsCore.getPlugin(), this));
+            target.setMetadata(METADATA_KEY, new FixedMetadataValue(MechanicsCore.getInstance(), this));
 
         // The MechanicsCastListener will modify this damage for armor
         cast.getTarget().damage(damage);

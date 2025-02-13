@@ -4,6 +4,7 @@ import me.clip.placeholderapi.PlaceholderAPI;
 import me.deecaad.core.MechanicsCore;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
@@ -64,7 +65,7 @@ public class PlaceholderMessageChain {
                 str = PlaceholderAPI.setPlaceholders(data.player(), str);
             }
 
-            temp.add(MechanicsCore.getPlugin().message.deserialize(str, tagResolvers));
+            temp.add(MiniMessage.miniMessage().deserialize(str, tagResolvers));
         }
 
         return temp;
@@ -83,7 +84,7 @@ public class PlaceholderMessageChain {
                 str = PlaceholderAPI.setPlaceholders(data.player(), str);
             }
 
-            builder.append(MechanicsCore.getPlugin().message.deserialize(str, tagResolvers));
+            builder.append(MiniMessage.miniMessage().deserialize(str, tagResolvers));
         }
 
         return builder;

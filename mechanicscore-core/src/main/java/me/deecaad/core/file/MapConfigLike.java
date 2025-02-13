@@ -1,12 +1,13 @@
 package me.deecaad.core.file;
 
-import me.deecaad.core.mechanics.Registry;
 import me.deecaad.core.utils.SerializerUtil;
 import me.deecaad.core.utils.StringUtil;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class MapConfigLike implements ConfigLike {
@@ -19,7 +20,7 @@ public class MapConfigLike implements ConfigLike {
     public MapConfigLike(Map<String, Holder> config) {
         this.config = new HashMap<>();
         for (String key : config.keySet()) {
-            String noCase = Registry.toKey(key);
+            String noCase = normalizeString(key);
 
             this.config.put(noCase, config.get(key));
         }
@@ -46,22 +47,22 @@ public class MapConfigLike implements ConfigLike {
 
     @Override
     public boolean contains(String key) {
-        return config.containsKey(Registry.toKey(key));
+        return config.containsKey(normalizeString(key));
     }
 
     @Override
     public Object get(String key, Object def) {
-        return config.getOrDefault(Registry.toKey(key), new Holder(def, 0)).value;
+        return config.getOrDefault(normalizeString(key), new Holder(def, 0)).value;
     }
 
     @Override
     public boolean isString(String key) {
-        return get(Registry.toKey(key), null) instanceof String;
+        return get(normalizeString(key), null) instanceof String;
     }
 
     @Override
     public List<?> getList(String key) {
-        Object temp = get(Registry.toKey(key), null);
+        Object temp = get(normalizeString(key), null);
 
         if (temp instanceof List<?> list)
             return list;
@@ -71,7 +72,7 @@ public class MapConfigLike implements ConfigLike {
 
     @Override
     public String getLocation(File localFile, String localPath) {
-        Holder holder = config.get(Registry.toKey(localPath));
+        Holder holder = config.get(normalizeString(localPath));
         if (holder == null)
             return SerializerUtil.foundAt(file, path);
 
@@ -79,6 +80,10 @@ public class MapConfigLike implements ConfigLike {
         return SerializerUtil.foundAt(file, path) + "\n"
             + indent + fullLine + "\n"
             + StringUtil.repeat(" ", indent.length() + holder.index()) + "^";
+    }
+
+    public @NotNull String normalizeString(@NotNull String str) {
+        return str.toLowerCase(Locale.ROOT).replace(" ", "").replace("_", "");
     }
 
     public record Holder(Object value, int index) {

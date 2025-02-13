@@ -1,12 +1,11 @@
 package me.deecaad.core.mechanics;
 
-import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.*;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
 import me.deecaad.core.mechanics.targeters.*;
+import me.deecaad.core.utils.RegistryUtil;
 import me.deecaad.core.utils.StringUtil;
-import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -166,12 +165,11 @@ public class MechanicManager implements Serializer<MechanicManager> {
                         }
 
                         String temp = nameMatcher.group().substring(1);
-                        NamespacedKey targeterKey = NamespacedKey.fromString(temp, MechanicsCore.getInstance());
-                        targeter = Targeters.REGISTRY.get(targeterKey);
+                        targeter = RegistryUtil.matchAny(Targeters.REGISTRY, temp);
                         if (targeter == null) {
                             throw SerializerException.builder()
                                 .locationRaw(data.of().getLocation())
-                                .buildInvalidOption(temp, Targeters.REGISTRY.stream().map());
+                                .buildInvalidRegistryOption(temp, Targeters.REGISTRY);
                         }
 
                         // We need to call the 'inlineFormat' method since the
@@ -189,11 +187,11 @@ public class MechanicManager implements Serializer<MechanicManager> {
                             throw new InlineSerializer.FormatException(0, "Could not determine the name of the condition");
 
                         String temp = nameMatcher.group().substring(1);
-                        Condition condition = MechanicManager.CONDITIONS.get(temp);
+                        Condition condition = RegistryUtil.matchAny(Conditions.REGISTRY, temp);
                         if (condition == null) {
                             throw SerializerException.builder()
                                 .locationRaw(data.of().getLocation())
-                                .buildInvalidOption(temp, CONDITIONS.getOptions());
+                                .buildInvalidRegistryOption(temp, Conditions.REGISTRY);
                         }
 
                         // We need to call the 'inlineFormat' method since the
@@ -220,11 +218,11 @@ public class MechanicManager implements Serializer<MechanicManager> {
                         }
 
                         String temp = nameMatcher.group();
-                        mechanic = MECHANICS.get(temp);
+                        mechanic = RegistryUtil.matchAny(Mechanics.REGISTRY, temp);
                         if (mechanic == null) {
                             throw SerializerException.builder()
                                 .locationRaw(data.of().getLocation())
-                                .buildInvalidOption(temp, MECHANICS.getOptions());
+                                .buildInvalidRegistryOption(temp, Mechanics.REGISTRY);
                         }
 
                         // We need to call the 'inlineFormat' method since the

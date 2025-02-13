@@ -160,9 +160,6 @@ public class TableBuilder {
                 originalLength = cell.length();
             }
 
-            MechanicsCore.debug.debug("TableBuild :: " + i);
-            MechanicsCore.debug.debug("TableBuild :: CELL BEFORE :: '" + cell + "'");
-
             int count = 0;
             if (i % constraints.columns != constraints.columns - 1) {
                 while (getWidth(prefix + cell) < cellSize)
@@ -180,8 +177,6 @@ public class TableBuilder {
             // Although we reset style here, (and maybe we shouldn't reset
             // style), it is still important to allow TextComponents for
             // click and hover events.
-            MechanicsCore.debug.debug("TableBuild :: CELL AFTER  :: '" + cell + "'");
-            MechanicsCore.debug.debug("TableBuild :: COMBINED    :: '" + prefix + cell + StringUtil.repeat("|", count) + "'");
 
             if (deleteCell)
                 text = text.append(text(cell.toString()));

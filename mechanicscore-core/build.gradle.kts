@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     // Core Minecraft dependencies
+    compileOnly(libs.brigadier)
     compileOnly(libs.spigotApi)
     compileOnly(libs.packetEvents)
 

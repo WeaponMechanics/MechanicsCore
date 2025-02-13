@@ -12,7 +12,6 @@ import me.deecaad.core.file.SimpleSerializer;
 import me.deecaad.core.file.serializers.ColorSerializer;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.mechanics.Conditions;
-import me.deecaad.core.mechanics.MechanicManager;
 import me.deecaad.core.mechanics.PlayerEffectMechanic;
 import me.deecaad.core.mechanics.Targeters;
 import me.deecaad.core.mechanics.conditions.Condition;
@@ -193,7 +192,7 @@ public class FireworkMechanic extends PlayerEffectMechanic {
         meta.setPower(flightTime);
         fireworkItem.setItemMeta(meta);
 
-        Targeter viewers = data.of("Viewers").getRegistry(Targeters.REGISTRY).orElse(null);
+        Targeter viewers = data.of("Viewers").serializeRegistry(Targeters.REGISTRY).orElse(null);
         List<Condition> viewerConditions = data.of("Viewer_Conditions").getRegistryList(Conditions.REGISTRY);
 
         // If the user wants to use listener conditions, be sure to use a

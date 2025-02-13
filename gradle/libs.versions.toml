@@ -1,5 +1,6 @@
 [versions]
 # Core Minecraft dependencies
+brigadier = "1.0.18"
 spigotApi = "1.21.4-R0.1-SNAPSHOT"
 packetEvents = "2.7.0"
 
@@ -30,6 +31,7 @@ xSeries = "13.0.0"
 
 [libraries]
 # Core Minecraft dependencies
+brigadier      = { module = "com.mojang:brigadier", version.ref = "brigadier" }
 spigotApi      = { module = "org.spigotmc:spigot-api", version.ref = "spigotApi" }
 packetEvents   = { module = "com.github.retrooper:packetevents-spigot", version.ref = "packetEvents" }
 

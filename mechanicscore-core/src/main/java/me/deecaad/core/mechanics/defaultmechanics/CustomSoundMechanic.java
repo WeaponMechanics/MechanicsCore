@@ -4,7 +4,6 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.mechanics.Conditions;
-import me.deecaad.core.mechanics.MechanicManager;
 import me.deecaad.core.mechanics.PlayerEffectMechanic;
 import me.deecaad.core.mechanics.Targeters;
 import me.deecaad.core.mechanics.conditions.Condition;
@@ -133,7 +132,7 @@ public class CustomSoundMechanic extends PlayerEffectMechanic {
         float noise = (float) data.of("Noise").assertRange(0.0, 1.5).getDouble().orElse(0.0);
         SoundCategory category = data.of("Category").getEnum(SoundCategory.class).orElse(SoundCategory.PLAYERS);
 
-        Targeter listeners = data.of("Listeners").getRegistry(Targeters.REGISTRY).orElse(null);
+        Targeter listeners = data.of("Listeners").serializeRegistry(Targeters.REGISTRY).orElse(null);
         List<Condition> listenerConditions = data.of("Listener_Conditions").getRegistryList(Conditions.REGISTRY);
 
         // If the user wants to use listener conditions, be sure to use a

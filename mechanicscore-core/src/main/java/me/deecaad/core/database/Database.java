@@ -35,24 +35,27 @@ public abstract class Database {
      * @param resultSet the result set used
      */
     public void close(@Nullable Connection connection, @Nullable Statement statement, @Nullable ResultSet resultSet) {
-        if (resultSet != null)
+        if (resultSet != null) {
             try {
                 resultSet.close();
             } catch (SQLException e) {
-                MechanicsCore.debug.log(LogLevel.ERROR, e);
+                MechanicsCore.getInstance().getDebugger().severe("", e);
             }
-        if (statement != null)
+        }
+        if (statement != null) {
             try {
                 statement.close();
             } catch (SQLException e) {
-                MechanicsCore.debug.log(LogLevel.ERROR, e);
+                MechanicsCore.getInstance().getDebugger().severe("", e);
             }
-        if (connection != null)
+        }
+        if (connection != null) {
             try {
                 connection.close();
             } catch (SQLException e) {
-                MechanicsCore.debug.log(LogLevel.ERROR, e);
+                MechanicsCore.getInstance().getDebugger().severe("", e);
             }
+        }
     }
 
     /**
@@ -70,7 +73,7 @@ public abstract class Database {
             return;
         }
 
-        MechanicsCore.getPlugin().getFoliaScheduler().async().runNow(() -> executeUpdate(sql));
+        MechanicsCore.getInstance().getFoliaScheduler().async().runNow(() -> executeUpdate(sql));
     }
 
     private void executeUpdate(String... sql) {
@@ -82,7 +85,7 @@ public abstract class Database {
                 preparedStatement = connection.prepareStatement(sql[0]);
                 preparedStatement.executeUpdate();
             } catch (SQLException e) {
-                MechanicsCore.debug.log(LogLevel.ERROR, e);
+                MechanicsCore.getInstance().getDebugger().severe("", e);
             } finally {
                 close(connection, preparedStatement, null);
             }
@@ -112,7 +115,7 @@ public abstract class Database {
             connection.commit();
             connection.setAutoCommit(true);
         } catch (SQLException e) {
-            MechanicsCore.debug.log(LogLevel.ERROR, e);
+            MechanicsCore.getInstance().getDebugger().severe("", e);
         } finally {
             close(connection, statement, null);
         }
@@ -131,7 +134,7 @@ public abstract class Database {
         if (sql == null || sql.isEmpty() || consumer == null)
             throw new IllegalArgumentException("Empty statement or null consumer");
 
-        MechanicsCore.getPlugin().getFoliaScheduler().async().runNow(() -> {
+        MechanicsCore.getInstance().getFoliaScheduler().async().runNow(() -> {
             Connection connection = null;
             PreparedStatement preparedStatement = null;
             ResultSet resultSet = null;
@@ -141,7 +144,7 @@ public abstract class Database {
                 resultSet = preparedStatement.executeQuery();
                 consumer.accept(resultSet);
             } catch (SQLException e) {
-                MechanicsCore.debug.log(LogLevel.ERROR, e);
+                MechanicsCore.getInstance().getDebugger().severe("", e);
             } finally {
                 close(connection, preparedStatement, resultSet);
             }
@@ -149,7 +152,7 @@ public abstract class Database {
     }
 
     /**
-     * Simple method to print the result set to console. Requires LogLevel.DEBUG
+     * Simple method to print the result set to console.
      *
      * @param rs the query result
      */
@@ -167,9 +170,9 @@ public abstract class Database {
                 builder.append(System.lineSeparator());
             }
 
-            MechanicsCore.debug.log(LogLevel.DEBUG, builder.toString());
+            MechanicsCore.getInstance().getDebugger().fine(builder.toString());
         } catch (SQLException e) {
-            MechanicsCore.debug.log(LogLevel.ERROR, e);
+            MechanicsCore.getInstance().getDebugger().severe("", e);
         }
     }
 

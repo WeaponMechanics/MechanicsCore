@@ -42,7 +42,7 @@ public class EntityTransform extends Transform {
 
     @Override
     public void setLocalPosition(Vector localPosition) {
-        ServerImplementation server = MechanicsCore.getPlugin().getFoliaScheduler();
+        ServerImplementation server = MechanicsCore.getInstance().getFoliaScheduler();
         server.teleportAsync(entity, localPosition.toLocation(entity.getWorld()));
     }
 

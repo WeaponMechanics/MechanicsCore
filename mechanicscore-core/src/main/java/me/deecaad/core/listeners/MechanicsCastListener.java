@@ -22,6 +22,6 @@ public class MechanicsCastListener implements Listener {
             event.setDamage(EntityDamageEvent.DamageModifier.MAGIC, 0);
         }
 
-        entity.removeMetadata(DamageMechanic.METADATA_KEY, MechanicsCore.getPlugin());
+        entity.removeMetadata(DamageMechanic.METADATA_KEY, MechanicsCore.getInstance());
     }
 }

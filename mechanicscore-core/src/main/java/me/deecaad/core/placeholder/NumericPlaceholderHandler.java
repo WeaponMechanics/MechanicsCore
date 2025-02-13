@@ -1,13 +1,11 @@
 package me.deecaad.core.placeholder;
 
-import net.kyori.adventure.text.minimessage.tag.TagPattern;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class NumericPlaceholderHandler extends PlaceholderHandler {
 
-    public NumericPlaceholderHandler(@TagPattern String placeholderName) {
-        super(placeholderName);
+    public NumericPlaceholderHandler() {
     }
 
     @Override

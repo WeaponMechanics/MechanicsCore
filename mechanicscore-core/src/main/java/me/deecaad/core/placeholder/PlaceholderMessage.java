@@ -2,7 +2,9 @@ package me.deecaad.core.placeholder;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.deecaad.core.MechanicsCore;
+import me.deecaad.core.utils.RegistryUtil;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
@@ -46,7 +48,7 @@ public class PlaceholderMessage {
             String placeholderString = matcher.group(1).toLowerCase();
 
             // Make sure the placeholder is valid
-            PlaceholderHandler placeholderHandler = PlaceholderHandler.REGISTRY.get(placeholderString);
+            PlaceholderHandler placeholderHandler = RegistryUtil.matchAny(PlaceholderHandlers.REGISTRY, placeholderString);
             if (placeholderHandler != null) {
                 presentPlaceholders.add(placeholderString);
             }
@@ -82,13 +84,13 @@ public class PlaceholderMessage {
      */
     public void fillMap(PlaceholderData data) {
         for (String placeholder : presentPlaceholders) {
-            PlaceholderHandler handler = PlaceholderHandler.REGISTRY.get(placeholder);
+            PlaceholderHandler handler = RegistryUtil.matchAny(PlaceholderHandlers.REGISTRY, placeholder);
             data.placeholders().put(placeholder, handler == null ? null : handler.onRequest(data));
         }
     }
 
     public Component replaceAndDeserialize(PlaceholderData data) {
-        boolean isAdvancedPlaceholders = MechanicsCore.getPlugin().getConfig().getBoolean("Advanced_Placeholders", false);
+        boolean isAdvancedPlaceholders = MechanicsCore.getInstance().getConfig().getBoolean("Advanced_Placeholders", false);
         boolean isPlaceholderApi = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
         fillMap(data);
 
@@ -111,11 +113,12 @@ public class PlaceholderMessage {
         }
 
         // Adventure api does the heavy lifting
-        Component returnValue = MechanicsCore.getPlugin().message.deserialize(message, tagResolvers);
+        MiniMessage miniMessage = MiniMessage.miniMessage();
+        Component returnValue = miniMessage.deserialize(message, tagResolvers);
         if (isAdvancedPlaceholders && isPlaceholderApi) {
-            message = MechanicsCore.getPlugin().message.serialize(returnValue);
+            message = miniMessage.serialize(returnValue);
             message = PlaceholderAPI.setPlaceholders(data.player(), message);
-            returnValue = MechanicsCore.getPlugin().message.deserialize(message);
+            returnValue = miniMessage.deserialize(message);
         }
         return returnValue;
     }

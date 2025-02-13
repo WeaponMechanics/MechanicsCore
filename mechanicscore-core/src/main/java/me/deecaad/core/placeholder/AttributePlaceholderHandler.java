@@ -6,24 +6,21 @@ import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.intellij.lang.annotations.Subst;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 
-public abstract class AttributePlaceholderHandler extends NumericPlaceholderHandler {
+public class AttributePlaceholderHandler extends NumericPlaceholderHandler {
 
     private final Attribute attribute;
 
     public AttributePlaceholderHandler(@NotNull Attribute attribute) {
-        super(buildKey(attribute.getKey()));
         this.attribute = attribute;
     }
 
-    @Subst("attribute_minecraft_attack_damage") // example for static analysis
-    private static @NotNull String buildKey(@NotNull NamespacedKey key) {
-        return "attribute_" + key.getNamespace() + "_" + key.getKey();
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", attribute.getKey().getKey());
     }
 
     @Override

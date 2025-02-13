@@ -15,19 +15,19 @@ import java.util.Map;
  */
 public interface PlaceholderData {
 
-    @Nullable default Player player() {
+    default @Nullable Player player() {
         return null;
     }
 
-    @Nullable default ItemStack item() {
+    default @Nullable ItemStack item() {
         return null;
     }
 
-    @Nullable default String itemTitle() {
+    default @Nullable String itemTitle() {
         return null;
     }
 
-    @Nullable default EquipmentSlot slot() {
+    default @Nullable EquipmentSlot slot() {
         return null;
     }
 

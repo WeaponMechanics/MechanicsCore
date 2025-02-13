@@ -4,10 +4,10 @@ import io.lumine.mythic.api.adapters.AbstractEntity;
 import io.lumine.mythic.bukkit.BukkitAdapter;
 import io.lumine.mythic.bukkit.MythicBukkit;
 import io.lumine.mythic.core.mobs.ActiveMob;
-import me.deecaad.core.file.JarSearcherExempt;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -52,8 +52,8 @@ public class MythicMobsFactionCondition extends Condition {
     }
 
     @Override
-    public String getKeyword() {
-        return "MythicMobsFaction";
+    public @NotNull NamespacedKey getKey() {
+        return new NamespacedKey("mechanicscore", "mythicmobs_faction");
     }
 
     @Override
