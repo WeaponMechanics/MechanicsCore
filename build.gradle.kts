@@ -1,5 +1,5 @@
 plugins {
-    id("io.papermc.paperweight.userdev") version "2.0.0-beta.14" apply false
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.17" apply false
     kotlin("jvm") version libs.versions.kotlin apply false
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 }
