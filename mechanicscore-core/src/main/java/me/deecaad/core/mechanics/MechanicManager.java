@@ -175,7 +175,7 @@ public class MechanicManager implements Serializer<MechanicManager> {
                         // We need to call the 'inlineFormat' method since the
                         // current targeter object is just an empty serializer.
                         Map<String, MapConfigLike.Holder> args = InlineSerializer.inlineFormat(group.substring(1));
-                        SerializeData nested = new SerializeData(targeter, data.getFile(), null, new MapConfigLike(args).setDebugInfo(data.getFile(), data.getKey(), line));
+                        SerializeData nested = new SerializeData(data.getFile(), null, new MapConfigLike(args).setDebugInfo(data.getFile(), data.getKey(), line));
                         targeter = targeter.serialize(nested);
                     }
 
@@ -197,7 +197,7 @@ public class MechanicManager implements Serializer<MechanicManager> {
                         // We need to call the 'inlineFormat' method since the
                         // current condition object is just an empty serializer.
                         Map<String, MapConfigLike.Holder> args = InlineSerializer.inlineFormat(group.substring(1));
-                        SerializeData nested = new SerializeData(condition, data.getFile(), null, new MapConfigLike(args).setDebugInfo(data.getFile(), data.getKey(), line));
+                        SerializeData nested = new SerializeData(data.getFile(), null, new MapConfigLike(args).setDebugInfo(data.getFile(), data.getKey(), line));
                         conditions.add(condition.serialize(nested));
                     }
 
@@ -228,7 +228,7 @@ public class MechanicManager implements Serializer<MechanicManager> {
                         // We need to call the 'inlineFormat' method since the
                         // current mechanic object is just an empty serializer.
                         Map<String, MapConfigLike.Holder> args = InlineSerializer.inlineFormat(group.substring(1));
-                        SerializeData nested = new SerializeData(mechanic, data.getFile(), null, new MapConfigLike(args).setDebugInfo(data.getFile(), data.getKey(), line));
+                        SerializeData nested = new SerializeData(data.getFile(), null, new MapConfigLike(args).setDebugInfo(data.getFile(), data.getKey(), line));
                         mechanic = mechanic.serialize(nested);
                     }
                 }

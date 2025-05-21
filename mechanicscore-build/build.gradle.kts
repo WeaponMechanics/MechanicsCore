@@ -67,26 +67,28 @@ tasks.shadowJar {
          * plugins that may use the same library.
          */
         fun relocateLib(
-            lib: Provider<MinimalExternalModuleDependency>,
             fromPackage: String,
             toPackage: String,
+            lib: Provider<MinimalExternalModuleDependency>? = null,
         ) {
             relocate(fromPackage, toPackage) {
-                val group = lib.get().group
-                val name = lib.get().name
-                include(dependency("$group:$name"))
+                if (lib != null) {
+                    val group = lib.get().group
+                    val name = lib.get().name
+                    include(dependency("$group:$name"))
+                }
             }
         }
 
         val libPackage = "me.deecaad.core.lib"
-        relocateLib(libs.adventureApi, "net.kyori", "$libPackage.kyori")
-        relocateLib(libs.adventureBukkit, "net.kyori", "$libPackage.kyori")
-        relocateLib(libs.adventureTextLegacy, "net.kyori", "$libPackage.kyori")
-        relocateLib(libs.adventureTextMinimessage, "net.kyori", "$libPackage.kyori")
-        relocateLib(libs.commandApiShade, "dev.jorel.commandapi", "$libPackage.commandapi")
-        relocateLib(libs.foliaScheduler, "com.cjcrafter.foliascheduler", "$libPackage.scheduler")
-        relocateLib(libs.hikariCp, "com.zaxxer.hikari", "$libPackage.hikari")
-        relocateLib(libs.kotlinStdlib, "kotlin.", "$libPackage.kotlin.")
-        relocateLib(libs.xSeries, "com.cryptomorin.xseries", "$libPackage.xseries")
+        relocateLib("net.kyori", "$libPackage.kyori", libs.adventureApi)
+        relocateLib("net.kyori", "$libPackage.kyori", libs.adventureBukkit)
+        relocateLib("net.kyori", "$libPackage.kyori", libs.adventureTextLegacy)
+        relocateLib("net.kyori", "$libPackage.kyori", libs.adventureTextMinimessage)
+        relocateLib("dev.jorel.commandapi", "$libPackage.commandapi", libs.commandApiShade)
+        relocateLib("com.cjcrafter.foliascheduler", "$libPackage.scheduler", libs.foliaScheduler)
+        relocateLib("com.zaxxer.hikari", "$libPackage.hikari", libs.hikariCp)
+        relocateLib("kotlin.", "$libPackage.kotlin.", libs.kotlinStdlib)
+        relocateLib("com.cryptomorin.xseries", "$libPackage.xseries", libs.xSeries)
     }
 }

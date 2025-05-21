@@ -132,7 +132,7 @@ open class MechanicsPlugin(
         var loggerConfig = MechanicsLogger.LoggerConfig()
         val configYml = File(dataFolder, "config.yml")
         if (configYml.exists()) {
-            val data = SerializeData(loggerConfig, configYml, null, BukkitConfig(getConfig()))
+            val data = SerializeData(configYml, null, BukkitConfig(config))
             loggerConfig = data.of("Logger_Config").assertExists().serialize(MechanicsLogger.LoggerConfig::class.java).get()
         }
         debugger = MechanicsLogger(this, loggerConfig)

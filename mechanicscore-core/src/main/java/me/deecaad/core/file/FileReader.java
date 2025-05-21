@@ -237,7 +237,7 @@ public class FileReader {
                         continue;
                     }
 
-                    if (!serializer.shouldSerialize(new SerializeData(serializer, file, key, new BukkitConfig(configuration)))) {
+                    if (!serializer.shouldSerialize(new SerializeData(file, key, new BukkitConfig(configuration)))) {
                         debug.finest("Skipping " + key + " due to skip");
                         continue;
                     }
@@ -251,7 +251,7 @@ public class FileReader {
                             // SerializerException can be thrown whenever the
                             // user input an invalid value. We should log the
                             // exception.
-                            Object valid = serializer.serialize(new SerializeData(serializer, file, key, new BukkitConfig(configuration)));
+                            Object valid = serializer.serialize(new SerializeData(file, key, new BukkitConfig(configuration)));
                             filledMap.set(key, valid);
 
                             // Only update the startsWithDeny if this is the "main serializer"
@@ -314,7 +314,7 @@ public class FileReader {
         // Handle nested-path-to serializers
         for (NestedPathToSerializer nestedPathTo : nestedPathToSerializers) {
             try {
-                SerializeData data = new SerializeData(nestedPathTo.serializer, nestedPathTo.ex.getSerializeData().getFile(), nestedPathTo.path, nestedPathTo.ex.getSerializeData().getConfig());
+                SerializeData data = new SerializeData(nestedPathTo.ex.getSerializeData().getFile(), nestedPathTo.path, nestedPathTo.ex.getSerializeData().getConfig());
                 data.setPathToConfig(filledMap);
                 Object serialized = data.of().serialize(nestedPathTo.serializer);
                 filledMap.set(nestedPathTo.path, serialized);
@@ -331,7 +331,7 @@ public class FileReader {
         // Handle validators
         for (ValidatorData validatorData : validatorDatas) {
 
-            SerializeData data = new SerializeData(validatorData.validator.getKeyword(), validatorData.file, validatorData.path, new BukkitConfig(validatorData.configurationSection));
+            SerializeData data = new SerializeData(validatorData.file, validatorData.path, new BukkitConfig(validatorData.configurationSection));
             data.setPathToConfig(filledMap);
 
             if (!validatorData.validator.shouldValidate(data)) {

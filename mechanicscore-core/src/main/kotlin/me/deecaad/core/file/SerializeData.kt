@@ -41,7 +41,6 @@ import kotlin.math.floor
  * `SerializeData#of("your.key").assertExists().assertPositive().getInt()`.
  */
 class SerializeData {
-    val serializer: String
     val file: File
     val key: String?
     val config: ConfigLike
@@ -61,31 +60,13 @@ class SerializeData {
      */
     private var usingStep = false
 
-    constructor(serializer: String, file: File, key: String?, config: ConfigLike) {
-        this.serializer = serializer
+    constructor(file: File, key: String?, config: ConfigLike) {
         this.file = file
         this.key = key
         this.config = config
     }
 
-    constructor(serializer: String, other: SerializeData, relative: String) {
-        this.serializer = serializer
-        this.file = other.file
-        this.key = other.getPath(relative)
-        this.config = other.config
-
-        copyMutables(other)
-    }
-
-    constructor(serializer: Serializer<*>, file: File, key: String?, config: ConfigLike) {
-        this.serializer = serializer.name
-        this.file = file
-        this.key = key
-        this.config = config
-    }
-
-    constructor(serializer: Serializer<*>, other: SerializeData, relative: String) {
-        this.serializer = serializer.name
+    constructor(other: SerializeData, relative: String) {
         this.file = other.file
         this.key = other.getPath(relative)
         this.config = other.config
@@ -117,7 +98,7 @@ class SerializeData {
      * @throws IllegalArgumentException If no configuration section exists at the location.
      */
     fun move(relative: String): SerializeData {
-        return SerializeData(serializer, this, relative).copyMutables(this)
+        return SerializeData(this, relative).copyMutables(this)
     }
 
     /**
@@ -133,7 +114,7 @@ class SerializeData {
 
         if (key.isNotEmpty()) key.setLength(key.length - 1)
 
-        return SerializeData(serializer, file, key.toString(), config).copyMutables(this)
+        return SerializeData(file, key.toString(), config).copyMutables(this)
     }
 
     /**
@@ -169,7 +150,7 @@ class SerializeData {
             }
 
             val path = config.getString(getPath(relative))
-            val temp = SerializeData(serializer, file, path, config) // just pass 'config' for safety's sake
+            val temp = SerializeData(file, path, config) // just pass 'config' for safety's sake
             temp.copyMutables(this)
             temp.usingStep = true
             return temp
@@ -957,7 +938,7 @@ class SerializeData {
             val temp: ConfigLike =
                 MapConfigLike(map.get() as MutableMap<String, MapConfigLike.Holder>)
                     .setDebugInfo(config.file, config.path, config.fullLine)
-            val nested = SerializeData(serializer, file, null, temp)
+            val nested = SerializeData(file, null, temp)
 
             val key = nested.of(InlineSerializer.UNIQUE_IDENTIFIER).assertExists().get(String::class.java).get()
             val base = registry.matchAny(key)
@@ -1002,7 +983,7 @@ class SerializeData {
                     config.fullLine,
                 )
 
-            val nested = SerializeData(impliedType, file, null, temp)
+            val nested = SerializeData(file, null, temp)
             return Optional.of(impliedType.serialize(nested))
         }
 
@@ -1027,7 +1008,7 @@ class SerializeData {
                         ?: throw listException(
                             relative,
                             i,
-                            "Missing name for a(n) '$serializer'",
+                            "Could not identify any valid type",
                         )
 
                 val serializer: T = registry.matchAny(id)
@@ -1042,7 +1023,7 @@ class SerializeData {
                         config.fullLine,
                     )
 
-                val nested = SerializeData(serializer, file, null, temp)
+                val nested = SerializeData(file, null, temp)
                 returnValue.add(serializer.serialize(nested))
             }
 
@@ -1081,7 +1062,7 @@ class SerializeData {
                         config.fullLine,
                     )
 
-                val nested = SerializeData(impliedType, file, null, temp)
+                val nested = SerializeData(file, null, temp)
                 returnValue.add(impliedType.serialize(nested))
             }
 
@@ -1120,7 +1101,7 @@ class SerializeData {
                 return Optional.empty()
             }
 
-            val data = SerializeData(serializer, this@SerializeData, relative)
+            val data = SerializeData(this@SerializeData, relative)
             data.copyMutables(this@SerializeData)
 
             // Allow path-to compatibility when using nested serializers
