@@ -28,6 +28,9 @@ kotlin = "1.9.21"
 spigotUpdateChecker = "3.0.4"
 xSeries = "13.0.0"
 
+# Testing dependencies
+junit = "5.11.4"
+
 
 [libraries]
 # Core Minecraft dependencies
@@ -62,3 +65,7 @@ jsonSimple               = { module = "com.googlecode.json-simple:json-simple", 
 kotlinStdlib             = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
 spigotUpdateChecker      = { module = "com.jeff_media:SpigotUpdateChecker", version.ref = "spigotUpdateChecker" }
 xSeries                  = { module = "com.github.cryptomorin:XSeries", version.ref = "xSeries" }
+
+# Testing dependencies
+junitApi    = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junitParams = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }

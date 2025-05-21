@@ -33,6 +33,8 @@ dependencies {
     testImplementation(libs.spigotApi)
     testImplementation(libs.annotations)
     testImplementation(libs.foliaScheduler)
+    testImplementation(libs.junitApi)
+    testImplementation(libs.junitParams)
 }
 
 val sourcesJar by tasks.registering(Jar::class) {
