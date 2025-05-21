@@ -22,13 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class SerializerListTest {
 
-    public static final Serializer<?> DUMMY = new Serializer<>() {
-        @NotNull @Override
-        public Object serialize(@NotNull SerializeData data) throws SerializerException {
-            throw new RuntimeException();
-        }
-    };
-
     private File file;
     private FileConfiguration config;
 
@@ -52,7 +45,7 @@ public class SerializerListTest {
     @ParameterizedTest
     @ValueSource(strings = {"Valid"})
     public void test_valid(String key) throws Exception {
-        SerializeData data = new SerializeData(DUMMY, file, "a", new BukkitConfig(config));
+        SerializeData data = new SerializeData(file, "a", new BukkitConfig(config));
 
         try {
             List<List<Optional<Object>>> list = data.ofList("Valid")
@@ -81,9 +74,9 @@ public class SerializerListTest {
     @ParameterizedTest
     @ValueSource(strings = {"Invalid_0", "Invalid_1", "Invalid_2", "Invalid_3", "Invalid_4", "Invalid_5", "Invalid_6", "Invalid_7"})
     public void test_invalid(String key) {
-        SerializeData data = new SerializeData(DUMMY, file, "a", new BukkitConfig(config));
+        SerializeData data = new SerializeData(file, "a", new BukkitConfig(config));
 
-        assertThrows(SerializerException.class, () -> data.ofList()
+        assertThrows(SerializerException.class, () -> data.ofList(key)
             .addArgument(new StringSerializer())
             .addArgument(new IntSerializer(0, null))
             .requireAllPreviousArgs()
