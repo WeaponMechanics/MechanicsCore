@@ -4,6 +4,9 @@ plugins {
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 }
 
+group = "com.cjcrafter"
+version = findProperty("mechanicscore.version").toString()
+
 allprojects {
     subprojects {
         pluginManager.withPlugin("java") {
