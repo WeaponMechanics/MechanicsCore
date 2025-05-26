@@ -90,7 +90,7 @@ open class MechanicsPlugin(
     /**
      * Attempts to reload this plugin and all its components.
      */
-    fun reload(): CompletableFuture<TaskImplementation<Void>> {
+    open fun reload(): CompletableFuture<TaskImplementation<Void>> {
         return foliaScheduler.async().runNow { _ ->
             handleFiles()
         }.asFuture().thenCompose {
