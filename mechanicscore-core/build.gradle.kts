@@ -2,7 +2,6 @@ plugins {
     `java-library`
     kotlin("jvm") version libs.versions.kotlin
     `maven-publish`
-    signing
 }
 
 dependencies {
@@ -54,16 +53,14 @@ publishing {
             artifact(sourcesJar)
             artifact(javadocJar)
 
+            groupId = "com.cjcrafter"
+            artifactId = "mechanicscore"
             version = findProperty("mechanicscore.version").toString()
 
             pom {
                 name.set("MechanicsCore")
                 description.set("A plugin that adds scripting capabilities to Plugins")
                 url.set("https://github.com/WeaponMechanics/MechanicsCore")
-
-                groupId = "com.cjcrafter"
-                artifactId = "mechanicscore"
-                version = findProperty("mechanicscore.version").toString()
 
                 licenses {
                     license {
@@ -91,14 +88,13 @@ publishing {
             }
         }
     }
-}
 
-signing {
-    isRequired = true
-    useInMemoryPgpKeys(
-        System.getenv("SIGNING_KEY_ID") ?: findProperty("SIGNING_KEY_ID").toString(),
-        System.getenv("SIGNING_PRIVATE_KEY") ?: findProperty("SIGNING_PRIVATE_KEY").toString(),
-        System.getenv("SIGNING_PASSWORD") ?: findProperty("SIGNING_PASSWORD").toString(),
-    )
-    sign(publishing.publications)
+    // Deploy this repository locally for staging, then let the root project actually
+    // upload the maven repo using jReleaser
+    repositories {
+        maven {
+            name = "stagingDeploy"
+            url = layout.buildDirectory.dir("staging-deploy").map { it.asFile.toURI() }.get()
+        }
+    }
 }
