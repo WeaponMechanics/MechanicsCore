@@ -130,6 +130,7 @@ class MechanicsLogger(
         return log(Level.WARNING, message, throwable = throwable)
     }
 
+    @JvmOverloads
     fun warning(vararg messages: String, throwable: Throwable? = null) {
         return log(Level.WARNING, *messages, throwable = throwable)
     }
@@ -139,6 +140,7 @@ class MechanicsLogger(
         return log(Level.INFO, message, throwable = throwable)
     }
 
+    @JvmOverloads
     fun info(vararg messages: String, throwable: Throwable? = null) {
         return log(Level.INFO, *messages, throwable = throwable)
     }
@@ -148,6 +150,7 @@ class MechanicsLogger(
         return log(Level.CONFIG, message, throwable = throwable)
     }
 
+    @JvmOverloads
     fun config(vararg messages: String, throwable: Throwable? = null) {
         return log(Level.CONFIG, *messages, throwable = throwable)
     }
@@ -157,6 +160,7 @@ class MechanicsLogger(
         return log(Level.FINE, message, throwable = throwable)
     }
 
+    @JvmOverloads
     fun fine(vararg messages: String, throwable: Throwable? = null) {
         return log(Level.FINE, *messages, throwable = throwable)
     }
@@ -166,6 +170,7 @@ class MechanicsLogger(
         return log(Level.FINER, message, throwable = throwable)
     }
 
+    @JvmOverloads
     fun finer(vararg messages: String, throwable: Throwable? = null) {
         return log(Level.FINER, *messages, throwable = throwable)
     }
@@ -175,6 +180,7 @@ class MechanicsLogger(
         return log(Level.FINEST, message, throwable = throwable)
     }
 
+    @JvmOverloads
     fun finest(vararg messages: String, throwable: Throwable? = null) {
         return log(Level.FINEST, *messages, throwable = throwable)
     }
