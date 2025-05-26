@@ -17,6 +17,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -69,12 +70,14 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
         return rootFolder;
     }
 
-    public boolean addSerializer(@NotNull Serializer<?> serializer) {
-        return serializers.add(serializer);
+    public @NotNull RootFileReader<R, T> withSerializers(@NotNull Collection<Serializer<?>> serializers) {
+        this.serializers.addAll(serializers);
+        return this;
     }
 
-    public boolean addValidator(@NotNull IValidator validator) {
-        return validators.add(validator);
+    public @NotNull RootFileReader<R, T> addValidators(@NotNull Collection<IValidator> validators) {
+        this.validators.addAll(validators);
+        return this;
     }
 
     /**
