@@ -1,7 +1,7 @@
 plugins {
     id("io.papermc.paperweight.userdev") version "2.0.0-beta.17" apply false
     kotlin("jvm") version libs.versions.kotlin apply false
-    id("base")
+    base
     id("org.jreleaser") version "1.18.0"
 }
 

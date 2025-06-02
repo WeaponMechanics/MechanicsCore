@@ -36,16 +36,16 @@ import java.util.List;
 public class RootFileReader<R, T extends Serializer<R>> implements Listener {
 
     private final @NotNull MechanicsPlugin plugin;
-    private final @NotNull Class<T> clazz;
+    private final @NotNull Class<T> serializerClass;
     private final @NotNull String relativeFolder;
     private final @NotNull File rootFolder;
 
     private final @NotNull List<Serializer<?>> serializers;
     private final @NotNull List<IValidator> validators;
 
-    public RootFileReader(@NotNull MechanicsPlugin plugin, @NotNull Class<T> clazz, @NotNull String relativeFolder) {
+    public RootFileReader(@NotNull MechanicsPlugin plugin, @NotNull Class<T> serializerClass, @NotNull String relativeFolder) {
         this.plugin = plugin;
-        this.clazz = clazz;
+        this.serializerClass = serializerClass;
         this.relativeFolder = relativeFolder;
         this.rootFolder = new File(plugin.getDataFolder(), relativeFolder);
         if (!rootFolder.isDirectory())
@@ -58,8 +58,8 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
         return plugin;
     }
 
-    public @NotNull Class<T> getClazz() {
-        return clazz;
+    public @NotNull Class<T> getSerializerClass() {
+        return serializerClass;
     }
 
     public @NotNull String getRelativeFolder() {
@@ -75,7 +75,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
         return this;
     }
 
-    public @NotNull RootFileReader<R, T> addValidators(@NotNull Collection<IValidator> validators) {
+    public @NotNull RootFileReader<R, T> withValidators(@NotNull Collection<IValidator> validators) {
         this.validators.addAll(validators);
         return this;
     }
@@ -85,13 +85,14 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
      * This method is great for forcing a required directory, or letting users delete the directory
      * so you can refill it with default values.
      */
-    public void assertFiles() {
+    public @NotNull RootFileReader<R, T> assertFiles() {
         if (rootFolder.exists())
-            return;
+            return this;
 
         URL source = getClass().getClassLoader().getResource(plugin.getName() + "/" + relativeFolder);
         Path dest = rootFolder.toPath();
         FileUtil.copyResourcesTo(source, dest);
+        return this;
     }
 
     /**
@@ -146,7 +147,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                     for (String key : config.getKeys(false)) {
                         try {
                             SerializeData data = new SerializeData(file.toFile(), key, new BukkitConfig(config));
-                            R obj = data.of().assertExists().serialize(clazz).get();
+                            R obj = data.of().assertExists().serialize(serializerClass).get();
                             accumulate.set(key, obj);
                         } catch (SerializerException ex) {
                             ex.log(plugin.getDebugger());
