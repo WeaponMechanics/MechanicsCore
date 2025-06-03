@@ -1,6 +1,7 @@
 package me.deecaad.core.mechanics.defaultmechanics;
 
 import io.lumine.mythic.bukkit.MythicBukkit;
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
@@ -37,7 +38,7 @@ public class MythicSkillMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "mythic_skill");
+        return new NamespacedKey(MechanicsCore.getInstance(), "mythic_skill");
     }
 
     @Override
@@ -65,8 +66,8 @@ public class MythicSkillMechanic extends Mechanic {
         MythicBukkit.inst().getAPIHelper().castSkill(cast.getSource(), skillName, cast.getSourceLocation(), eTargets, lTargets, power);
     }
 
-    @NotNull @Override
-    public Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
+    @Override
+    public @NotNull Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
         String skill = data.of("Skill").assertExists().get(String.class).get();
         float power = (float) data.of("Power").getDouble().orElse(1.0);
 

@@ -60,7 +60,7 @@ public class TitleMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "title");
+        return new NamespacedKey(MechanicsCore.getInstance(), "title");
     }
 
     @Override

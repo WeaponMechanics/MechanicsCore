@@ -1,5 +1,6 @@
 package me.deecaad.core.mechanics.conditions;
 
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.MapConfigLike;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
@@ -40,7 +41,7 @@ public class OnGroundCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "on_ground");
+        return new NamespacedKey(MechanicsCore.getInstance(), "on_ground");
     }
 
     @Override

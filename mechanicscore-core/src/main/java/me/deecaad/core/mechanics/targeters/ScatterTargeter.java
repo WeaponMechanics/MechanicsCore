@@ -99,7 +99,7 @@ public class ScatterTargeter extends ShapeTargeter {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "scatter");
+        return new NamespacedKey(MechanicsCore.getInstance(), "scatter");
     }
 
     @NotNull @Override

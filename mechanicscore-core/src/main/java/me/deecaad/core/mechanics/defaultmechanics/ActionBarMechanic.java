@@ -78,7 +78,7 @@ public class ActionBarMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "action_bar");
+        return new NamespacedKey(MechanicsCore.getInstance(), "action_bar");
     }
 
     @Override

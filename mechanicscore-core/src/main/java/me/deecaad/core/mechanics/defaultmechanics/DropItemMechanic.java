@@ -1,5 +1,6 @@
 package me.deecaad.core.mechanics.defaultmechanics;
 
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.serializers.AnyVectorProvider;
@@ -51,7 +52,7 @@ public class DropItemMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "drop_item");
+        return new NamespacedKey(MechanicsCore.getInstance(), "drop_item");
     }
 
     @Override

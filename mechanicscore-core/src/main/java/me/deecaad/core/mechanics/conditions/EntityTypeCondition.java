@@ -1,5 +1,6 @@
 package me.deecaad.core.mechanics.conditions;
 
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
@@ -29,7 +30,7 @@ public class EntityTypeCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "entity_type");
+        return new NamespacedKey(MechanicsCore.getInstance(), "entity_type");
     }
 
     @Override

@@ -1,5 +1,6 @@
 package me.deecaad.core.mechanics.defaultmechanics;
 
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
@@ -27,7 +28,7 @@ public class SculkBloomMechanic extends ActivateBlockMechanic<SculkCatalyst> {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "sculk_bloom");
+        return new NamespacedKey(MechanicsCore.getInstance(), "sculk_bloom");
     }
 
     @Override

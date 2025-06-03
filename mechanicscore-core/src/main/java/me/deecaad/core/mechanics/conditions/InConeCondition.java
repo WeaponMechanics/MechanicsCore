@@ -1,5 +1,6 @@
 package me.deecaad.core.mechanics.conditions;
 
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.serializers.VectorProvider;
@@ -56,7 +57,7 @@ public class InConeCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "in_cone");
+        return new NamespacedKey(MechanicsCore.getInstance(), "in_cone");
     }
 
     @Override

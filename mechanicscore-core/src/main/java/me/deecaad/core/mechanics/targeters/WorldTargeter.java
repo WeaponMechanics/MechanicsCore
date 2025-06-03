@@ -75,7 +75,7 @@ public class WorldTargeter extends Targeter {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "world");
+        return new NamespacedKey(MechanicsCore.getInstance(), "world");
     }
 
     @Nullable @Override

@@ -1,6 +1,7 @@
 package me.deecaad.core.mechanics.conditions;
 
 import com.cjcrafter.foliascheduler.util.MinecraftVersions;
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
@@ -39,7 +40,7 @@ public class MaterialCategoryCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "material_category");
+        return new NamespacedKey(MechanicsCore.getInstance(), "material_category");
     }
 
     @Override

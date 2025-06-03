@@ -1,5 +1,6 @@
 package me.deecaad.core.mechanics.targeters;
 
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
@@ -30,7 +31,7 @@ public class SourceTargeter extends Targeter {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "source");
+        return new NamespacedKey(MechanicsCore.getInstance(), "source");
     }
 
     @Nullable @Override

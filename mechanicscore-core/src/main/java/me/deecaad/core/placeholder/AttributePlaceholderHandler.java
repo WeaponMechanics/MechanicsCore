@@ -1,5 +1,6 @@
 package me.deecaad.core.placeholder;
 
+import me.deecaad.core.MechanicsCore;
 import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
@@ -20,7 +21,7 @@ public class AttributePlaceholderHandler extends NumericPlaceholderHandler {
     }
 
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", attribute.getKey().getKey());
+        return new NamespacedKey(MechanicsCore.getInstance(), attribute.getKey().getKey());
     }
 
     @Override

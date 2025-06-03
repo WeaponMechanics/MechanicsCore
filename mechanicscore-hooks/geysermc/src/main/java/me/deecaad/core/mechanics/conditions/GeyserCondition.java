@@ -32,7 +32,7 @@ public class GeyserCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "geyser");
+        return new NamespacedKey(MechanicsCore.getInstance(), "geyser");
     }
 
     @Override

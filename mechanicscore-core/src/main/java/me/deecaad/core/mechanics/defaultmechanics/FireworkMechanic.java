@@ -59,7 +59,7 @@ public class FireworkMechanic extends PlayerEffectMechanic {
 
         @Override
         public @NotNull NamespacedKey getKey() {
-            return new NamespacedKey("mechanicscore", "firework_effect");
+            return new NamespacedKey(MechanicsCore.getInstance(), "firework_effect");
         }
 
         @NotNull @Override
@@ -174,7 +174,7 @@ public class FireworkMechanic extends PlayerEffectMechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "firework");
+        return new NamespacedKey(MechanicsCore.getInstance(), "firework");
     }
 
     @Override

@@ -29,7 +29,7 @@ public class WorldPlayersTargeter extends WorldTargeter {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "world_players");
+        return new NamespacedKey(MechanicsCore.getInstance(), "world_players");
     }
 
     @Override

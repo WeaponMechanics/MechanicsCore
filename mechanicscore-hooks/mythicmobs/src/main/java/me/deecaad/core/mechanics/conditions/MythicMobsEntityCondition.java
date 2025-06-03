@@ -2,6 +2,7 @@ package me.deecaad.core.mechanics.conditions;
 
 import io.lumine.mythic.bukkit.MythicBukkit;
 import io.lumine.mythic.core.mobs.ActiveMob;
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
@@ -34,7 +35,7 @@ public class MythicMobsEntityCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "mythicmobs_entity");
+        return new NamespacedKey(MechanicsCore.getInstance(), "mythicmobs_entity");
     }
 
     @Override

@@ -1,5 +1,6 @@
 package me.deecaad.core.mechanics.conditions;
 
+import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
@@ -28,7 +29,7 @@ public class SneakingCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey("mechanicscore", "sneaking");
+        return new NamespacedKey(MechanicsCore.getInstance(), "sneaking");
     }
 
     @Override
