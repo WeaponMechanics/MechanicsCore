@@ -20,7 +20,7 @@ public class SculkShriekMechanic extends ActivateBlockMechanic<SculkShrieker> {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "sculk_shriek");
+        return new NamespacedKey(MechanicsCore.getInstance(), "sculkshriek");
     }
 
     @Override

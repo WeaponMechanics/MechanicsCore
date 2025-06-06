@@ -52,7 +52,7 @@ public class DropItemMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "drop_item");
+        return new NamespacedKey(MechanicsCore.getInstance(), "dropitem");
     }
 
     @Override

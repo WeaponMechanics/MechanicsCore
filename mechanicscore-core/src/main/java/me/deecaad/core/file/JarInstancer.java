@@ -25,9 +25,7 @@ public class JarInstancer extends JarSearcher {
             try {
                 emptyConstructor = validClass.getConstructor();
             } catch (NoSuchMethodException e) {
-                MechanicsCore.getInstance().getDebugger().severe(
-                    "Found an class implementing " + clazz.getSimpleName() + " class which didn't have empty constructor!",
-                    "Please add empty constructor for class " + validClass.getSimpleName());
+                MechanicsCore.getInstance().getDebugger().severe(validClass + " is missing a no-arg constructor", new IllegalArgumentException());
                 continue;
             }
 

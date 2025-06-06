@@ -28,7 +28,7 @@ public class SculkBloomMechanic extends ActivateBlockMechanic<SculkCatalyst> {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "sculk_bloom");
+        return new NamespacedKey(MechanicsCore.getInstance(), "sculkbloom");
     }
 
     @Override

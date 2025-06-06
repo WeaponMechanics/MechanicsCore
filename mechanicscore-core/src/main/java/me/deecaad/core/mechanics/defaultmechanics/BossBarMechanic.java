@@ -70,7 +70,7 @@ public class BossBarMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "boss_bar");
+        return new NamespacedKey(MechanicsCore.getInstance(), "bossbar");
     }
 
     @Override

@@ -117,7 +117,7 @@ public class CustomSoundMechanic extends PlayerEffectMechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "custom_sound");
+        return new NamespacedKey(MechanicsCore.getInstance(), "customsound");
     }
 
     @Override

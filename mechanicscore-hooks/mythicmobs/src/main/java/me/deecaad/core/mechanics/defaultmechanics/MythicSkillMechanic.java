@@ -38,7 +38,7 @@ public class MythicSkillMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "mythic_skill");
+        return new NamespacedKey(MechanicsCore.getInstance(), "mythicskill");
     }
 
     @Override
