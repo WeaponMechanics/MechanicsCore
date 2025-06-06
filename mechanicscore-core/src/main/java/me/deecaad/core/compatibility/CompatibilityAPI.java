@@ -26,7 +26,8 @@ public final class CompatibilityAPI {
             // When we don't have a compatibility interface for this version
             if (compatibility == null) {
                 MechanicsCore.getInstance().getDebugger().severe("Unsupported server version: " + MinecraftVersions.getCurrent() + " (" + Bukkit.getBukkitVersion() + ")",
-                    "If you are running a new version of Minecraft, make sure to update",
+                    "The protocol version " + MinecraftVersions.getCurrent().toProtocolString() + " has no compatibility class...",
+                    "If you are using a new version of Minecraft, you might need to update your plugins!",
                     "!!! CRITICAL ERROR !!!");
             }
 

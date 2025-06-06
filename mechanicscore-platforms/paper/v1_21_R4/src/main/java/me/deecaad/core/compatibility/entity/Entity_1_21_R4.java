@@ -3,11 +3,14 @@ package me.deecaad.core.compatibility.entity;
 import com.cjcrafter.foliascheduler.util.FieldAccessor;
 import com.cjcrafter.foliascheduler.util.ReflectionUtil;
 import com.mojang.datafixers.util.Pair;
-import me.deecaad.core.compatibility.equipevent.NonNullList_1_21_R4;
-import me.deecaad.core.compatibility.equipevent.TriIntConsumer;
+import net.minecraft.core.NonNullList;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntityEquipment;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.entity.CraftEntity;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
@@ -17,19 +20,44 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-// https://nms.screamingsandals.org/1.18.1/
 public class Entity_1_21_R4 implements EntityCompatibility {
 
-    public static final FieldAccessor itemsById = ReflectionUtil.getField(SynchedEntityData.class, SynchedEntityData.DataItem[].class);
+    private static final net.minecraft.world.entity.EquipmentSlot[] SLOTS = net.minecraft.world.entity.EquipmentSlot.values();
+
+    private static final FieldAccessor itemsById = ReflectionUtil.getField(SynchedEntityData.class, SynchedEntityData.DataItem[].class);
+    private static final FieldAccessor itemsField;
+    private static final FieldAccessor entityEquipmentField;
+
+    static {
+        Class<?> playerInventoryClass = ReflectionUtil.getMinecraftClass("world.entity.player", "PlayerInventory");
+        Class<?> nonNullListClass = ReflectionUtil.getMinecraftClass("core", "NonNullList");
+
+        itemsField = ReflectionUtil.getField(playerInventoryClass, nonNullListClass);
+        entityEquipmentField = ReflectionUtil.getField(playerInventoryClass, EntityEquipment.class);
+    }
 
     @Override
-    public List generateNonNullList(int size, TriIntConsumer<org.bukkit.inventory.ItemStack, org.bukkit.inventory.ItemStack> consumer) {
-        return new NonNullList_1_21_R4(size, consumer);
+    public void injectInventoryConsumer(@NotNull Player player, @NotNull EquipmentChangeConsumer consumer) {
+        ServerPlayer handle = ((CraftPlayer) player).getHandle();
+        Inventory inventory = handle.getInventory();
+
+        NonNullList<net.minecraft.world.item.ItemStack> items = new NonNullListProxy(36, inventory, consumer);
+        for (int i = 0; i < inventory.getNonEquipmentItems().size(); i++)
+            items.set(i, inventory.getNonEquipmentItems().get(i));
+
+        EntityEquipment equipment = new EntityEquipmentProxy(consumer);
+        equipment.setAll(inventory.equipment);
+
+        // Have to use reflection here since these fields are final
+        itemsField.set(inventory, items);
+        entityEquipmentField.set(inventory, equipment);
     }
 
     @Override
@@ -104,5 +132,119 @@ public class Entity_1_21_R4 implements EntityCompatibility {
         data = meta.set(data, enabled);
 
         list.set(0, new SynchedEntityData.DataValue<>(item.id(), item.serializer(), data));
+    }
+
+
+    /**
+     * Wraps an {@link Inventory}'s {@link NonNullList} to add a callback for modifications.
+     */
+    private static class NonNullListProxy extends NonNullList<net.minecraft.world.item.ItemStack> {
+
+        private static final FieldAccessor itemField = ReflectionUtil.getField(net.minecraft.world.item.ItemStack.class, Item.class);
+
+        private final Inventory inventory;
+        private final EquipmentChangeConsumer consumer;
+
+        public NonNullListProxy(int size, Inventory inventory, EquipmentChangeConsumer consumer) {
+            super(generate(size), net.minecraft.world.item.ItemStack.EMPTY);
+            this.inventory = inventory;
+            this.consumer = consumer;
+        }
+
+        @Override
+        public @NotNull net.minecraft.world.item.ItemStack set(int index, net.minecraft.world.item.ItemStack newItem) {
+            net.minecraft.world.item.ItemStack oldItem = get(index);
+            boolean isMainHand = (inventory.getSelectedSlot() == index);
+
+            // Exit early for slots we do not care about
+            if (!isMainHand)
+                return super.set(index, newItem);
+
+            if (newItem.getCount() == 0 && itemField.get(newItem) != null) {
+                newItem.setCount(1);
+                consumer.accept(CraftItemStack.asBukkitCopy(oldItem), CraftItemStack.asBukkitCopy(newItem), EquipmentSlot.HAND);
+                newItem.setCount(0);
+            }
+
+            else if (oldItem.getCount() == 0 && itemField.get(oldItem) != null) {
+                oldItem.setCount(1);
+                consumer.accept(CraftItemStack.asBukkitCopy(oldItem), CraftItemStack.asBukkitCopy(newItem), EquipmentSlot.HAND);
+                oldItem.setCount(0);
+            }
+
+            else if (!net.minecraft.world.item.ItemStack.matches(oldItem, newItem)) {
+                consumer.accept(CraftItemStack.asBukkitCopy(oldItem), CraftItemStack.asBukkitCopy(newItem), EquipmentSlot.HAND);
+            }
+
+            return super.set(index, newItem);
+        }
+
+        private static List<net.minecraft.world.item.ItemStack> generate(int size) {
+            net.minecraft.world.item.ItemStack[] items = new net.minecraft.world.item.ItemStack[size];
+            Arrays.fill(items, net.minecraft.world.item.ItemStack.EMPTY);
+            return Arrays.asList(items);
+        }
+    }
+
+
+    /**
+     * Wraps an {@link Inventory}'s {@link EntityEquipment}
+     */
+    private static class EntityEquipmentProxy extends EntityEquipment {
+        private final EquipmentChangeConsumer consumer;
+
+        public EntityEquipmentProxy(EquipmentChangeConsumer consumer) {
+            super();
+            this.consumer = consumer;
+        }
+
+        private @Nullable EquipmentSlot getSlot(net.minecraft.world.entity.EquipmentSlot slot) {
+            return switch (slot) {
+                case FEET -> EquipmentSlot.FEET;
+                case LEGS -> EquipmentSlot.LEGS;
+                case CHEST -> EquipmentSlot.CHEST;
+                case HEAD -> EquipmentSlot.HEAD;
+                case OFFHAND -> EquipmentSlot.OFF_HAND;
+                default -> null;
+            };
+        }
+
+
+        @Override
+        public @NotNull net.minecraft.world.item.ItemStack set(@NotNull net.minecraft.world.entity.EquipmentSlot slot, @NotNull net.minecraft.world.item.ItemStack stack) {
+            EquipmentSlot bukkitSlot = getSlot(slot);
+            net.minecraft.world.item.ItemStack old = super.set(slot, stack);
+            if (bukkitSlot != null) {
+                ItemStack oldBukkit = CraftItemStack.asBukkitCopy(old);
+                ItemStack newBukkit = CraftItemStack.asBukkitCopy(stack);
+                consumer.accept(oldBukkit, newBukkit, bukkitSlot);
+            }
+            return old;
+        }
+
+        @Override
+        public void setAll(@NotNull EntityEquipment equipment) {
+            for (net.minecraft.world.entity.EquipmentSlot slot : SLOTS) {
+                EquipmentSlot bukkitSlot = getSlot(slot);
+                if (bukkitSlot != null) {
+                    ItemStack oldBukkit = CraftItemStack.asBukkitCopy(super.get(slot));
+                    ItemStack newBukkit = CraftItemStack.asBukkitCopy(equipment.get(slot));
+                    consumer.accept(oldBukkit, newBukkit, bukkitSlot);
+                }
+            }
+            super.setAll(equipment);
+        }
+
+        @Override
+        public void clear() {
+            for (net.minecraft.world.entity.EquipmentSlot slot : SLOTS) {
+                EquipmentSlot bukkitSlot = getSlot(slot);
+                if (bukkitSlot != null) {
+                    ItemStack oldBukkit = CraftItemStack.asBukkitCopy(super.get(slot));
+                    consumer.accept(oldBukkit, null, bukkitSlot);
+                }
+            }
+            super.clear();
+        }
     }
 }

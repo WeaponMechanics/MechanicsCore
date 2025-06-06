@@ -1,6 +1,5 @@
 package me.deecaad.core.compatibility.entity;
 
-import me.deecaad.core.compatibility.equipevent.TriIntConsumer;
 import org.bukkit.Location;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
@@ -8,22 +7,21 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
 
 public interface EntityCompatibility {
 
     /**
-     * Generates an NMS non-null-list (used by the player's inventory). This is used internally for the
-     * {@link me.deecaad.core.events.EntityEquipmentEvent}, and should probably not be used by anything
-     * else.
+     * Internal use only.
+     * <p>
+     * Overrides the player's handle's inventory with a proxy that calls the consumer.
+     * The consumer will have the old item, the new item, and the modified slot.
      *
-     * @param size The size of the list.
-     * @param consumer The action to execute every item add.
-     * @return The fixed size list.
+     * @param player The player to override
+     * @param consumer The callback on inventory modifications
      */
-    List<Object> generateNonNullList(int size, TriIntConsumer<ItemStack, ItemStack> consumer);
+    void injectInventoryConsumer(@NotNull Player player, @NotNull EquipmentChangeConsumer consumer);
 
     /**
      * Generates a {@link FakeEntity} with the given entity type as a disguise.

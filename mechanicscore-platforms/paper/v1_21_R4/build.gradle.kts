@@ -3,6 +3,10 @@ plugins {
     id("io.papermc.paperweight.userdev")
 }
 
+repositories {
+    maven(url = "https://central.sonatype.com/repository/maven-snapshots/") // FoliaScheduler Snapshots
+}
+
 dependencies {
     compileOnly(project(":mechanicscore-core"))
     compileOnly(libs.adventureApi)

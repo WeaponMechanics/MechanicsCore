@@ -1,12 +1,8 @@
 package me.deecaad.core.events.triggers;
 
-import com.cjcrafter.foliascheduler.util.FieldAccessor;
-import com.cjcrafter.foliascheduler.util.ReflectionUtil;
-import com.google.common.collect.ImmutableList;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.compatibility.CompatibilityAPI;
 import me.deecaad.core.events.EntityEquipmentEvent;
-import me.deecaad.core.utils.LogLevel;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
@@ -29,7 +25,6 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -40,34 +35,6 @@ import java.util.logging.Level;
  * {@link org.bukkit.inventory.EntityEquipment} is changed.
  */
 public class EquipListener implements Listener {
-
-    // * ----- REFLECTIONS ----- * //
-    private static final FieldAccessor playerInventoryField;
-    private static final Class<?> playerInventoryClass;
-    private static final FieldAccessor inventoryField;
-    private static final FieldAccessor armorField;
-    private static final FieldAccessor offHandField;
-    private static final FieldAccessor hotBarSlotField;
-    private static final FieldAccessor combinedField;
-
-    static {
-        Class<?> humanClass = ReflectionUtil.getMinecraftClass("world.entity.player", "EntityHuman");
-        playerInventoryClass = ReflectionUtil.getMinecraftClass("world.entity.player", "PlayerInventory");
-        playerInventoryField = ReflectionUtil.getField(humanClass, playerInventoryClass);
-
-        // Used to get player inventory fields
-        Class<?> nonNullListClass = ReflectionUtil.getMinecraftClass("core", "NonNullList");
-
-        inventoryField = ReflectionUtil.getField(playerInventoryClass, nonNullListClass, 0);
-        armorField = ReflectionUtil.getField(playerInventoryClass, nonNullListClass, 1);
-        offHandField = ReflectionUtil.getField(playerInventoryClass, nonNullListClass, 2);
-        combinedField = ReflectionUtil.getField(playerInventoryClass, List.class, 3); // index 3 since nonNonList is a List
-
-        hotBarSlotField = ReflectionUtil.getField(playerInventoryClass, int.class, 0, ReflectionUtil.IS_NOT_STATIC);
-    }
-
-    // * ----- END OF REFLECTIONS ----- * //
-
     public static final EquipListener SINGLETON = new EquipListener();
 
     private final Set<Player> dropCancelledPlayers;
@@ -170,12 +137,8 @@ public class EquipListener implements Listener {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public void inject(Player player) {
-        Object handle = CompatibilityAPI.getCompatibility().getEntityPlayer(player);
-        Object playerInventory = playerInventoryField.get(handle);
-
-        List<Object> inventory = CompatibilityAPI.getEntityCompatibility().generateNonNullList(36, (old, current, index) -> {
+        CompatibilityAPI.getEntityCompatibility().injectInventoryConsumer(player, (old, current, slot) -> {
             if (isIllegalModification())
                 return;
 
@@ -184,53 +147,8 @@ public class EquipListener implements Listener {
                 return;
             }
 
-            int hotBar = hotBarSlotField.getInt(playerInventory);
-
-            // Not sure how important this check is, but the MC code does it.
-            // I assume that means hot bar can mean something else.
-            // TAKE NOTE that this code does not call an event when the hotBar
-            // var is changed... We must use an event for that.
-            if (hotBar >= 0 && hotBar < 9) {
-                if (hotBar == index) {
-                    Bukkit.getPluginManager().callEvent(new EntityEquipmentEvent(player, EquipmentSlot.HAND, old, current));
-                }
-            }
-        });
-        List<Object> armor = CompatibilityAPI.getEntityCompatibility().generateNonNullList(4, (old, current, index) -> {
-            if (isIllegalModification())
-                return;
-
-            EquipmentSlot slot = switch (index) {
-                case 0 -> EquipmentSlot.FEET;
-                case 1 -> EquipmentSlot.LEGS;
-                case 2 -> EquipmentSlot.CHEST;
-                case 3 -> EquipmentSlot.HEAD;
-                default -> throw new IndexOutOfBoundsException("Index out of bounds: " + index + ", for list " + this);
-            };
-
             Bukkit.getPluginManager().callEvent(new EntityEquipmentEvent(player, slot, old, current));
         });
-        List<Object> offhand = CompatibilityAPI.getEntityCompatibility().generateNonNullList(1, (old, current, index) -> {
-            if (isIllegalModification())
-                return;
-
-            Bukkit.getPluginManager().callEvent(new EntityEquipmentEvent(player, EquipmentSlot.OFF_HAND, old, current));
-        });
-
-        List<Object> oldItems = (List<Object>) inventoryField.get(playerInventory);
-        for (int i = 0; i < oldItems.size(); i++) {
-            inventory.set(i, oldItems.get(i));
-        }
-        List<Object> oldArmor = (List<Object>) armorField.get(playerInventory);
-        for (int i = 0; i < oldArmor.size(); i++) {
-            armor.set(i, oldArmor.get(i));
-        }
-        offhand.set(0, ((List<Object>) offHandField.get(playerInventory)).get(0));
-
-        inventoryField.set(playerInventory, inventory);
-        armorField.set(playerInventory, armor);
-        offHandField.set(playerInventory, offhand);
-        combinedField.set(playerInventory, ImmutableList.of(inventory, armor, offhand));
     }
 
     private static boolean isEmpty(ItemStack item) {
@@ -265,7 +183,7 @@ public class EquipListener implements Listener {
         // This way, server admins will go to the offending plugin's support
         // channel INSTEAD OF the WeaponMechanics support channel. It is not
         // our job to fix other people's bad code.
-        plugin.getLogger().log(Level.SEVERE, String.format("Nag author(s) %s of %s-%s about their async inventory modification at %s",
+        plugin.getLogger().log(Level.SEVERE, String.format("Nag author(s) %s of %s-%s about their async inventory modification at %s. Minecraft inventories have no thread safety.",
             desc.getAuthors(), desc.getName(), desc.getVersion(), location));
         MechanicsCore.getInstance().getDebugger().severe("Found plugin '" + desc.getName() + "' modifying inventory async.");
         return true;

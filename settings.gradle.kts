@@ -13,6 +13,7 @@ plugins {
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
+        maven(url = "https://central.sonatype.com/repository/maven-snapshots/") // FoliaScheduler Snapshots
         maven(url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/") // Spigot API
         maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots/") // Adventure Snapshots
         maven(url = "https://libraries.minecraft.net/") // Brigadier, GameProfile
