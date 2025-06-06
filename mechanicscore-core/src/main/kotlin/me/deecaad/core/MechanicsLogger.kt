@@ -226,7 +226,7 @@ class MechanicsLogger(
                 return Level.parse(level)
             } catch (e: Exception) {
                 throw data.exception(relative, "Could not parse '$relative' to any valid logging level.",
-                    "Expected a value like 'SEVERE', 'WARNING', 'INFO', 'CONFIG', 'FINE', 'FINER' FINEST'",
+                    "Expected a value like 'SEVERE', 'WARNING', 'INFO', 'CONFIG', 'FINE', 'FINER', 'FINEST'",
                 )
             }
         }

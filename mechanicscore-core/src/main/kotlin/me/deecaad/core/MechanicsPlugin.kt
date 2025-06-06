@@ -8,6 +8,7 @@ import me.deecaad.core.file.BukkitConfig
 import me.deecaad.core.file.Configuration
 import me.deecaad.core.file.FileReader
 import me.deecaad.core.file.SerializeData
+import me.deecaad.core.file.SerializerException
 import me.deecaad.core.utils.FileUtil
 import net.kyori.adventure.platform.bukkit.BukkitAudiences
 import net.kyori.adventure.text.format.NamedTextColor
@@ -17,6 +18,7 @@ import org.bukkit.event.HandlerList
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.util.concurrent.CompletableFuture
+import java.util.logging.Level
 
 /**
  * The base class for plugins using MechanicsCore.
@@ -57,12 +59,23 @@ open class MechanicsPlugin(
     /**
      * The Adventure API for sending messages to players.
      */
-    val adventure by lazy { BukkitAudiences.create(this) }
+    private var adventure0: BukkitAudiences? = null
+    val adventure: BukkitAudiences
+        get() = adventure0 ?: throw IllegalStateException("Not yet initialized")
+
+    /**
+     * Expose the class loader
+     */
+    val classLoader0: ClassLoader = super.getClassLoader()
 
     override fun onLoad() {
         val start = System.currentTimeMillis()
 
+        // Setup a debugger with "dummy config"... will be replaced later in handleFiles
+        debugger = MechanicsLogger(this, MechanicsLogger.LoggerConfig(printLevel = Level.CONFIG))
+
         foliaScheduler = FoliaCompatibility(this).serverImplementation
+        handleFiles().join()
         handleConfigs().join()
         handleExtensions().join()
 
@@ -73,8 +86,11 @@ open class MechanicsPlugin(
     override fun onEnable() {
         val start = System.currentTimeMillis()
 
+        adventure0 = BukkitAudiences.create(this)
+        handlePermissions().join()
         handleCommands().join()
         handleListeners().join()
+        handlePacketListeners().join()
         handleMetrics().join()
 
         val end = System.currentTimeMillis()
@@ -84,7 +100,8 @@ open class MechanicsPlugin(
     override fun onDisable() {
         HandlerList.unregisterAll(this)
         foliaScheduler.cancelTasks()
-        adventure.close()
+        adventure0?.close()
+        adventure0 = null;
     }
 
     /**
@@ -95,6 +112,7 @@ open class MechanicsPlugin(
             handleFiles()
         }.asFuture().thenCompose {
             foliaScheduler.global().run { _ ->
+                adventure0 = BukkitAudiences.create(this)
                 handleConfigs().join()
                 handleListeners().join()
                 handleCommands().join()
@@ -132,8 +150,13 @@ open class MechanicsPlugin(
         var loggerConfig = MechanicsLogger.LoggerConfig()
         val configYml = File(dataFolder, "config.yml")
         if (configYml.exists()) {
-            val data = SerializeData(configYml, null, BukkitConfig(config))
-            loggerConfig = data.of("Logger_Config").assertExists().serialize(MechanicsLogger.LoggerConfig::class.java).get()
+            try {
+                val data = SerializeData(configYml, null, BukkitConfig(config))
+                loggerConfig =
+                    data.of("Logger_Config").assertExists().serialize(MechanicsLogger.LoggerConfig::class.java).get()
+            } catch (e: SerializerException) {
+                e.log(debugger)
+            }
         }
         debugger = MechanicsLogger(this, loggerConfig)
 
