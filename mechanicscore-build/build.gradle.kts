@@ -18,18 +18,7 @@ dependencies {
         implementation(project(":${it.name}", "reobf"))
     }
 
-    // Implementation for all shaded libraries:
-    implementation(libs.adventureApi)
-    implementation(libs.adventureBukkit)
-    implementation(libs.adventureTextLegacy)
-    implementation(libs.adventureTextMinimessage)
-    implementation(libs.bstats)
     implementation(libs.commandApiShade)
-    implementation(libs.foliaScheduler)
-    implementation(libs.hikariCp)
-    implementation(libs.kotlinStdlib)
-    implementation(libs.spigotUpdateChecker)
-    implementation(libs.xSeries)
 }
 
 bukkitPluginYaml {
@@ -52,7 +41,6 @@ tasks.shadowJar {
 
     val libPackage = "me.deecaad.core.lib"
 
-    relocate("org.slf4j", "$libPackage.slf4j")
     relocate("org.bstats", "$libPackage.bstats")
     relocate("net.kyori", "$libPackage.kyori")
     relocate("com.jeff_media.updatechecker", "$libPackage.updatechecker")

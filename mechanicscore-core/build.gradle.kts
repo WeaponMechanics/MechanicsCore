@@ -15,19 +15,21 @@ dependencies {
     compileOnly(libs.placeholderApi)
 
     // Shaded dependencies
-    compileOnly(libs.adventureApi)
-    compileOnly(libs.adventureBukkit)
-    compileOnly(libs.adventureTextLegacy)
-    compileOnly(libs.adventureTextMinimessage)
-    compileOnly(libs.annotations)
-    compileOnly(libs.bstats)
+    implementation(libs.adventureApi)
+    implementation(libs.adventureBukkit)
+    implementation(libs.adventureTextLegacy)
+    implementation(libs.adventureTextMinimessage)
+    implementation(libs.adventureTextPlain)
+    implementation(libs.annotations)
+    implementation(libs.bstats)
     compileOnly(libs.commandApi)
     compileOnly(libs.fastUtil)
-    compileOnly(libs.foliaScheduler)
-    compileOnly(libs.hikariCp)
-    compileOnly(libs.jsonSimple)
-    compileOnly(libs.spigotUpdateChecker)
-    compileOnly(libs.xSeries)
+    implementation(libs.foliaScheduler)
+    implementation(libs.hikariCp) {
+        exclude(group = "org.slf4j", module = "slf4j-api")
+    }
+    implementation(libs.spigotUpdateChecker)
+    implementation(libs.xSeries)
 
     // Testing dependencies
     testImplementation(libs.spigotApi)
