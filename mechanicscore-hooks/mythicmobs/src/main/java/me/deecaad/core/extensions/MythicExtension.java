@@ -1,6 +1,5 @@
 package me.deecaad.core.extensions;
 
-import me.deecaad.core.extension.Extension;
 import me.deecaad.core.mechanics.Conditions;
 import me.deecaad.core.mechanics.Mechanics;
 import me.deecaad.core.mechanics.conditions.MythicMobsEntityCondition;

@@ -5,7 +5,7 @@ import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIBukkitConfig;
 import me.deecaad.core.events.QueueSerializerEvent;
 import me.deecaad.core.events.triggers.EquipListener;
-import me.deecaad.core.extension.Extension;
+import me.deecaad.core.extensions.Extension;
 import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerInstancer;
 import me.deecaad.core.listeners.ItemCraftListener;

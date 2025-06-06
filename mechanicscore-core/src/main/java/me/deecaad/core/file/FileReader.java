@@ -152,12 +152,6 @@ public class FileReader {
             try {
                 if (name.endsWith(".yml")) {
                     Configuration newFilledMap = fillOneFile(directoryFile);
-
-                    // This occurs when the yml file is empty
-                    if (newFilledMap == null) {
-                        continue;
-                    }
-
                     filledMap.copyFrom(newFilledMap);
                 } else if (directoryFile.isDirectory()) {
                     filledMap.copyFrom(fillAllFilesLoop(directoryFile));
@@ -182,7 +176,7 @@ public class FileReader {
      * @param file the file to read
      * @return the map with file's configurations
      */
-    public Configuration fillOneFile(File file) {
+    public @NotNull Configuration fillOneFile(File file) {
         Configuration filledMap = new FastConfiguration();
 
         // If a serializer is found, it's path is saved here. Any
@@ -295,9 +289,6 @@ public class FileReader {
 
             Object object = configuration.get(key);
             filledMap.set(key, object);
-        }
-        if (filledMap.keys().isEmpty()) {
-            return null;
         }
 
         return filledMap;
