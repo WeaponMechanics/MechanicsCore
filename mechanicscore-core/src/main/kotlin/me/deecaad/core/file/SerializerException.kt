@@ -41,6 +41,7 @@ open class SerializerException(
         private var location: String? = null
         private val messages: MutableList<String> = mutableListOf()
 
+        @JvmOverloads
         fun location(
             file: File,
             path: String,

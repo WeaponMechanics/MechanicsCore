@@ -30,20 +30,21 @@ object RegistryUtil {
      */
     @JvmStatic
     fun <T : Keyed> matchAny(registry: Registry<T>, key: String): T? {
-        if (key.isEmpty()) throw IllegalArgumentException("Key cannot be empty")
+        if (key.isEmpty()) return null
 
         // Some keys may contain a namespace, so we should enforce that namespace
         var namespace: String? = null
-        var keyToCheck = key
+        var keyToCheck = key.lowercase()
         if (key.contains(":")) {
             namespace = key.split(":")[0]
-            keyToCheck = key.split(":")[1]
+            keyToCheck = key.split(":")[1].lowercase()
         }
 
         for (value in registry) {
             if (namespace != null && value.key.namespace != namespace) continue
             if (value.key.key == keyToCheck) return value
         }
-        throw IllegalArgumentException("No registry value matched for: $key")
+
+        return null
     }
 }

@@ -48,7 +48,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
         this.serializerClass = serializerClass;
         this.relativeFolder = relativeFolder;
         this.rootFolder = new File(plugin.getDataFolder(), relativeFolder);
-        if (!rootFolder.isDirectory())
+        if (rootFolder.exists() && !rootFolder.isDirectory())
             throw new IllegalArgumentException("Root folder is not a directory: " + rootFolder.getAbsolutePath());
         this.serializers = new ArrayList<>();
         this.validators = new ArrayList<>();
@@ -89,7 +89,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
         if (rootFolder.exists())
             return this;
 
-        URL source = getClass().getClassLoader().getResource(plugin.getName() + "/" + relativeFolder);
+        URL source = plugin.getClassLoader0().getResource(plugin.getName() + "/" + relativeFolder);
         Path dest = rootFolder.toPath();
         FileUtil.copyResourcesTo(source, dest);
         return this;
@@ -114,13 +114,16 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                 @Override
                 public @NotNull FileVisitResult visitFile(@NotNull Path file, @NotNull BasicFileAttributes attrs) throws IOException {
                     // Only read yaml
-                    if (!file.endsWith(".yml") && !file.endsWith(".yaml"))
+                    String fileName = file.getFileName().toString().toLowerCase();
+                    if (!fileName.endsWith(".yml") && !fileName.endsWith(".yaml"))
                         return FileVisitResult.CONTINUE;
 
                     // By using the FileReader here, we can use all normal serializers
                     // and validators. This lets other plugins save their own data to
                     // the final config.
-                    Configuration baseConfig = new FileReader(plugin.debugger, serializers, validators).fillOneFile(file.toFile());
+                    FileReader fileReader = new FileReader(plugin.debugger, serializers, validators);
+                    Configuration baseConfig = fileReader.fillOneFile(file.toFile());
+                    fileReader.usePathToSerializersAndValidators(baseConfig);
                     try {
                         accumulate.copyFrom(baseConfig);
                     } catch (DuplicateKeyException ex) {

@@ -7,6 +7,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.intellij.lang.annotations.RegExp;
 import org.jetbrains.annotations.NotNull;
@@ -41,6 +42,12 @@ public class PlaceholderMessage {
      */
     public PlaceholderMessage(@NotNull String template) {
         Set<String> presentPlaceholders = new LinkedHashSet<>();
+
+        // Clear out any tags used by MiniMessage first
+        MechanicsCore.getInstance().debugger.fine("BEFORE STRIP: " + template);
+        Component component = MiniMessage.miniMessage().deserialize(template);
+        template = PlainTextComponentSerializer.plainText().serialize(component);
+        MechanicsCore.getInstance().debugger.fine("AFTER STRIP:  " + template);
 
         Matcher matcher = TAG_PATTERN.matcher(template);
 
