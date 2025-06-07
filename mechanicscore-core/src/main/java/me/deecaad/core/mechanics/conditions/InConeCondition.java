@@ -57,7 +57,7 @@ public class InConeCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "in_cone");
+        return new NamespacedKey(MechanicsCore.getInstance(), "incone");
     }
 
     @Override
