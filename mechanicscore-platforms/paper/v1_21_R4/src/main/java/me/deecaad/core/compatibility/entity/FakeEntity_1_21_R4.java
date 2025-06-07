@@ -102,10 +102,10 @@ public class FakeEntity_1_21_R4 extends FakeEntity {
                     temp.setItemStack(CraftItemStack.asNMSCopy((org.bukkit.inventory.ItemStack) data));
                     yield temp;
                 }
-                default -> (Entity) world.createEntity(location, type.getEntityClass());
+                default -> world.createEntity(location, type.getEntityClass(), true);
             };
         } else {
-            entity = (Entity) world.createEntity(location, type.getEntityClass());
+            entity = world.createEntity(location, type.getEntityClass(), true);
         }
 
         if (type == EntityType.ARMOR_STAND) {
