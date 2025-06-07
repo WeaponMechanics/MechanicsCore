@@ -49,27 +49,12 @@ public class JarSearcher {
      * @param clazz The class that the subclasses inherit from. This is generally an abstract
      *        class/interface.
      * @param clazzLoader The class that is used to load classes
-     * @param isIgnoreAbstract If this is <code>true</code>, then any subclass that is an interface or
-     *        is an abstract class will not be included in the returned list.
-     * @param classes Class blacklist. Any classes included in this array will not be included in the
-     *        returned list.
+     * @param filter The filter for which serializers to use
      * @param <T> The parent class that all of these subclasses will have in common.
      * @return A {@link List} of every subclass.
      */
     @SuppressWarnings("unchecked")
-    public <T> List<Class<T>> findAllSubclasses(@NotNull Class<T> clazz, @NotNull ClassLoader clazzLoader, boolean isIgnoreAbstract, Class<?>... classes) {
-
-        // Create the class blacklist. The class "clazz" and any classes listed
-        // from "classes" are added to the blacklist. This prevents the class
-        // from being loaded, and the list will not be added to the returned
-        // list.
-        List<Class<?>> classList = new ArrayList<>(Arrays.asList(classes));
-        classList.add(clazz);
-        Set<String> blacklist = classList.stream()
-            .map(Class::getName)
-            .map(str -> str.replaceAll("\\.", "/") + ".class")
-            .collect(Collectors.toSet());
-
+    public <T> List<Class<T>> findAllSubclasses(@NotNull Class<T> clazz, @NotNull ClassLoader clazzLoader, @NotNull SearchMode filter) {
         Enumeration<JarEntry> entries = jar.entries();
         List<Class<T>> subclasses = new ArrayList<>();
 
@@ -79,7 +64,7 @@ public class JarSearcher {
 
             // Determine if this entry is a class file, and it is not contained
             // on the class blacklist.
-            if (!entryName.endsWith(".class") || blacklist.contains(entryName)) {
+            if (!entryName.endsWith(".class")) {
                 continue;
             }
 
@@ -118,8 +103,14 @@ public class JarSearcher {
             int mod = subclass.getModifiers();
             if (!clazz.isAssignableFrom(subclass))
                 continue;
-            else if (isIgnoreAbstract && (Modifier.isAbstract(mod) || Modifier.isInterface(mod)))
+            else if (Modifier.isAbstract(mod) || Modifier.isInterface(mod))
                 continue;
+
+            SearcherFilter filterAnnotation = subclass.getAnnotation(SearcherFilter.class);
+            if (filterAnnotation != null && !filter.shouldInclude(filterAnnotation.value())) {
+                MechanicsCore.getInstance().getDebugger().fine("Skipping " + name + " because of SearcherFilter");
+                continue;
+            }
 
             subclasses.add((Class<T>) subclass);
         }

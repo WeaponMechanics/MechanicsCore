@@ -4,11 +4,13 @@ import com.cjcrafter.foliascheduler.FoliaCompatibility
 import com.cjcrafter.foliascheduler.ServerImplementation
 import com.cjcrafter.foliascheduler.TaskImplementation
 import com.jeff_media.updatechecker.UpdateChecker
-import me.deecaad.core.file.BukkitConfig
 import me.deecaad.core.file.Configuration
+import me.deecaad.core.file.FastConfiguration
 import me.deecaad.core.file.FileReader
-import me.deecaad.core.file.SerializeData
-import me.deecaad.core.file.SerializerException
+import me.deecaad.core.file.IValidator
+import me.deecaad.core.file.JarInstancer
+import me.deecaad.core.file.SearchMode
+import me.deecaad.core.file.SerializerInstancer
 import me.deecaad.core.utils.FileUtil
 import net.kyori.adventure.platform.bukkit.BukkitAudiences
 import net.kyori.adventure.text.format.NamedTextColor
@@ -18,7 +20,9 @@ import org.bukkit.event.HandlerList
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.util.concurrent.CompletableFuture
+import java.util.jar.JarFile
 import java.util.logging.Level
+import kotlin.math.log
 
 /**
  * The base class for plugins using MechanicsCore.
@@ -76,7 +80,6 @@ open class MechanicsPlugin(
 
         foliaScheduler = FoliaCompatibility(this).serverImplementation
         handleFiles().join()
-        handleConfigs().join()
         handleExtensions().join()
 
         val end = System.currentTimeMillis()
@@ -92,6 +95,14 @@ open class MechanicsPlugin(
         handleListeners().join()
         handlePacketListeners().join()
         handleMetrics().join()
+
+        debugger.info("Scheduling config loading task to be run in 1 tick...")
+        foliaScheduler.global().run { _ ->
+            val configStart = System.currentTimeMillis()
+            handleConfigs().join()
+            val configEnd = System.currentTimeMillis()
+            debugger.info("Loaded configs in ${configEnd - configStart}ms")
+        }
 
         val end = System.currentTimeMillis()
         debugger.info("Enabled in ${end - start}ms")
@@ -150,13 +161,26 @@ open class MechanicsPlugin(
         var loggerConfig = MechanicsLogger.LoggerConfig()
         val configYml = File(dataFolder, "config.yml")
         if (configYml.exists()) {
-            try {
-                val data = SerializeData(configYml, null, BukkitConfig(config))
-                loggerConfig =
-                    data.of("Logger_Config").assertExists().serialize(MechanicsLogger.LoggerConfig::class.java).get()
-            } catch (e: SerializerException) {
-                e.log(debugger)
+
+            // This configuration should be loaded as soon as possible. This means that no external
+            // plugin can add serializers/validators to any plugin's config.yml
+            val serializers = SerializerInstancer(JarFile(file)).createAllInstances(classLoader, SearchMode.ENABLED).toMutableList()
+            val validators = JarInstancer(JarFile(file)).createAllInstances(IValidator::class.java, classLoader, SearchMode.ENABLED)
+
+            // All plugins are expected to have a logger config
+            if (!serializers.any { it is MechanicsLogger.LoggerConfig })
+                serializers.add(MechanicsLogger.LoggerConfig())
+
+            val configReader = FileReader(debugger, serializers, validators)
+            configuration = configReader.fillOneFile(File(dataFolder, "config.yml"))
+            val tempConfig = configuration.getObject("Logger_Config", MechanicsLogger.LoggerConfig::class.java)
+            if (tempConfig == null) {
+                debugger.severe("Missing required section 'Logger_Config' somehow...")
+            } else {
+                loggerConfig = tempConfig
             }
+        } else {
+            configuration = FastConfiguration()  // empty config default
         }
         debugger = MechanicsLogger(this, loggerConfig)
 
@@ -167,8 +191,6 @@ open class MechanicsPlugin(
      * Loads all configs for this plugin (serialization).
      */
     open fun handleConfigs(): CompletableFuture<Void> {
-        val configReader = FileReader(debugger, listOf(), listOf())
-        configuration = configReader.fillOneFile(File(dataFolder, "config.yml"))
         return CompletableFuture.completedFuture(null)
     }
 

@@ -17,8 +17,8 @@ public class SerializerInstancer extends JarSearcher {
     }
 
     @SuppressWarnings("rawtypes")
-    public List<Serializer<?>> createAllInstances(@NotNull ClassLoader classLoader, Class<?>... classes) {
-        List<Class<Serializer>> validClasses = findAllSubclasses(Serializer.class, classLoader, true, classes);
+    public @NotNull List<Serializer<?>> createAllInstances(@NotNull ClassLoader classLoader, @NotNull SearchMode filter) {
+        List<Class<Serializer>> validClasses = findAllSubclasses(Serializer.class, classLoader, filter);
 
         List<Serializer<?>> instances = new ArrayList<>(validClasses.size());
         for (Class<Serializer> validClass : validClasses) {

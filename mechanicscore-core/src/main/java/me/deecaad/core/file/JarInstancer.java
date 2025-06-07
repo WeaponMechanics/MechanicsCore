@@ -16,8 +16,8 @@ public class JarInstancer extends JarSearcher {
         super(jar);
     }
 
-    public <T> List<T> createAllInstances(Class<T> clazz, ClassLoader classLoader, boolean isIgnoreAbstract, Class<?>... classes) {
-        List<Class<T>> validClasses = findAllSubclasses(clazz, classLoader, isIgnoreAbstract, classes);
+    public <T> @NotNull List<T> createAllInstances(@NotNull Class<T> clazz, @NotNull ClassLoader classLoader, @NotNull SearchMode filter) {
+        List<Class<T>> validClasses = findAllSubclasses(clazz, classLoader, filter);
 
         List<T> instances = new ArrayList<>();
         for (Class<T> validClass : validClasses) {
@@ -34,7 +34,7 @@ public class JarInstancer extends JarSearcher {
         }
 
         if (instances.isEmpty())
-            MechanicsCore.getInstance().getDebugger().warning("Did not instantiate anything? For " + clazz);
+            MechanicsCore.getInstance().getDebugger().fine("Search came up empty for " + clazz + "... maybe the jar had none!");
         return instances;
     }
 }

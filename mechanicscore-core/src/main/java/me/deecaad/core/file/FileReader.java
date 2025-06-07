@@ -326,7 +326,7 @@ public class FileReader {
             data.setPathToConfig(filledMap);
 
             if (!validatorData.validator.shouldValidate(data)) {
-                debug.finest("Skipping " + validatorData.path + " due to skip");
+                debug.fine("Skipping " + validatorData.path + " due to skip");
                 continue;
             }
 

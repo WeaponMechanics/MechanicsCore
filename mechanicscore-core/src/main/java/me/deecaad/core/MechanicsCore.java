@@ -6,6 +6,7 @@ import dev.jorel.commandapi.CommandAPIBukkitConfig;
 import me.deecaad.core.events.QueueSerializerEvent;
 import me.deecaad.core.events.triggers.EquipListener;
 import me.deecaad.core.extensions.Extension;
+import me.deecaad.core.file.SearchMode;
 import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerInstancer;
 import me.deecaad.core.listeners.ItemCraftListener;
@@ -68,7 +69,7 @@ public class MechanicsCore extends MechanicsPlugin {
         Bukkit.getPluginManager().registerEvents(new Listener() {
             @EventHandler
             public void onQueue(QueueSerializerEvent event) throws IOException {
-                List<Serializer<?>> serializers = new SerializerInstancer(new JarFile(getFile())).createAllInstances(getClassLoader());
+                List<Serializer<?>> serializers = new SerializerInstancer(new JarFile(getFile())).createAllInstances(getClassLoader(), SearchMode.ON_DEMAND);
                 event.addSerializers(serializers);
             }
         }, this);

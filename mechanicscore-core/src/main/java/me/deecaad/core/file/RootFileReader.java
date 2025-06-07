@@ -109,6 +109,8 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
         try {
             // "accumulate" all the configs into 1 fat config
             Configuration accumulate = new FastConfiguration();
+            FileReader fileReader = new FileReader(plugin.debugger, serializers, validators);
+
             FileUtil.PathReference pathReference = FileUtil.PathReference.of(rootFolder.toURI());
             Files.walkFileTree(pathReference.path(), new SimpleFileVisitor<>() {
                 @Override
@@ -121,9 +123,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                     // By using the FileReader here, we can use all normal serializers
                     // and validators. This lets other plugins save their own data to
                     // the final config.
-                    FileReader fileReader = new FileReader(plugin.debugger, serializers, validators);
                     Configuration baseConfig = fileReader.fillOneFile(file.toFile());
-                    fileReader.usePathToSerializersAndValidators(baseConfig);
                     try {
                         accumulate.copyFrom(baseConfig);
                     } catch (DuplicateKeyException ex) {
@@ -159,7 +159,8 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                     return FileVisitResult.CONTINUE;
                 }
             });
-            return accumulate;
+
+            return fileReader.usePathToSerializersAndValidators(accumulate);
         } catch (Throwable ex) {
             throw new RuntimeException(ex);
         }
