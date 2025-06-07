@@ -46,10 +46,10 @@ public class PlaceholderMessage {
         // Clear out any tags used by MiniMessage first
         MechanicsCore.getInstance().debugger.fine("BEFORE STRIP: " + template);
         Component component = MiniMessage.miniMessage().deserialize(template);
-        template = PlainTextComponentSerializer.plainText().serialize(component);
-        MechanicsCore.getInstance().debugger.fine("AFTER STRIP:  " + template);
+        String plainText = PlainTextComponentSerializer.plainText().serialize(component);
+        MechanicsCore.getInstance().debugger.fine("AFTER STRIP:  " + plainText);
 
-        Matcher matcher = TAG_PATTERN.matcher(template);
+        Matcher matcher = TAG_PATTERN.matcher(plainText);
 
         while (matcher.find()) {
             String placeholderString = matcher.group(1).toLowerCase();
