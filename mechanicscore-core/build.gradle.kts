@@ -1,7 +1,10 @@
+import org.jreleaser.model.Active
+
 plugins {
     `java-library`
     kotlin("jvm") version libs.versions.kotlin
     `maven-publish`
+    id("org.jreleaser") version "1.18.0"
 }
 
 dependencies {
@@ -97,7 +100,120 @@ publishing {
     repositories {
         maven {
             name = "stagingDeploy"
-            url = layout.buildDirectory.dir("staging-deploy").map { it.asFile.toURI() }.get()
+            url = uri(layout.buildDirectory.dir("staging-deploy"))
+        }
+    }
+}
+
+jreleaser {
+    gitRootSearch.set(true)
+
+    project {
+        name.set("MechanicsCore")
+        group = "com.cjcrafter"
+        version = findProperty("mechanicscore.version").toString()
+        description = "A plugin that adds scripting capabilities to Plugins"
+        authors.add("CJCrafter <collinjbarber@gmail.com>")
+        authors.add("DeeCaaD <perttu.kangas@hotmail.fi>")
+        license = "MIT" // SPDX identifier
+        copyright = "Copyright © 2023-2025 CJCrafter, DeeCaaD"
+
+        links {
+            homepage.set("https://github.com/WeaponMechanics/MechanicsCore")
+            documentation.set("https://github.com/WeaponMechanics/MechanicsCore#readme")
+        }
+
+        java {
+            groupId = "com.cjcrafter"
+            artifactId = "mechanicscore"
+            version = findProperty("mechanicscore.version").toString()
+        }
+
+        snapshot {
+            fullChangelog.set(true)
+        }
+    }
+
+    signing {
+        active.set(Active.ALWAYS)
+        armored.set(true)
+    }
+
+    deploy {
+        maven {
+            mavenCentral {
+                create("releaseDeploy") {
+                    active.set(Active.RELEASE)
+                    url.set("https://central.sonatype.com/api/v1/publisher")
+                    // run ./gradlew mechanicscore-core:publish before deployment
+                    stagingRepository("build/staging-deploy")
+                    // Credentials (JRELEASER_MAVENCENTRAL_USERNAME, JRELEASER_MAVENCENTRAL_PASSWORD or JRELEASER_MAVENCENTRAL_TOKEN)
+                    // will be picked up from ~/.jreleaser/config.toml
+                }
+            }
+
+            nexus2 {
+                create("sonatypeSnapshots") {
+                    active.set(Active.SNAPSHOT)
+                    url.set("https://central.sonatype.com/repository/maven-snapshots/")
+                    snapshotUrl.set("https://central.sonatype.com/repository/maven-snapshots/")
+                    applyMavenCentralRules = true
+                    snapshotSupported = true
+                    closeRepository = true
+                    releaseRepository = true
+                    stagingRepository("build/staging-deploy")
+                }
+            }
+        }
+    }
+
+    distributions {
+        create("mechanicscore") {
+            active.set(Active.ALWAYS)
+            distributionType.set(org.jreleaser.model.Distribution.DistributionType.SINGLE_JAR)
+            artifact {
+                path.set(file("../mechanicscore-build/build/libs/MechanicsCore-${findProperty("mechanicscore.version")}.jar"))
+            }
+        }
+    }
+
+    release {
+        github {
+            repoOwner.set("WeaponMechanics")
+            name.set("MechanicsCore")
+            host.set("github.com")
+
+            val version = findProperty("mechanicscore.version").toString()
+            val isSnapshot = version.endsWith("-SNAPSHOT")
+            releaseName.set(if (isSnapshot) "SNAPSHOT" else "v$version")
+            tagName.set("v{{projectVersion}}")
+            draft.set(false)
+            skipTag.set(isSnapshot)
+            overwrite.set(false)
+            update { enabled.set(isSnapshot) }
+
+            prerelease {
+                enabled.set(isSnapshot)
+                pattern.set(".*-SNAPSHOT")
+            }
+
+            commitAuthor {
+                name.set("Collin Barber")
+                email.set("collinjbarber@gmail.com")
+            }
+
+            changelog {
+                formatted.set(Active.ALWAYS)
+                preset.set("conventional-commits")
+                format.set("- {{commitShortHash}} {{commitTitle}}")
+                contributors {
+                    enabled.set(true)
+                    format.set("{{contributorUsernameAsLink}}")
+                }
+                hide {
+                    contributors.set(listOf("[bot]"))
+                }
+            }
         }
     }
 }
