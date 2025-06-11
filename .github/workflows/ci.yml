@@ -20,4 +20,4 @@ jobs:
           cache: gradle
 
       - name: Build & run tests
-        run: ./gradlew clean build --no-daemon
+        run: ./gradlew clean test shadowJar --no-daemon --stacktrace
