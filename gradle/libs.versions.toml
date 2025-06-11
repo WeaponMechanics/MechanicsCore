@@ -30,7 +30,7 @@ spigotUpdateChecker = "3.0.4"
 xSeries = "13.3.1"
 
 # Testing dependencies
-junit = "5.11.4"
+junit = "5.13.1"
 
 
 [libraries]
