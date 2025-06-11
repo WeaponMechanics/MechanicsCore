@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+
 plugins {
     id("io.papermc.paperweight.userdev") version "2.0.0-beta.17" apply false
     kotlin("jvm") version libs.versions.kotlin apply false
@@ -22,6 +24,10 @@ allprojects {
 
         tasks.withType<Test>().configureEach {
             useJUnitPlatform()
+            testLogging {
+                events("failed", "skipped", "passed")
+                exceptionFormat = TestExceptionFormat.FULL
+            }
         }
 
         tasks.withType<Javadoc>().configureEach {
