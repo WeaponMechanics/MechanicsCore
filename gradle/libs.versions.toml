@@ -72,3 +72,4 @@ xSeries                  = { module = "com.github.cryptomorin:XSeries", version.
 # Testing dependencies
 junitApi    = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 junitParams = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
+junitEngine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }

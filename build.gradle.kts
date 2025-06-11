@@ -20,6 +20,10 @@ allprojects {
             }
         }
 
+        tasks.withType<Test>().configureEach {
+            useJUnitPlatform()
+        }
+
         tasks.withType<Javadoc>().configureEach {
             (options as StandardJavadocDocletOptions).apply {
                 encoding = Charsets.UTF_8.name()

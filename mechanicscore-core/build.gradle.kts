@@ -40,6 +40,7 @@ dependencies {
     testImplementation(libs.foliaScheduler)
     testImplementation(libs.junitApi)
     testImplementation(libs.junitParams)
+    testRuntimeOnly(libs.junitEngine)
 }
 
 val sourcesJar by tasks.registering(Jar::class) {
