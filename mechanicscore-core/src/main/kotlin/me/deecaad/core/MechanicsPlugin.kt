@@ -127,7 +127,6 @@ open class MechanicsPlugin(
                 handleConfigs().join()
                 handleListeners().join()
                 handleCommands().join()
-                handlePermissions().join()
             }.asFuture()
         }
     }
@@ -158,7 +157,7 @@ open class MechanicsPlugin(
         FileUtil.ensureDefaults(classLoader.getResource("$pluginName/config.yml"), File(dataFolder, "config.yml"))
 
         // Configures and initializes the logger
-        var loggerConfig = MechanicsLogger.LoggerConfig()
+        var loggerConfig = MechanicsLogger.LoggerConfig(printLevel = Level.CONFIG)
         val configYml = File(dataFolder, "config.yml")
         if (configYml.exists()) {
 
