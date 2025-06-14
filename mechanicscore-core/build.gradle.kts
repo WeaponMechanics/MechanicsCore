@@ -62,7 +62,7 @@ publishing {
 
             groupId = "com.cjcrafter"
             artifactId = "mechanicscore"
-            version = findProperty("mechanicscore.version").toString()
+            version = findProperty("version").toString()
 
             pom {
                 name.set("MechanicsCore")
@@ -112,7 +112,7 @@ jreleaser {
     project {
         name.set("MechanicsCore")
         group = "com.cjcrafter"
-        version = findProperty("mechanicscore.version").toString()
+        version = findProperty("version").toString()
         description = "A plugin that adds scripting capabilities to Plugins"
         authors.add("CJCrafter <collinjbarber@gmail.com>")
         authors.add("DeeCaaD <perttu.kangas@hotmail.fi>")
@@ -127,7 +127,7 @@ jreleaser {
         java {
             groupId = "com.cjcrafter"
             artifactId = "mechanicscore"
-            version = findProperty("mechanicscore.version").toString()
+            version = findProperty("version").toString()
         }
 
         snapshot {
@@ -173,7 +173,7 @@ jreleaser {
             active.set(Active.ALWAYS)
             distributionType.set(org.jreleaser.model.Distribution.DistributionType.SINGLE_JAR)
             artifact {
-                path.set(file("../mechanicscore-build/build/libs/MechanicsCore-${findProperty("mechanicscore.version")}.jar"))
+                path.set(file("../mechanicscore-build/build/libs/MechanicsCore-${findProperty("version")}.jar"))
             }
         }
     }
@@ -184,7 +184,7 @@ jreleaser {
             name.set("MechanicsCore")
             host.set("github.com")
 
-            val version = findProperty("mechanicscore.version").toString()
+            val version = findProperty("version").toString()
             val isSnapshot = version.endsWith("-SNAPSHOT")
             releaseName.set(if (isSnapshot) "SNAPSHOT" else "v$version")
             tagName.set("v{{projectVersion}}")

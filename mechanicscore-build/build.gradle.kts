@@ -22,7 +22,7 @@ dependencies {
 }
 
 bukkitPluginYaml {
-    val versionProperty = findProperty("mechanicscore.version") as? String ?: throw IllegalArgumentException("mechanicscore.version was null")
+    val versionProperty = findProperty("version") as? String ?: throw IllegalArgumentException("version was null")
 
     main = "me.deecaad.core.MechanicsCore"
     name = "MechanicsCore"
@@ -36,7 +36,7 @@ bukkitPluginYaml {
 }
 
 tasks.shadowJar {
-    val versionProperty = findProperty("mechanicscore.version") as? String ?: throw IllegalArgumentException("mechanicscore.version was null")
+    val versionProperty = findProperty("version") as? String ?: throw IllegalArgumentException("version was null")
     archiveFileName.set("MechanicsCore-$versionProperty.jar")
 
     val libPackage = "me.deecaad.core.lib"
