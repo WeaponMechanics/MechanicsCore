@@ -1070,6 +1070,19 @@ class SerializeData {
         }
 
         /**
+         * Uses the given serializer class to attempt to serialize an object from this relative key.
+         *
+         * @param <S> The serializer type.
+         * @param <T> The serialized type.
+         * @return The serialized object.
+         * @throws SerializerException If there is a mistake in config found during serialization.
+         */
+        @Throws(SerializerException::class)
+        inline fun <reified S : Serializer<T>, T : Any> serialize(): Optional<T> {
+            return serialize(S::class.java)
+        }
+
+        /**
          * Uses the given class as a serializer and attempts to serialize an
          * object from this relative key.
          *
