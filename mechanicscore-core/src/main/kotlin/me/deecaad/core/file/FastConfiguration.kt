@@ -73,8 +73,11 @@ class FastConfiguration : Configuration() {
         all.clear()
     }
 
-    override fun keys(): Set<String> {
-        return all.keys
+    override fun keys(deep: Boolean): Set<String> {
+        if (deep)
+            return all.keys
+
+        return all.keys.filter { !it.contains(".") }.toSet()
     }
 
     override fun entries(): Set<Map.Entry<String, Any>> {

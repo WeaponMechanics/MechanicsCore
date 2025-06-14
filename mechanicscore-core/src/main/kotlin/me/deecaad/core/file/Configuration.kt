@@ -41,7 +41,17 @@ abstract class Configuration : Iterable<Map.Entry<String, Any>> {
     /**
      * Returns an immutable set of all keys in this configuration.
      */
-    abstract fun keys(): Set<String>
+    fun keys(): Set<String> {
+        return keys(true)
+    }
+
+    /**
+     * Returns an immutable set of all keys in this configuration.
+     *
+     * @param deep whether to include keys from nested configurations.
+     * @return a set of keys in this configuration.
+     */
+    abstract fun keys(deep: Boolean = true): Set<String>
 
     /**
      * Returns an immutable set of all entries in this configuration.
