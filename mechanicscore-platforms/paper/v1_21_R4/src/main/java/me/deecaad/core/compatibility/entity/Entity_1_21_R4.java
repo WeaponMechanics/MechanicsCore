@@ -9,7 +9,9 @@ import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityEquipment;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.PlayerEquipment;
 import net.minecraft.world.item.Item;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.entity.CraftEntity;
@@ -34,13 +36,15 @@ public class Entity_1_21_R4 implements EntityCompatibility {
     private static final FieldAccessor itemsById = ReflectionUtil.getField(SynchedEntityData.class, SynchedEntityData.DataItem[].class);
     private static final FieldAccessor itemsField;
     private static final FieldAccessor entityEquipmentField;
+    private static final FieldAccessor inventoryEquipmentField;
 
     static {
         Class<?> playerInventoryClass = ReflectionUtil.getMinecraftClass("world.entity.player", "PlayerInventory");
         Class<?> nonNullListClass = ReflectionUtil.getMinecraftClass("core", "NonNullList");
 
         itemsField = ReflectionUtil.getField(playerInventoryClass, nonNullListClass);
-        entityEquipmentField = ReflectionUtil.getField(playerInventoryClass, EntityEquipment.class);
+        entityEquipmentField = ReflectionUtil.getField(LivingEntity.class, EntityEquipment.class);
+        inventoryEquipmentField = ReflectionUtil.getField(playerInventoryClass, EntityEquipment.class);
     }
 
     @Override
@@ -52,12 +56,13 @@ public class Entity_1_21_R4 implements EntityCompatibility {
         for (int i = 0; i < inventory.getNonEquipmentItems().size(); i++)
             items.set(i, inventory.getNonEquipmentItems().get(i));
 
-        EntityEquipment equipment = new EntityEquipmentProxy(consumer);
+        EntityEquipment equipment = new EntityEquipmentProxy(handle, consumer);
         equipment.setAll(inventory.equipment);
 
         // Have to use reflection here since these fields are final
         itemsField.set(inventory, items);
-        entityEquipmentField.set(inventory, equipment);
+        entityEquipmentField.set(handle, equipment);
+        inventoryEquipmentField.set(inventory, equipment);
     }
 
     @Override
@@ -190,11 +195,11 @@ public class Entity_1_21_R4 implements EntityCompatibility {
     /**
      * Wraps an {@link Inventory}'s {@link EntityEquipment}
      */
-    private static class EntityEquipmentProxy extends EntityEquipment {
+    private static class EntityEquipmentProxy extends PlayerEquipment {
         private final EquipmentChangeConsumer consumer;
 
-        public EntityEquipmentProxy(EquipmentChangeConsumer consumer) {
-            super();
+        public EntityEquipmentProxy(net.minecraft.world.entity.player.Player player, EquipmentChangeConsumer consumer) {
+            super(player);
             this.consumer = consumer;
         }
 
@@ -204,6 +209,7 @@ public class Entity_1_21_R4 implements EntityCompatibility {
                 case LEGS -> EquipmentSlot.LEGS;
                 case CHEST -> EquipmentSlot.CHEST;
                 case HEAD -> EquipmentSlot.HEAD;
+                case MAINHAND -> EquipmentSlot.HAND;
                 case OFFHAND -> EquipmentSlot.OFF_HAND;
                 default -> null;
             };
