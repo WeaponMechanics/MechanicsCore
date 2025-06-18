@@ -1,6 +1,7 @@
 package me.deecaad.core.file;
 
 import kotlin.text.Charsets;
+import me.deecaad.core.MechanicsLogger;
 import me.deecaad.core.MechanicsPlugin;
 import me.deecaad.core.utils.FileUtil;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -35,7 +36,9 @@ import java.util.List;
  */
 public class RootFileReader<R, T extends Serializer<R>> implements Listener {
 
-    private final @NotNull MechanicsPlugin plugin;
+    private final @NotNull File pluginDataFolder;
+    private final @NotNull MechanicsLogger debugger;
+    private final @NotNull ClassLoader classLoader;
     private final @NotNull Class<T> serializerClass;
     private final @NotNull String relativeFolder;
     private final @NotNull File rootFolder;
@@ -43,19 +46,28 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
     private final @NotNull List<Serializer<?>> serializers;
     private final @NotNull List<IValidator> validators;
 
+    /**
+     * Uses the given {@link MechanicsPlugin} to set the data, as a shorthand.
+     *
+     * @param plugin The plugin to use
+     * @param serializerClass The serializer class to use for deserialization
+     * @param relativeFolder The relative folder to read from, relative to the plugin's data folder
+     */
     public RootFileReader(@NotNull MechanicsPlugin plugin, @NotNull Class<T> serializerClass, @NotNull String relativeFolder) {
-        this.plugin = plugin;
+        this(plugin.getDataFolder(), plugin.getDebugger(), plugin.getClassLoader0(), serializerClass, relativeFolder);
+    }
+
+    public RootFileReader(@NotNull File pluginDataFolder, @NotNull MechanicsLogger debugger, @NotNull ClassLoader classLoader, @NotNull Class<T> serializerClass, @NotNull String relativeFolder) {
+        this.pluginDataFolder = pluginDataFolder;
+        this.debugger = debugger;
+        this.classLoader = classLoader;
         this.serializerClass = serializerClass;
         this.relativeFolder = relativeFolder;
-        this.rootFolder = new File(plugin.getDataFolder(), relativeFolder);
+        this.rootFolder = new File(pluginDataFolder, relativeFolder);
         if (rootFolder.exists() && !rootFolder.isDirectory())
             throw new IllegalArgumentException("Root folder is not a directory: " + rootFolder.getAbsolutePath());
         this.serializers = new ArrayList<>();
         this.validators = new ArrayList<>();
-    }
-
-    public @NotNull MechanicsPlugin getPlugin() {
-        return plugin;
     }
 
     public @NotNull Class<T> getSerializerClass() {
@@ -89,7 +101,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
         if (rootFolder.exists())
             return this;
 
-        URL source = plugin.getClassLoader0().getResource(plugin.getName() + "/" + relativeFolder);
+        URL source = classLoader.getResource(pluginDataFolder.getName() + "/" + relativeFolder);
         Path dest = rootFolder.toPath();
         FileUtil.copyResourcesTo(source, dest);
         return this;
@@ -109,7 +121,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
         try {
             // "accumulate" all the configs into 1 fat config
             Configuration accumulate = new FastConfiguration();
-            FileReader fileReader = new FileReader(plugin.debugger, serializers, validators);
+            FileReader fileReader = new FileReader(debugger, serializers, validators);
 
             FileUtil.PathReference pathReference = FileUtil.PathReference.of(rootFolder.toURI());
             Files.walkFileTree(pathReference.path(), new SimpleFileVisitor<>() {
@@ -127,12 +139,12 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                     try {
                         accumulate.copyFrom(baseConfig);
                     } catch (DuplicateKeyException ex) {
-                        plugin.debugger.severe("Found duplicate keys in configuration!",
+                        debugger.severe("Found duplicate keys in configuration!",
                                 "This occurs when you have 2 lines in configuration with the same name... Usually due to copy-pasting directories",
                                 "Duplicates Found: " + Arrays.toString(ex.getKeys()),
                                 "Found in file: " + file);
 
-                        plugin.debugger.finer("Duplicate Key Exception: ", ex);
+                        debugger.finest("Duplicate Key Exception: ", ex);
                         return FileVisitResult.CONTINUE;
                     }
 
@@ -142,7 +154,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                         config = new YamlConfiguration();
                         config.load(new InputStreamReader(stream, Charsets.UTF_8));
                     } catch (InvalidConfigurationException ex) {
-                        plugin.getDebugger().warning("Failed to load " + file + "!", ex);
+                        debugger.warning("Failed to load " + file + "!", ex);
                         return FileVisitResult.CONTINUE;
                     }
 
@@ -153,7 +165,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                             R obj = data.of().assertExists().serialize(serializerClass).get();
                             accumulate.set(key, obj);
                         } catch (SerializerException ex) {
-                            ex.log(plugin.getDebugger());
+                            ex.log(debugger);
                         }
                     }
                     return FileVisitResult.CONTINUE;
