@@ -119,6 +119,8 @@ open class MechanicsPlugin(
      * Attempts to reload this plugin and all its components.
      */
     open fun reload(): CompletableFuture<TaskImplementation<Void>> {
+        onDisable()
+        adventure0 = BukkitAudiences.create(this)
         return foliaScheduler.async().runNow { _ ->
             handleFiles()
         }.asFuture().thenCompose {
