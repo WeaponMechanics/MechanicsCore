@@ -2,7 +2,7 @@ import xyz.jpenilla.resourcefactory.bukkit.BukkitPluginYaml
 
 plugins {
     `java-library`
-    id("com.gradleup.shadow") version "8.3.5"
+    id("com.gradleup.shadow") version "8.3.8"
     id("xyz.jpenilla.resource-factory-bukkit-convention") version "1.2.0"
 }
 
