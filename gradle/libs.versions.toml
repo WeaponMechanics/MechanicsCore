@@ -3,7 +3,7 @@
 authlib = "6.0.54"
 brigadier = "1.3.10"
 spigotApi = "1.21.7-R0.1-SNAPSHOT"
-packetEvents = "2.8.0"
+packetEvents = "2.9.4"
 
 # External "hooks" or plugins that we might interact with
 geyser = "2.7.0-SNAPSHOT"
