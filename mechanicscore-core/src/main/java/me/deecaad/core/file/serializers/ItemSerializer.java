@@ -173,6 +173,9 @@ public class ItemSerializer implements Serializer<ItemStack> {
         OptionalInt customModelData = data.of("Custom_Model_Data").getInt();
         customModelData.ifPresent(itemMeta::setCustomModelData);
 
+        Optional<NamespacedKey> itemModel = data.of("Item_Model").getNamespacedKey();
+        itemModel.ifPresent(itemMeta::setItemModel);
+
         OptionalInt maxStackSize = data.of("Max_Stack_Size").assertRange(1, 99).getInt();
         maxStackSize.ifPresent(itemMeta::setMaxStackSize);
 
