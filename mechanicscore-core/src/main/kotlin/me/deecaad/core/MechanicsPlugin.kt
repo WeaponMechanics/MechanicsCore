@@ -89,7 +89,7 @@ open class MechanicsPlugin(
     override fun onEnable() {
         val start = System.currentTimeMillis()
 
-        adventure0 = BukkitAudiences.create(this)
+        init()
         handlePermissions().join()
         handleCommands().join()
         handleListeners().join()
@@ -116,11 +116,19 @@ open class MechanicsPlugin(
     }
 
     /**
+     * Sets up state for this plugin, called during [onLoad] and [reload],
+     * typically right after destroying state in [onDisable].
+     */
+    open fun init() {
+        adventure0 = BukkitAudiences.create(this)
+    }
+
+    /**
      * Attempts to reload this plugin and all its components.
      */
     open fun reload(): CompletableFuture<TaskImplementation<Void>> {
         onDisable()
-        adventure0 = BukkitAudiences.create(this)
+        init()
         return foliaScheduler.async().runNow { _ ->
             handleFiles()
         }.asFuture().thenCompose {
