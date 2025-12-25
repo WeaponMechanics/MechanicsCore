@@ -3,7 +3,6 @@ package me.deecaad.core
 import com.cjcrafter.foliascheduler.FoliaCompatibility
 import com.cjcrafter.foliascheduler.ServerImplementation
 import com.cjcrafter.foliascheduler.TaskImplementation
-import com.jeff_media.updatechecker.UpdateChecker
 import me.deecaad.core.file.Configuration
 import me.deecaad.core.file.FastConfiguration
 import me.deecaad.core.file.FileReader
@@ -12,7 +11,6 @@ import me.deecaad.core.file.JarInstancer
 import me.deecaad.core.file.SearchMode
 import me.deecaad.core.file.SerializerInstancer
 import me.deecaad.core.utils.FileUtil
-import net.kyori.adventure.platform.bukkit.BukkitAudiences
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.Style
 import org.bstats.bukkit.Metrics
@@ -22,18 +20,15 @@ import java.io.File
 import java.util.concurrent.CompletableFuture
 import java.util.jar.JarFile
 import java.util.logging.Level
-import kotlin.math.log
 
 /**
  * The base class for plugins using MechanicsCore.
  *
- * @param updateChecker The update checker to use. If null, no update checking will be performed.
  * @param primaryColor The primary color to use for messages.
  * @param secondaryColor The secondary color to use for messages.
  * @param bStatsId The bStats id to use. If null, no metrics will be collected.
  */
 open class MechanicsPlugin(
-    val updateChecker: UpdateChecker? = null,
     val primaryColor: Style = Style.style(NamedTextColor.GOLD),
     val secondaryColor: Style = Style.style(NamedTextColor.GRAY),
     bStatsId: Int? = null,
@@ -60,12 +55,6 @@ open class MechanicsPlugin(
      */
     var metrics: Metrics? = bStatsId?.let { Metrics(this, it) }
 
-    /**
-     * The Adventure API for sending messages to players.
-     */
-    private var adventure0: BukkitAudiences? = null
-    val adventure: BukkitAudiences
-        get() = adventure0 ?: throw IllegalStateException("Not yet initialized")
 
     /**
      * Expose the class loader
@@ -111,8 +100,6 @@ open class MechanicsPlugin(
     override fun onDisable() {
         HandlerList.unregisterAll(this)
         foliaScheduler.cancelTasks()
-        adventure0?.close()
-        adventure0 = null;
     }
 
     /**
@@ -120,7 +107,6 @@ open class MechanicsPlugin(
      * typically right after destroying state in [onDisable].
      */
     open fun init() {
-        adventure0 = BukkitAudiences.create(this)
     }
 
     /**
@@ -133,7 +119,6 @@ open class MechanicsPlugin(
             handleFiles()
         }.asFuture().thenCompose {
             foliaScheduler.global().run { _ ->
-                adventure0 = BukkitAudiences.create(this)
                 handleConfigs().join()
                 handleListeners().join()
                 handleCommands().join()

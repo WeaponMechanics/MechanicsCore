@@ -5,7 +5,6 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.placeholder.PlaceholderMessage;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import net.kyori.adventure.util.Ticks;
@@ -54,8 +53,7 @@ public class TitleMechanic extends Mechanic {
         Component titleComponent = title == null ? Component.empty() : title.replaceAndDeserialize(cast);
         Component subtitleComponent = subtitle == null ? Component.empty() : subtitle.replaceAndDeserialize(cast);
         Title title = Title.title(titleComponent, subtitleComponent, times);
-        Audience audience = MechanicsCore.getInstance().getAdventure().player(player);
-        audience.showTitle(title);
+        player.showTitle(title);
     }
 
     @Override

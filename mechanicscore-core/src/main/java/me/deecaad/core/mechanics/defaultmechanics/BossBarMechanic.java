@@ -6,7 +6,6 @@ import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.serializers.ChanceSerializer;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.placeholder.PlaceholderMessage;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
@@ -61,11 +60,10 @@ public class BossBarMechanic extends Mechanic {
         // Parse and send the message to the 1 player
         // TODO this method would benefit from having access to the target list
         Component chat = title.replaceAndDeserialize(cast);
-        Audience audience = MechanicsCore.getInstance().getAdventure().player(player);
         BossBar bossBar = BossBar.bossBar(chat, progress, color, style);
 
-        audience.showBossBar(bossBar);
-        MechanicsCore.getInstance().getFoliaScheduler().entity(player).runDelayed(() -> audience.hideBossBar(bossBar), time);
+        player.showBossBar(bossBar);
+        MechanicsCore.getInstance().getFoliaScheduler().entity(player).runDelayed(() -> player.hideBossBar(bossBar), time);
     }
 
     @Override

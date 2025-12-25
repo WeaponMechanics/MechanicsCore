@@ -5,7 +5,6 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.placeholder.PlaceholderMessage;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -38,8 +37,7 @@ public class MessageMechanic extends Mechanic {
         // Parse and send the message to the 1 player
         // TODO this method would benefit from having access to the target list
         Component chat = message.replaceAndDeserialize(cast);
-        Audience audience = MechanicsCore.getInstance().getAdventure().player(player);
-        audience.sendMessage(chat);
+        player.sendMessage(chat);
     }
 
     @Override

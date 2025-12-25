@@ -6,7 +6,6 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.placeholder.PlaceholderMessage;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -51,8 +50,7 @@ public class ActionBarMechanic extends Mechanic {
         // Parse and send the message to the 1 player
         // TODO this method would benefit from having access to the target list
         Component component = message.replaceAndDeserialize(cast);
-        Audience audience = MechanicsCore.getInstance().getAdventure().player(player);
-        audience.sendActionBar(component);
+        player.sendActionBar(component);
 
         // Action Bars are *NOT* timed in vanilla Minecraft. To get around this,
         // we resend the action bar on a timer. Since the action bar lasts for
@@ -70,7 +68,7 @@ public class ActionBarMechanic extends Mechanic {
                         return;
                     }
 
-                    audience.sendActionBar(component);
+                    player.sendActionBar(component);
                 }
             }, 40 - (time % 40), 40);
         }
