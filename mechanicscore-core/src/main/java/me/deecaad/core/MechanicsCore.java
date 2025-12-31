@@ -3,6 +3,7 @@ package me.deecaad.core;
 import com.cjcrafter.foliascheduler.util.ReflectionUtil;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIBukkitConfig;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import me.deecaad.core.events.QueueSerializerEvent;
 import me.deecaad.core.events.triggers.EquipListener;
 import me.deecaad.core.extensions.Extension;
@@ -30,7 +31,7 @@ public class MechanicsCore extends MechanicsPlugin {
 
     public void onLoad() {
         INSTANCE = this;
-        CommandAPI.onLoad(new CommandAPIBukkitConfig(this));
+        CommandAPI.onLoad(new CommandAPIPaperConfig(this));
         super.onLoad();
 
         registerExtension("MythicMobs", "me.deecaad.core.extensions.MythicExtension");

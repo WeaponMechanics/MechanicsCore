@@ -13,7 +13,7 @@ dependencies {
         implementation(project(":${it.name}"))
     }
     file("../mechanicscore-platforms/paper").listFiles()?.forEach {
-        implementation(project(":${it.name}", "reobf"))
+        implementation(project(":${it.name}"))
     }
 
     implementation(libs.commandApiShade)
@@ -25,7 +25,7 @@ paperPluginYaml {
     main = "me.deecaad.core.MechanicsCore"
     name = "MechanicsCore"
     version = versionProperty
-    apiVersion = "1.13"  // Use 1.13, since apiVersion was added in 1.13
+    apiVersion = "1.21"
     foliaSupported = true
 
     //load = BukkitPluginYaml.PluginLoadOrder.STARTUP
