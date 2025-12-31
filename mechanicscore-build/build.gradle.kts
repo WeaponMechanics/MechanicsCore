@@ -1,7 +1,7 @@
 plugins {
     `java-library`
     id("com.gradleup.shadow") version "8.3.9"
-    id("xyz.jpenilla.resource-factory-paper-convention") version "1.2.0"
+    id("xyz.jpenilla.resource-factory-paper-convention") version "1.3.1"
 }
 
 dependencies {
@@ -28,9 +28,14 @@ paperPluginYaml {
     apiVersion = "1.21"
     foliaSupported = true
 
-    //load = BukkitPluginYaml.PluginLoadOrder.STARTUP
     authors = listOf("DeeCaaD", "CJCrafter")
-    //loadBefore = listOf("WorldEdit", "WorldGuard", "PlaceholderAPI", "MythicMobs", "Geyser-Spigot")
+    dependencies {
+        server("WorldEdit", required = false)
+        server("WorldGuard", required = false)
+        server("PlaceholderAPI", required = false)
+        server("MythicMobs", required = false)
+        server("GeyserSpigot", required = false)
+    }
 }
 
 tasks.shadowJar {
