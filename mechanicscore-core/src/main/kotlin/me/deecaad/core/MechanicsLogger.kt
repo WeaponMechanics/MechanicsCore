@@ -3,9 +3,7 @@ package me.deecaad.core
 import me.deecaad.core.file.SerializeData
 import me.deecaad.core.file.Serializer
 import me.deecaad.core.file.SerializerException
-import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.event.HoverEventSource
 import net.kyori.adventure.text.format.TextDecoration
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -76,8 +74,7 @@ class MechanicsLogger(
                 builder.append(Component.text(alert.summary()).style(plugin.secondaryColor).hoverEvent(fullComponent.asComponent()))
             }
 
-            val audience = plugin.adventure.player(player)
-            audience.sendMessage(builder.asComponent())
+            player.sendMessage(builder.asComponent())
             playerAlerts[player] = alerts.size
         }
     }

@@ -1,14 +1,14 @@
 package me.deecaad.core.utils;
 
+import io.papermc.paper.registry.tag.Tag;
+import io.papermc.paper.registry.tag.TagKey;
 import org.bukkit.Keyed;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 
 /**
@@ -54,6 +54,26 @@ public interface MutableRegistry<T extends Keyed> extends Registry<T> {
         }
 
         @Override
+        public @Nullable NamespacedKey getKey(T value) {
+            return null;
+        }
+
+        @Override
+        public boolean hasTag(@NotNull TagKey<T> key) {
+            return false;
+        }
+
+        @Override
+        public Tag<T> getTag(TagKey<T> key) {
+            return null;
+        }
+
+        @Override
+        public Collection<Tag<T>> getTags() {
+            throw new UnsupportedOperationException("no tags in this registry");
+        }
+
+        @Override
         public @NotNull T getOrThrow(@NotNull NamespacedKey namespacedKey) {
             T entry = get(namespacedKey);
             if (entry == null) {
@@ -65,6 +85,26 @@ public interface MutableRegistry<T extends Keyed> extends Registry<T> {
         @Override
         public @NotNull Stream<T> stream() {
             return entries.values().stream();
+        }
+
+        /**
+         * Returns a new stream, which contains all registry keys, which are registered to the registry.
+         *
+         * @return a stream of all registry keys
+         */
+        @Override
+        public Stream<NamespacedKey> keyStream() {
+            return Stream.empty();
+        }
+
+        /**
+         * Gets the size of the registry.
+         *
+         * @return the size of the registry
+         */
+        @Override
+        public int size() {
+            return 0;
         }
 
         @Override

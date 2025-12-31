@@ -2,7 +2,6 @@ package me.deecaad.core.commands;
 
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
-import me.deecaad.core.MechanicsCore;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.Style;
@@ -53,7 +52,7 @@ public class CommandHelpBuilder {
         if (parent.getSubcommands().isEmpty()) {
             help.executes((sender, args) -> {
                 TextComponent.Builder helpResponse = showArguments(help, parent);
-                MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(helpResponse);
+                sender.sendMessage(helpResponse);
             });
 
             // When there is a required argument, we can show the help for
@@ -67,7 +66,7 @@ public class CommandHelpBuilder {
 
                 friend.executes((sender, args) -> {
                     TextComponent.Builder helpResponse = showArguments(help, parent);
-                    MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(helpResponse);
+                    sender.sendMessage(helpResponse);
                 });
             }
         }
@@ -77,7 +76,7 @@ public class CommandHelpBuilder {
         else {
             help.executes((sender, args) -> {
                 TextComponent.Builder helpResponse = showSubcommands(help, parent);
-                MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(helpResponse);
+                sender.sendMessage(helpResponse);
             });
 
             // When the command only has subcommands, we can show help when the
@@ -85,7 +84,7 @@ public class CommandHelpBuilder {
             if (!parent.getExecutor().hasAnyExecutors()) {
                 parent.executes((sender, args) -> {
                     TextComponent.Builder helpResponse = showSubcommands(help, parent);
-                    MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(helpResponse);
+                    sender.sendMessage(helpResponse);
                 });
             }
         }

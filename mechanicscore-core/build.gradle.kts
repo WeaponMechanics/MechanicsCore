@@ -11,18 +11,12 @@ dependencies {
     // Core Minecraft dependencies
     compileOnly(libs.authlib)
     compileOnly(libs.brigadier)
-    compileOnly(libs.spigotApi)
+    compileOnly(libs.paper)
     compileOnly(libs.packetEvents)
 
     // External "hooks" or plugins that we might interact with
     compileOnly(libs.placeholderApi)
 
-    // Shaded dependencies
-    implementation(libs.adventureApi)
-    implementation(libs.adventureBukkit)
-    implementation(libs.adventureTextLegacy)
-    implementation(libs.adventureTextMinimessage)
-    implementation(libs.adventureTextPlain)
     implementation(libs.annotations)
     implementation(libs.bstats)
     compileOnly(libs.commandApi)
@@ -31,11 +25,10 @@ dependencies {
     implementation(libs.hikariCp) {
         exclude(group = "org.slf4j", module = "slf4j-api")
     }
-    implementation(libs.spigotUpdateChecker)
     implementation(libs.xSeries)
 
     // Testing dependencies
-    testImplementation(libs.spigotApi)
+    testImplementation(libs.paper)
     testImplementation(libs.annotations)
     testImplementation(libs.foliaScheduler)
     testImplementation(libs.junitApi)

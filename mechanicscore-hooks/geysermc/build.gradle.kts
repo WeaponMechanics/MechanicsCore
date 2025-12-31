@@ -4,6 +4,6 @@ plugins {
 
 dependencies {
     compileOnly(project(":mechanicscore-core"))
-    compileOnly(libs.spigotApi)
+    compileOnly(libs.paper)
     compileOnly(libs.geyser)
 }

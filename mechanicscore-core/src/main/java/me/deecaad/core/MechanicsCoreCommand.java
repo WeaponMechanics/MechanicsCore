@@ -4,7 +4,6 @@ import dev.jorel.commandapi.CommandAPICommand;
 import me.deecaad.core.commands.CommandHelpBuilder;
 import me.deecaad.core.utils.StringUtil;
 import me.deecaad.core.utils.TableBuilder;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -100,7 +99,7 @@ public final class MechanicsCoreCommand {
             })
             .build();
 
-        MechanicsCore.getInstance().getAdventure().sender(sender).sendMessage(table);
+        sender.sendMessage(table);
     }
 
     public static void tableColors(CommandSender sender) {
@@ -170,8 +169,7 @@ public final class MechanicsCoreCommand {
             })
             .build();
 
-        Audience audience = MechanicsCore.getInstance().getAdventure().sender(sender);
-        audience.sendMessage(colorComponent.append(decorationComponent).append(miscComponent).append(new TableBuilder.Line('=', Style.style(NamedTextColor.GRAY, TextDecoration.STRIKETHROUGH))
+        sender.sendMessage(colorComponent.append(decorationComponent).append(miscComponent).append(new TableBuilder.Line('=', Style.style(NamedTextColor.GRAY, TextDecoration.STRIKETHROUGH))
             .build()));
     }
 
