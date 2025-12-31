@@ -51,7 +51,7 @@ annotations              = { module = "org.jetbrains:annotations", version.ref =
 bstats                   = { module = "org.bstats:bstats-bukkit", version.ref = "bstats" }
 commandApi               = { module = "dev.jorel:commandapi-paper-core", version.ref = "commandApi" }
 commandApiShade          = { module = "dev.jorel:commandapi-paper-shade", version.ref = "commandApi" }
-commandApiKotlin         = { module = "dev.jorel:commandapi-paper-kotlin", version.ref = "commandApi" }
+commandApiKotlin         = { module = "dev.jorel:commandapi-kotlin-paper", version.ref = "commandApi" }
 fastUtil                 = { module = "it.unimi.dsi:fastutil", version.ref = "fastUtil" }
 foliaScheduler           = { module = "com.cjcrafter:foliascheduler", version.ref = "foliaScheduler" }
 gson                     = { module = "com.google.code.gson:gson", version.ref = "gson" }
