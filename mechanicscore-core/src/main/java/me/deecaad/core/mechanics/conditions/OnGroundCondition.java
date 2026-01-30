@@ -62,7 +62,7 @@ public class OnGroundCondition extends Condition {
         // (often AIR). A small positive offset samples slightly below the feet, which resolves to the block
         // the entity is standing on (works better for slabs/carpets/snow layers), so defaulting to 0.01
         // should do the trick
-        double distance = data.of("distanceFromGround").getDouble().orElse(0.01);
+        double distance = data.of("distanceFromGround").assertRange(0.0, null).getDouble().orElse(0.01);
         if (distance < 0.0)
             throw data.exception("distanceFromGround", "distance must be > 0.0, example: 0.1");
 
@@ -79,14 +79,14 @@ public class OnGroundCondition extends Condition {
 
         Set<BlockType> parsed = new HashSet<>();
         RegistryValueSerializer<BlockType> serializer = new RegistryValueSerializer<>(BlockType.class, true);
-        final String errorLoc = "on_ground.blocks";
 
         for (MapConfigLike.Holder holder : materials) {
             String token = String.valueOf(holder.value());
-            parsed.addAll(serializer.deserialize(token, errorLoc));
+            parsed.addAll(serializer.deserialize(token, "on_ground.blocks"));
         }
 
         if (parsed.isEmpty()) {
+            // Can happen if a tag exists but resolves to 0 blocks
             throw data.exception("blocks",
                     "The 'blocks' list for on_ground resolved to nothing. Double-check your block ids/tags.");
         }
