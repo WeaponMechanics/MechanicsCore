@@ -183,9 +183,19 @@ public class Entity_1_21_R7 implements EntityCompatibility {
     private static class EntityEquipmentProxy extends PlayerEquipment {
         private final EquipmentChangeConsumer consumer;
 
+        // Shadow-cache of last known equipment stacks (per NMS slot ordinal)
+        private final net.minecraft.world.item.ItemStack[] lastKnown = new net.minecraft.world.item.ItemStack[SLOTS.length];
+
         public EntityEquipmentProxy(net.minecraft.world.entity.player.Player player, EquipmentChangeConsumer consumer) {
             super(player);
             this.consumer = consumer;
+
+            // Initialize cache from current equipment
+            for (net.minecraft.world.entity.EquipmentSlot slot : SLOTS) {
+                net.minecraft.world.item.ItemStack cur = super.get(slot);
+                net.minecraft.world.item.ItemStack san = sanitize(cur);
+                lastKnown[slot.ordinal()] = san;
+            }
         }
 
         private @Nullable EquipmentSlot getSlot(net.minecraft.world.entity.EquipmentSlot slot) {
@@ -200,42 +210,86 @@ public class Entity_1_21_R7 implements EntityCompatibility {
             };
         }
 
+        // Treat ANY "empty" as truly empty (important for Paper 1.21.8 weirdness)
+        private static net.minecraft.world.item.ItemStack sanitize(@Nullable net.minecraft.world.item.ItemStack stack) {
+            if (stack == null) {
+                return net.minecraft.world.item.ItemStack.EMPTY;
+            }
+
+            // Note: Paper 1.21.8 weirdness might show count=0 but not isEmpty(), or vice versa.
+            boolean empty = stack.isEmpty();
+            int count = stack.getCount();
+
+            if (empty || count <= 0) {
+                return net.minecraft.world.item.ItemStack.EMPTY;
+            }
+
+            return stack.copy();
+        }
 
         @Override
-        public @NotNull net.minecraft.world.item.ItemStack set(@NotNull net.minecraft.world.entity.EquipmentSlot slot, @NotNull net.minecraft.world.item.ItemStack stack) {
-            EquipmentSlot bukkitSlot = getSlot(slot);
-            net.minecraft.world.item.ItemStack old = super.set(slot, stack);
-            if (bukkitSlot != null) {
-                ItemStack oldBukkit = CraftItemStack.asBukkitCopy(old);
-                ItemStack newBukkit = CraftItemStack.asBukkitCopy(stack);
-                consumer.accept(oldBukkit, newBukkit, bukkitSlot);
+        public @NotNull net.minecraft.world.item.ItemStack set(@NotNull net.minecraft.world.entity.EquipmentSlot slot, @NotNull net.minecraft.world.item.ItemStack stack) {EquipmentSlot bukkitSlot = getSlot(slot);
+
+            // Old comes from cache (NOT from super.get(slot), which can already be mutated on Paper 1.21.8)
+            net.minecraft.world.item.ItemStack oldSnapshot = lastKnown[slot.ordinal()];
+            net.minecraft.world.item.ItemStack newSnapshot = sanitize(stack);
+
+
+            // Do the real set
+            net.minecraft.world.item.ItemStack oldReturn = super.set(slot, stack);
+
+            // Update cache AFTER set
+            lastKnown[slot.ordinal()] = newSnapshot;
+
+            if (bukkitSlot != null && !net.minecraft.world.item.ItemStack.matches(oldSnapshot, newSnapshot)) {
+                ItemStack oldB = CraftItemStack.asBukkitCopy(oldSnapshot);
+                ItemStack newB = CraftItemStack.asBukkitCopy(newSnapshot);
+
+                consumer.accept(oldB, newB, bukkitSlot);
             }
-            return old;
+
+            return oldReturn;
         }
 
         @Override
         public void setAll(@NotNull EntityEquipment equipment) {
             for (net.minecraft.world.entity.EquipmentSlot slot : SLOTS) {
                 EquipmentSlot bukkitSlot = getSlot(slot);
-                if (bukkitSlot != null) {
-                    ItemStack oldBukkit = CraftItemStack.asBukkitCopy(super.get(slot));
-                    ItemStack newBukkit = CraftItemStack.asBukkitCopy(equipment.get(slot));
-                    consumer.accept(oldBukkit, newBukkit, bukkitSlot);
+
+                net.minecraft.world.item.ItemStack oldSnapshot = lastKnown[slot.ordinal()];
+                net.minecraft.world.item.ItemStack newSnapshot = sanitize(equipment.get(slot));
+
+                if (bukkitSlot != null && !net.minecraft.world.item.ItemStack.matches(oldSnapshot, newSnapshot)) {
+                    consumer.accept(
+                            CraftItemStack.asBukkitCopy(oldSnapshot),
+                            CraftItemStack.asBukkitCopy(newSnapshot),
+                            bukkitSlot
+                    );
                 }
+
+                lastKnown[slot.ordinal()] = newSnapshot;
+
+                // apply sanitized (bypasses override)
+                super.set(slot, newSnapshot);
             }
-            super.setAll(equipment);
         }
 
         @Override
         public void clear() {
             for (net.minecraft.world.entity.EquipmentSlot slot : SLOTS) {
                 EquipmentSlot bukkitSlot = getSlot(slot);
-                if (bukkitSlot != null) {
-                    ItemStack oldBukkit = CraftItemStack.asBukkitCopy(super.get(slot));
-                    consumer.accept(oldBukkit, null, bukkitSlot);
+
+                net.minecraft.world.item.ItemStack oldSnapshot = lastKnown[slot.ordinal()];
+
+                if (bukkitSlot != null && !oldSnapshot.isEmpty()) {
+                    consumer.accept(CraftItemStack.asBukkitCopy(oldSnapshot), null, bukkitSlot);
                 }
+
+                lastKnown[slot.ordinal()] = net.minecraft.world.item.ItemStack.EMPTY;
+
+                // clear everything, not just mapped slots
+                super.set(slot, net.minecraft.world.item.ItemStack.EMPTY);
             }
-            super.clear();
         }
     }
 }

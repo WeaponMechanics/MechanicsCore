@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 
 public class ColorSerializer implements SimpleSerializer<Color> {
 
-    private static final Pattern HEX_PATTERN = Pattern.compile("[0-9a-fA-F]{6}");
+    private static final Pattern HEX_PATTERN = Pattern.compile("[0-9a-fA-F]{6}([0-9a-fA-F]{2})?");
 
     @Override
     public @NotNull String getTypeName() {
@@ -30,34 +30,48 @@ public class ColorSerializer implements SimpleSerializer<Color> {
         // hex character. While '0xRR' is technically a valid hex code for red,
         // this is actually treated as an error (To help avoid confusion).
         if (data.startsWith("0x")) {
-            String substring = data.substring(2);
-            if (substring.length() != 6) {
-                throw SerializerException.builder()
+            String hex = data.substring(2);
+            if (hex.length() == 6) {
+                return Color.fromRGB(Integer.parseInt(hex, 16));
+            }
+            if (hex.length() == 8) {
+                int argb = (int) Long.parseLong(hex, 16);
+                int a = (argb >>> 24) & 0xFF;
+                int r = (argb >>> 16) & 0xFF;
+                int g = (argb >>> 8) & 0xFF;
+                int b = (argb) & 0xFF;
+                return Color.fromARGB(a, r, g, b);
+            }
+            throw SerializerException.builder()
                     .locationRaw(errorLocation)
                     .example("0xFF00BB")
-                    .addMessage("Hex strings should have 6 digits")
+                    .addMessage("Hex strings should have 6 or 8 digits")
                     .addMessage("Found value: " + data)
                     .build();
-            }
-            int rgb = Integer.parseInt(substring, 16);
-            return Color.fromRGB(rgb);
         }
 
         // Follows the format, '#RRGGBB' and translates each character as a
         // hex character. While '#RR' is technically a valid hex code for red,
         // this is actually treated as an error (To help avoid confusion).
         else if (data.startsWith("#")) {
-            String substring = data.substring(1);
-            if (substring.length() != 6) {
-                throw SerializerException.builder()
+            String hex = data.substring(1);
+            if (hex.length() == 6) {
+                return Color.fromRGB(Integer.parseInt(hex, 16));
+            }
+            if (hex.length() == 8) {
+                int argb = (int) Long.parseLong(hex, 16);
+                int a = (argb >>> 24) & 0xFF;
+                int r = (argb >>> 16) & 0xFF;
+                int g = (argb >>> 8) & 0xFF;
+                int b = (argb) & 0xFF;
+                return Color.fromARGB(a, r, g, b);
+            }
+            throw SerializerException.builder()
                     .locationRaw(errorLocation)
                     .example("#FF00BB")
-                    .addMessage("Hex strings should have 6 digits")
+                    .addMessage("Hex strings should have 6 or 8 digits")
                     .addMessage("Found value: " + data)
                     .build();
-            }
-            int rgb = Integer.parseInt(substring, 16);
-            return Color.fromRGB(rgb);
         }
 
         // The above 2 options cover MOST hex scenarios, but we use this regex
@@ -109,7 +123,7 @@ public class ColorSerializer implements SimpleSerializer<Color> {
             else {
                 throw SerializerException.builder()
                     .locationRaw(errorLocation)
-                    .addMessage("Choose one of these formats: #RRGGBB, r g b, RED, RRGGBB, 0xRRGGBB, r~g~b")
+                    .addMessage("Choose one of these formats: #RRGGBB / #AARRGGBB, 0xRRGGBB / 0xAARRGGBB, R-G-B, RED, RRGGBB")
                     .buildInvalidEnumOption(data, ColorType.class);
             }
         }

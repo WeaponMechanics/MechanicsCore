@@ -77,8 +77,22 @@ public class ItemSerializer implements Serializer<ItemStack> {
 
     private static final FieldAccessor ingredientsField;
 
+    private static final Map<String, EquipmentSlotGroup> SLOT_GROUPS_BY_NAME;
+
     static {
         ingredientsField = ReflectionUtil.getField(ShapedRecipe.class, "ingredients");
+
+        Map<String, EquipmentSlotGroup> slotGroups = new HashMap<>();
+        slotGroups.put("any", EquipmentSlotGroup.ANY);
+        slotGroups.put("mainhand", EquipmentSlotGroup.MAINHAND);
+        slotGroups.put("offhand", EquipmentSlotGroup.OFFHAND);
+        slotGroups.put("hand", EquipmentSlotGroup.HAND);
+        slotGroups.put("head", EquipmentSlotGroup.HEAD);
+        slotGroups.put("chest", EquipmentSlotGroup.CHEST);
+        slotGroups.put("legs", EquipmentSlotGroup.LEGS);
+        slotGroups.put("feet", EquipmentSlotGroup.FEET);
+        slotGroups.put("armor", EquipmentSlotGroup.ARMOR);
+        SLOT_GROUPS_BY_NAME = Collections.unmodifiableMap(slotGroups);
     }
 
     /**
@@ -120,17 +134,32 @@ public class ItemSerializer implements Serializer<ItemStack> {
         NBTCompatibility nbt = CompatibilityAPI.getNBTCompatibility();
 
         for (Map.Entry<String, Object> entry : tags.entrySet()) {
-            String[] split = entry.getKey().split(":");
+            String rawKey = entry.getKey();
+            Object value = entry.getValue();
+
+            String[] split = rawKey.split(":");
+            if (split.length != 2) {
+                MechanicsCore.getInstance().getLogger().warning("Invalid tag key '" + rawKey + "' (expected 'plugin:tag'), skipping"
+                );
+                continue;
+            }
+
             String plugin = split[0];
             String tag = split[1];
 
-            switch (entry.getValue()) {
+            switch (value) {
                 case String string -> nbt.setString(item, plugin, tag, string);
                 case Double num -> nbt.setDouble(item, plugin, tag, num);
                 case Integer num -> nbt.setInt(item, plugin, tag, num);
                 case int[] arr -> nbt.setArray(item, plugin, tag, arr);
                 case String[] arr -> nbt.setStringArray(item, plugin, tag, arr);
-                case null, default -> throw new IllegalArgumentException("Unrecognized type " + entry.getValue() + " when setting custom tags");
+                case null, default -> {
+                    MechanicsCore.getInstance().getLogger().warning("Unrecognized type for key '" + rawKey + "': " + value
+                    );
+                    String type = (value == null) ? "null" : value.getClass().getName();
+                    throw new IllegalArgumentException("Unrecognized type " + type + " for key '" + rawKey + "' when setting custom tags"
+                    );
+                }
             }
         }
     }
@@ -288,34 +317,11 @@ public class ItemSerializer implements Serializer<ItemStack> {
 
         itemStack.setItemMeta(itemMeta);
 
-        // #198
-        data.ofList("Tags")
-            .addArgument(new StringSerializer())
-            .requireAllPreviousArgs()
-            .addArgument(new IntSerializer())
-            .assertList().forEach(split -> {
-                String tag = (String) split.get(0).get();
-                int value = (int) split.get(1).orElse(1);
-                CompatibilityAPI.getNBTCompatibility().setInt(itemStack, "Custom", tag, value);
-            });
-
-        // TODO: Spigot will surely improve this
-        Map<String, EquipmentSlotGroup> slotGroupsByName = new HashMap<>();
-        slotGroupsByName.put("any", EquipmentSlotGroup.ANY);
-        slotGroupsByName.put("mainhand", EquipmentSlotGroup.MAINHAND);
-        slotGroupsByName.put("offhand", EquipmentSlotGroup.OFFHAND);
-        slotGroupsByName.put("hand", EquipmentSlotGroup.HAND);
-        slotGroupsByName.put("head", EquipmentSlotGroup.HEAD);
-        slotGroupsByName.put("chest", EquipmentSlotGroup.CHEST);
-        slotGroupsByName.put("legs", EquipmentSlotGroup.LEGS);
-        slotGroupsByName.put("feet", EquipmentSlotGroup.FEET);
-        slotGroupsByName.put("armor", EquipmentSlotGroup.ARMOR);
-
         List<List<Optional<Object>>> attributesData = data.ofList("Attributes")
             .addArgument(new RegistryValueSerializer<>(Attribute.class, true))
             .addArgument(new DoubleSerializer())
             .requireAllPreviousArgs()
-            .addArgument(new ByNameSerializer<>(EquipmentSlotGroup.class, slotGroupsByName))
+            .addArgument(new ByNameSerializer<>(EquipmentSlotGroup.class, SLOT_GROUPS_BY_NAME))
             .addArgument(new EnumValueSerializer<>(AttributeModifier.Operation.class, false))
             .assertList();
 
@@ -477,6 +483,21 @@ public class ItemSerializer implements Serializer<ItemStack> {
             } catch (ClassCastException ex) {
                 throw data.exception("Light_Level", "Tried to use the Light_Level option on a non 'LIGHT' block");
             }
+        }
+
+        if (data.has("Tags")) {
+            data.ofList("Tags")
+                    .addArgument(new StringSerializer())
+                    .requireAllPreviousArgs()
+                    .addArgument(new IntSerializer())
+                    .assertList()
+                    .forEach(splitx -> {
+                        String tag = (String) splitx.get(0).get();
+                        int value = (Integer) splitx.get(1).orElse(1);
+
+                        CompatibilityAPI.getNBTCompatibility()
+                                .setInt(itemStack, "Custom", tag, value);
+                    });
         }
 
         if (data.of("Deny_Use_In_Crafting").getBool().orElse(false)) {
