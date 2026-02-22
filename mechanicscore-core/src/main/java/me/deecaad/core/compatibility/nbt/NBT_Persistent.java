@@ -102,7 +102,6 @@ public abstract class NBT_Persistent implements NBTCompatibility {
         ItemMeta meta = bukkitItem.getItemMeta();
         if (meta == null) return def;
 
-
         int[] result = meta.getPersistentDataContainer().get(getKey(plugin, key), PersistentDataType.INTEGER_ARRAY);
         return result != null ? result : def;
     }
@@ -119,8 +118,7 @@ public abstract class NBT_Persistent implements NBTCompatibility {
         ItemMeta meta = bukkitItem.getItemMeta();
         if (meta == null) return false;
 
-        PersistentDataContainer nbt = getCompound(meta);
-        return nbt.has(getKey(plugin, key), StringPersistentType.INSTANCE);
+        return meta.getPersistentDataContainer().has(getKey(plugin, key), StringPersistentType.INSTANCE);
     }
 
     public String[] getStringArray(@NotNull ItemStack bukkitItem, @NotNull String plugin, @NotNull String key, String[] def) {
@@ -150,16 +148,11 @@ public abstract class NBT_Persistent implements NBTCompatibility {
 
     public void remove(@NotNull ItemStack bukkitItem, @NotNull String plugin, @NotNull String key) {
         ItemMeta meta = bukkitItem.getItemMeta();
-        if (meta == null) meta = Bukkit.getItemFactory().getItemMeta(bukkitItem.getType());
         if (meta == null) return;
 
         PersistentDataContainer nbt = meta.getPersistentDataContainer();
 
         nbt.remove(getKey(plugin, key));
         bukkitItem.setItemMeta(meta);
-    }
-
-    private PersistentDataContainer getCompound(@NotNull ItemMeta meta) {
-        return meta.getPersistentDataContainer();
     }
 }

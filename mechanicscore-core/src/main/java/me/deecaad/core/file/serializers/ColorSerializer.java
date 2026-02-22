@@ -23,6 +23,18 @@ public class ColorSerializer implements SimpleSerializer<Color> {
         return "#RRGGBB";
     }
 
+    private static Color parseHex(String hex) {
+        if (hex.length() == 6) {
+            return Color.fromRGB(Integer.parseInt(hex, 16));
+        }
+        int argb = (int) Long.parseLong(hex, 16);
+        int a = (argb >>> 24) & 0xFF;
+        int r = (argb >>> 16) & 0xFF;
+        int g = (argb >>> 8) & 0xFF;
+        int b = (argb) & 0xFF;
+        return Color.fromARGB(a, r, g, b);
+    }
+
     @Override
     public @NotNull Color deserialize(@NotNull String data, @NotNull String errorLocation) throws SerializerException {
 
@@ -31,16 +43,8 @@ public class ColorSerializer implements SimpleSerializer<Color> {
         // this is actually treated as an error (To help avoid confusion).
         if (data.startsWith("0x")) {
             String hex = data.substring(2);
-            if (hex.length() == 6) {
-                return Color.fromRGB(Integer.parseInt(hex, 16));
-            }
-            if (hex.length() == 8) {
-                int argb = (int) Long.parseLong(hex, 16);
-                int a = (argb >>> 24) & 0xFF;
-                int r = (argb >>> 16) & 0xFF;
-                int g = (argb >>> 8) & 0xFF;
-                int b = (argb) & 0xFF;
-                return Color.fromARGB(a, r, g, b);
+            if (hex.length() == 6 || hex.length() == 8) {
+                return parseHex(hex);
             }
             throw SerializerException.builder()
                     .locationRaw(errorLocation)
@@ -55,16 +59,8 @@ public class ColorSerializer implements SimpleSerializer<Color> {
         // this is actually treated as an error (To help avoid confusion).
         else if (data.startsWith("#")) {
             String hex = data.substring(1);
-            if (hex.length() == 6) {
-                return Color.fromRGB(Integer.parseInt(hex, 16));
-            }
-            if (hex.length() == 8) {
-                int argb = (int) Long.parseLong(hex, 16);
-                int a = (argb >>> 24) & 0xFF;
-                int r = (argb >>> 16) & 0xFF;
-                int g = (argb >>> 8) & 0xFF;
-                int b = (argb) & 0xFF;
-                return Color.fromARGB(a, r, g, b);
+            if (hex.length() == 6 || hex.length() == 8) {
+                return parseHex(hex);
             }
             throw SerializerException.builder()
                     .locationRaw(errorLocation)
@@ -82,8 +78,7 @@ public class ColorSerializer implements SimpleSerializer<Color> {
             Matcher matcher = HEX_PATTERN.matcher(data);
             matcher.find(); // always true
             String substring = matcher.group();
-            int rgb = Integer.parseInt(substring, 16);
-            return Color.fromRGB(rgb);
+            return parseHex(substring);
         }
 
         // Follows the format, 'R-G-B' and translates each character as a byte.

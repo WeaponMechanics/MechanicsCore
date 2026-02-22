@@ -11,7 +11,10 @@ import org.bukkit.block.BlockType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 public class OnGroundCondition extends Condition {
 
@@ -63,8 +66,6 @@ public class OnGroundCondition extends Condition {
         // the entity is standing on (works better for slabs/carpets/snow layers), so defaulting to 0.01
         // should do the trick
         double distance = data.of("distanceFromGround").assertRange(0.0, null).getDouble().orElse(0.01);
-        if (distance < 0.0)
-            throw data.exception("distanceFromGround", "distance must be > 0.0, example: 0.1");
 
         Optional<List<?>> opt = data.of("blocks").get(List.class).map(l -> (List<?>) l);
         List<?> raw = opt.orElse(null);
@@ -82,7 +83,7 @@ public class OnGroundCondition extends Condition {
 
         for (MapConfigLike.Holder holder : materials) {
             String token = String.valueOf(holder.value());
-            parsed.addAll(serializer.deserialize(token, "on_ground.blocks"));
+            parsed.addAll(serializer.deserialize(token, data.of("blocks").getLocation()));
         }
 
         if (parsed.isEmpty()) {

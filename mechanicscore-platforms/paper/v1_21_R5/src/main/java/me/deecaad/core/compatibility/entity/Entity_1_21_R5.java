@@ -243,12 +243,12 @@ public class Entity_1_21_R5 implements EntityCompatibility {
         }
 
         @Override
-        public @NotNull net.minecraft.world.item.ItemStack set(@NotNull net.minecraft.world.entity.EquipmentSlot slot, @NotNull net.minecraft.world.item.ItemStack stack) {EquipmentSlot bukkitSlot = getSlot(slot);
+        public @NotNull net.minecraft.world.item.ItemStack set(@NotNull net.minecraft.world.entity.EquipmentSlot slot, @NotNull net.minecraft.world.item.ItemStack stack) {
+            EquipmentSlot bukkitSlot = getSlot(slot);
 
             // Old comes from cache (NOT from super.get(slot), which can already be mutated on Paper 1.21.8)
             net.minecraft.world.item.ItemStack oldSnapshot = lastKnown[slot.ordinal()];
             net.minecraft.world.item.ItemStack newSnapshot = sanitize(stack);
-
 
             // Do the real set
             net.minecraft.world.item.ItemStack oldReturn = super.set(slot, stack);
