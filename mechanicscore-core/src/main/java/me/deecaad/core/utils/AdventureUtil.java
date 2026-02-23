@@ -34,7 +34,8 @@ public final class AdventureUtil {
         if (meta == null || !meta.hasDisplayName())
             return Component.empty();
 
-        return meta.displayName();
+        Component name = meta.displayName();
+        return name == null ? Component.empty() : name;
     }
 
     /**
