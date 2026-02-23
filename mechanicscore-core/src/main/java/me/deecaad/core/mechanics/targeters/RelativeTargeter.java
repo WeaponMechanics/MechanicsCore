@@ -13,6 +13,10 @@ public abstract class RelativeTargeter extends Targeter {
     public RelativeTargeter() {
     }
 
+    public boolean isUseTarget() {
+        return isUseTarget;
+    }
+
     @Override
     protected Targeter applyParentArgs(SerializeData data, Targeter targeter) throws SerializerException {
         RelativeTargeter relativeTargeter = (RelativeTargeter) super.applyParentArgs(data, targeter);
