@@ -51,7 +51,7 @@ public class OnGroundCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "on_ground");
+        return new NamespacedKey(MechanicsCore.getInstance(), "onground");
     }
 
     @Override
