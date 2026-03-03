@@ -168,18 +168,24 @@ public class ItemSerializer implements Serializer<ItemStack> {
         // If the data here is a String (not a ConfigurationSection), then we
         // can assume that the user is trying to inline an item.
         if (data.of().is(String.class)) {
-            String inlineString = data.of().assertExists().get(String.class).get();
-            if (ITEM_REGISTRY.containsKey(inlineString))
-                return ITEM_REGISTRY.get(inlineString).get();
-
-            return data.of().assertExists().getMaterialAsItem().get();
+            return serializeType(data.of());
         }
 
         return null;
     }
 
+    public @NotNull ItemStack serializeType(@NotNull SerializeData.ConfigAccessor data) throws SerializerException {
+        // If the data here is a String (not a ConfigurationSection), then we
+        // can assume that the user is trying to inline an item.
+        String inlineString = data.assertExists().get(String.class).get();
+        if (ITEM_REGISTRY.containsKey(inlineString))
+            return ITEM_REGISTRY.get(inlineString).get();
+
+        return data.assertExists().getMaterialAsItem().get();
+    }
+
     public ItemStack serializeWithoutRecipe(@NotNull SerializeData data) throws SerializerException {
-        ItemStack itemStack = data.of("Type").assertExists().getMaterialAsItem().get();
+        ItemStack itemStack = serializeType(data.of("Type"));
         ItemMeta itemMeta = itemStack.getItemMeta();
         if (itemMeta == null) {
             throw data.exception("Type", "Did you use air as a material? This is not allowed!",
