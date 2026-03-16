@@ -103,6 +103,15 @@ open class MechanicsPlugin(
     }
 
     /**
+     * Determines whether [reload] should re-register this plugin's commands.
+     *
+     * Defaults to `false` because commands are typically registered once during
+     * [onEnable]. Plugins should only override this to return `true` if they
+     * explicitly require command re-registration as part of their reload logic.
+     */
+    open fun shouldReloadCommands(): Boolean = false
+
+    /**
      * Sets up state for this plugin, called during [onLoad] and [reload],
      * typically right after destroying state in [onDisable].
      */
@@ -121,7 +130,9 @@ open class MechanicsPlugin(
             foliaScheduler.global().run { _ ->
                 handleConfigs().join()
                 handleListeners().join()
-                handleCommands().join()
+                if (shouldReloadCommands()) {
+                    handleCommands().join()
+                }
             }.asFuture()
         }
     }
