@@ -1,3 +1,5 @@
+import xyz.jpenilla.resourcefactory.paper.PaperPluginYaml
+
 plugins {
     `java-library`
     id("com.gradleup.shadow") version "8.3.9"
@@ -33,7 +35,7 @@ paperPluginYaml {
         server("WorldEdit", required = false)
         server("WorldGuard", required = false)
         server("PlaceholderAPI", required = false)
-        server("MythicMobs", required = false)
+        server("MythicMobs", required = false, load = PaperPluginYaml.Load.BEFORE)
         server("GeyserSpigot", required = false)
     }
 }
