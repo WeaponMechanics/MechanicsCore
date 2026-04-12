@@ -10,9 +10,9 @@ Logger_Config:
   Max_Alerts_To_Show: 5
   Alert_Interval: 300  # 15 seconds * 20 ticks per second
 
-# If set to false, commands are not re-registered when this plugin reloads. Enable this if you experience issues with recipes reloading.
 Reload:
-  Register_CommandAPI_Commands: true
+  # Controls whether commands are re-registered on reload.
+  Commands: false
 
 # Turning on this feature will cause placeholder messages to use 3x the CPU.
 # If you want to use "placeholders inside of placeholders," like:
