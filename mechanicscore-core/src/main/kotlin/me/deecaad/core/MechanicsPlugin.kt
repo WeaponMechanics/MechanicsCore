@@ -121,7 +121,7 @@ open class MechanicsPlugin(
             foliaScheduler.global().run { _ ->
                 handleConfigs().join()
                 handleListeners().join()
-                if (configuration.getBoolean("Reload.Register_CommandAPI_Commands", true)) {
+                if (configuration.getBoolean("Reload.Commands", true)) {
                     handleCommands().join()
                 }
             }.asFuture()
