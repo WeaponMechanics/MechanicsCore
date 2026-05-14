@@ -118,9 +118,9 @@ public class RayTrace {
 
         // Method based on NMS block traversing
 
-        double startX = NumberUtil.lerp(start.getX(), end.getX(), -1.0E-7);
-        double startY = NumberUtil.lerp(start.getY(), end.getY(), -1.0E-7);
-        double startZ = NumberUtil.lerp(start.getZ(), end.getZ(), -1.0E-7);
+        double startX = NumberUtil.lerpUnclamped(start.getX(), end.getX(), -1.0E-7);
+        double startY = NumberUtil.lerpUnclamped(start.getY(), end.getY(), -1.0E-7);
+        double startZ = NumberUtil.lerpUnclamped(start.getZ(), end.getZ(), -1.0E-7);
 
         int currentX = NumberUtil.floorToInt(startX);
         int currentY = NumberUtil.floorToInt(startY);
@@ -138,9 +138,9 @@ public class RayTrace {
             }
         }
 
-        double endX = NumberUtil.lerp(end.getX(), start.getX(), -1.0E-7);
-        double endY = NumberUtil.lerp(end.getY(), start.getY(), -1.0E-7);
-        double endZ = NumberUtil.lerp(end.getZ(), start.getZ(), -1.0E-7);
+        double endX = NumberUtil.lerpUnclamped(end.getX(), start.getX(), -1.0E-7);
+        double endY = NumberUtil.lerpUnclamped(end.getY(), start.getY(), -1.0E-7);
+        double endZ = NumberUtil.lerpUnclamped(end.getZ(), start.getZ(), -1.0E-7);
 
         double directionX = endX - startX;
         double directionY = endY - startY;
