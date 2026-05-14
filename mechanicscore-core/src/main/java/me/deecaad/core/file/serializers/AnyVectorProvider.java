@@ -1,10 +1,11 @@
 package me.deecaad.core.file.serializers;
 
 import me.deecaad.core.utils.ImmutableVector;
-import me.deecaad.core.utils.Quaternion;
+import me.deecaad.core.utils.Transform;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Quaterniond;
 
 /**
  * Stores an arbitrary vector. If the vector is relative, it will be transformed by the local
@@ -31,9 +32,9 @@ public class AnyVectorProvider implements VectorProvider {
      * @return The vector.
      */
     @Override
-    public @NotNull Vector provide(@Nullable Quaternion localTransform) {
+    public @NotNull Vector provide(@Nullable Quaterniond localTransform) {
         if (localTransform != null && relative) {
-            return localTransform.multiply(vector);
+            return Transform.rotate(localTransform, vector);
         }
 
         return vector;

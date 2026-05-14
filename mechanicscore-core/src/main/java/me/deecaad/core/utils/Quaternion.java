@@ -1,9 +1,18 @@
 package me.deecaad.core.utils;
 
 import org.bukkit.util.Vector;
+import org.joml.Quaterniond;
 
 import java.util.Objects;
 
+/**
+ * Hand-rolled quaternion math.
+ *
+ * @deprecated Use JOML's {@link org.joml.Quaterniond} (or {@link org.joml.Quaternionf}) instead.
+ *             JOML is a well-tested, accurate math library that is already on the classpath. Use
+ *             {@link #toJoml()} to migrate existing instances.
+ */
+@Deprecated
 public class Quaternion implements Cloneable {
 
     public static final double EPSILON = 1.11e-16;
@@ -141,6 +150,16 @@ public class Quaternion implements Cloneable {
 
     public double dot(Quaternion other) {
         return x * other.x + y * other.y + z * other.z + w * other.w;
+    }
+
+    /**
+     * Converts this quaternion to a JOML {@link Quaterniond}. Use this to migrate code off of this
+     * deprecated class.
+     *
+     * @return A new JOML quaternion with the same <code>x, y, z, w</code> components.
+     */
+    public Quaterniond toJoml() {
+        return new Quaterniond(x, y, z, w);
     }
 
     public Quaternion inverse() {

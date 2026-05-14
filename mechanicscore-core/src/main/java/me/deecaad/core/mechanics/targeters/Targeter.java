@@ -8,7 +8,7 @@ import me.deecaad.core.file.serializers.VectorProvider;
 import me.deecaad.core.file.serializers.VectorSerializer;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.utils.EntityTransform;
-import me.deecaad.core.utils.Quaternion;
+import org.joml.Quaterniond;
 import org.bukkit.Location;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -80,7 +80,7 @@ public abstract class Targeter implements InlineSerializer<Targeter> {
                     Location origin = (eye && target.getTarget() != null) ? target.getTarget().getEyeLocation() : target.getTargetLocation();
                     if (offset != null) {
                         EntityTransform localTransform = target.getTarget() == null ? null : new EntityTransform(target.getTarget());
-                        Quaternion localRotation = localTransform == null ? null : localTransform.getLocalRotation();
+                        Quaterniond localRotation = localTransform == null ? null : localTransform.getLocalRotation();
                         origin.add(offset.provide(localRotation));
                     }
 

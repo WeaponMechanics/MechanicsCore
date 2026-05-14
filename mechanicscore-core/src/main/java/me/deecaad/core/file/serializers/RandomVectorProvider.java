@@ -1,10 +1,10 @@
 package me.deecaad.core.file.serializers;
 
-import me.deecaad.core.utils.Quaternion;
 import me.deecaad.core.utils.RandomUtil;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Quaterniond;
 
 /**
  * Returns a random vector with a specified length between min and max.
@@ -20,7 +20,7 @@ public class RandomVectorProvider implements VectorProvider {
     }
 
     @Override
-    public @NotNull Vector provide(@Nullable Quaternion localTransform) {
+    public @NotNull Vector provide(@Nullable Quaterniond localTransform) {
         double length = RandomUtil.range(min, max);
         return RandomUtil.onUnitSphere().multiply(length);
     }

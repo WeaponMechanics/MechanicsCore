@@ -1,7 +1,9 @@
 package me.deecaad.core.compatibility.entity;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -55,6 +57,60 @@ public interface EntityCompatibility {
      */
     default FakeEntity generateFakeEntity(Location location, BlockState block) {
         return generateFakeEntity(location, EntityType.FALLING_BLOCK, block);
+    }
+
+    /**
+     * Generates a packet based {@link FakeDisplayEntity}.
+     *
+     * @param location The non-null starting location of the entity.
+     * @param type The non-null display type ({@link EntityType#BLOCK_DISPLAY},
+     *        {@link EntityType#ITEM_DISPLAY}, or {@link EntityType#TEXT_DISPLAY}).
+     * @param data The nullable initial data: a {@link BlockData} for block displays, an
+     *        {@link ItemStack} for item displays, or a {@link Component} for text displays.
+     * @param <T> The returned object is both a {@link FakeEntity} and a {@link FakeDisplayEntity}.
+     * @return The fake display entity.
+     */
+    default <T extends FakeEntity & FakeDisplayEntity> T generateFakeDisplay(Location location, EntityType type, @Nullable Object data) {
+        throw new UnsupportedOperationException("Fake display entities are not yet implemented on this server version");
+    }
+
+    /**
+     * Shorthand for {@link #generateFakeDisplay(Location, EntityType, Object)}. Generates a
+     * {@link org.bukkit.entity.BlockDisplay}.
+     *
+     * @param location The non-null starting location of the entity.
+     * @param block The non-null block to show.
+     * @param <T> The returned object is both a {@link FakeEntity} and a {@link FakeDisplayEntity}.
+     * @return The fake display entity.
+     */
+    default <T extends FakeEntity & FakeDisplayEntity> T generateFakeBlockDisplay(Location location, BlockData block) {
+        return generateFakeDisplay(location, EntityType.BLOCK_DISPLAY, block);
+    }
+
+    /**
+     * Shorthand for {@link #generateFakeDisplay(Location, EntityType, Object)}. Generates an
+     * {@link org.bukkit.entity.ItemDisplay}.
+     *
+     * @param location The non-null starting location of the entity.
+     * @param item The non-null item to show.
+     * @param <T> The returned object is both a {@link FakeEntity} and a {@link FakeDisplayEntity}.
+     * @return The fake display entity.
+     */
+    default <T extends FakeEntity & FakeDisplayEntity> T generateFakeItemDisplay(Location location, ItemStack item) {
+        return generateFakeDisplay(location, EntityType.ITEM_DISPLAY, item);
+    }
+
+    /**
+     * Shorthand for {@link #generateFakeDisplay(Location, EntityType, Object)}. Generates a
+     * {@link org.bukkit.entity.TextDisplay}.
+     *
+     * @param location The non-null starting location of the entity.
+     * @param text The non-null text to show.
+     * @param <T> The returned object is both a {@link FakeEntity} and a {@link FakeDisplayEntity}.
+     * @return The fake display entity.
+     */
+    default <T extends FakeEntity & FakeDisplayEntity> T generateFakeTextDisplay(Location location, Component text) {
+        return generateFakeDisplay(location, EntityType.TEXT_DISPLAY, text);
     }
 
     /**

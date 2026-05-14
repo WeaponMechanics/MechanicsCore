@@ -1,16 +1,23 @@
 package me.deecaad.core.utils;
 
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.util.Vector;
+import org.joml.Matrix3d;
+import org.joml.Quaterniond;
+import org.joml.Quaterniondc;
+import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A node in a transform hierarchy: a local position and rotation that may inherit from a parent
+ * transform. Rotation math is backed by JOML's {@link Quaterniond}.
+ */
 public class Transform {
 
     private Vector localPosition;
-    private Quaternion localRotation;
+    private Quaterniond localRotation;
 
     // Transforms inherit their parent's position/rotation
     private Transform parent;
@@ -18,7 +25,7 @@ public class Transform {
 
     public Transform() {
         children = new ArrayList<>();
-        localRotation = Quaternion.identity();
+        localRotation = new Quaterniond();
         localPosition = new Vector();
     }
 
@@ -49,8 +56,8 @@ public class Transform {
 
             // Bit more complicated... Find the difference between the 2
             // quaternions
-            Quaternion parentRotation = parent.getRotation();
-            localRotation = parentRotation.inverse().multiply(localRotation);
+            Quaterniond parentRotation = parent.getRotation();
+            localRotation = parentRotation.invert().mul(localRotation);
 
             Vector position = parent.getPosition();
             localPosition.subtract(position);
@@ -62,27 +69,27 @@ public class Transform {
     }
 
     public Vector getForward() {
-        return getRotation().multiply(Quaternion.FORWARD);
+        return rotate(getRotation(), new Vector(0, 0, 1));
     }
 
     public void setForward(Vector forward) {
-        setRotation(Quaternion.lookAt(forward, Quaternion.UP));
+        setRotation(lookAt(forward, new Vector(0, 1, 0)));
     }
 
     public Vector getRight() {
-        return getRotation().multiply(Quaternion.RIGHT);
+        return rotate(getRotation(), new Vector(-1, 0, 0));
     }
 
     public void setRight(Vector right) {
-        setRotation(Quaternion.fromTo(Quaternion.RIGHT, right));
+        setRotation(new Quaterniond().rotationTo(new Vector3d(-1, 0, 0), toVector3d(right)));
     }
 
     public Vector getUp() {
-        return getRotation().multiply(Quaternion.UP);
+        return rotate(getRotation(), new Vector(0, 1, 0));
     }
 
     public void setUp(Vector up) {
-        setRotation(Quaternion.fromTo(Quaternion.UP, up));
+        setRotation(new Quaterniond().rotationTo(new Vector3d(0, 1, 0), toVector3d(up)));
     }
 
     public Vector getLocalPosition() {
@@ -97,7 +104,7 @@ public class Transform {
         if (getParent() == null)
             return getLocalPosition();
 
-        return getParent().getPosition().add(getParent().getRotation().multiply(localPosition));
+        return getParent().getPosition().add(rotate(getParent().getRotation(), localPosition));
     }
 
     public void setPosition(Location position) {
@@ -109,44 +116,83 @@ public class Transform {
             setLocalPosition(position);
         } else {
             Vector parentPos = getParent().getPosition();
-            Quaternion parentRot = getParent().getRotation();
+            Quaterniond parentRot = getParent().getRotation();
 
-            setLocalPosition(parentRot.multiply(position.subtract(parentPos)));
+            setLocalPosition(rotate(parentRot, position.subtract(parentPos)));
         }
     }
 
-    public Quaternion getLocalRotation() {
-        return localRotation.clone();
+    public Quaterniond getLocalRotation() {
+        return new Quaterniond(localRotation);
     }
 
-    public void setLocalRotation(Quaternion localRotation) {
-        this.localRotation = localRotation.normalize();
+    public void setLocalRotation(Quaterniond localRotation) {
+        this.localRotation = new Quaterniond(localRotation).normalize();
     }
 
-    public Quaternion getRotation() {
+    public Quaterniond getRotation() {
         if (getParent() == null)
             return getLocalRotation();
 
-        return getParent().getRotation().multiply(localRotation);
+        return getParent().getRotation().mul(localRotation);
     }
 
-    public void setRotation(Quaternion rotation) {
+    public void setRotation(Quaterniond rotation) {
         if (getParent() == null) {
-            setLocalRotation(rotation.normalize());
+            setLocalRotation(rotation);
         } else {
-            setLocalRotation(getParent().getRotation().inverse().multiply(rotation));
+            setLocalRotation(getParent().getRotation().invert().mul(rotation));
         }
     }
 
-    public void applyRotation(Quaternion rotation) {
-        localRotation.multiply(rotation.normalize());
+    public void applyRotation(Quaterniond rotation) {
+        localRotation.mul(new Quaterniond(rotation).normalize());
     }
 
-    public void debug(World world) {
-        Vector origin = getPosition();
+    /**
+     * Builds a rotation that points the local forward axis (+Z) along <code>direction</code>, with
+     * the local up axis (+Y) aligned as closely as possible to <code>up</code>.
+     *
+     * <p>
+     * If <code>up</code> is parallel to <code>direction</code>, an arbitrary perpendicular axis is
+     * chosen instead. If <code>direction</code> is a zero vector, the identity rotation is returned.
+     *
+     * @param direction The direction the local +Z axis should point.
+     * @param up The reference up direction.
+     * @return A non-null JOML quaternion.
+     */
+    public static Quaterniond lookAt(Vector direction, Vector up) {
+        Vector3d forward = toVector3d(direction);
+        if (forward.lengthSquared() < 1e-12)
+            return new Quaterniond();
+        forward.normalize();
 
-        // debugRay(world, origin, getForward(), Color.BLUE);
-        // debugRay(world, origin, getUp(), Color.GREEN);
-        // debugRay(world, origin, getRight(), Color.RED);
+        Vector3d right = toVector3d(up).cross(forward);
+        if (right.lengthSquared() < 1e-12) {
+            // 'up' is parallel to 'direction' -- pick an arbitrary perpendicular axis.
+            right = new Vector3d(1, 0, 0).cross(forward);
+            if (right.lengthSquared() < 1e-12)
+                right = new Vector3d(0, 0, 1).cross(forward);
+        }
+        right.normalize();
+        Vector3d realUp = new Vector3d(forward).cross(right).normalize();
+
+        return new Quaterniond().setFromNormalized(new Matrix3d().set(right, realUp, forward));
+    }
+
+    /**
+     * Rotates a Bukkit {@link Vector} by a JOML quaternion, returning a new vector.
+     *
+     * @param rotation The non-null rotation to apply.
+     * @param vector The non-null vector to rotate (not modified).
+     * @return A new rotated vector.
+     */
+    public static Vector rotate(Quaterniondc rotation, Vector vector) {
+        Vector3d result = rotation.transform(toVector3d(vector));
+        return new Vector(result.x, result.y, result.z);
+    }
+
+    private static Vector3d toVector3d(Vector vector) {
+        return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
     }
 }

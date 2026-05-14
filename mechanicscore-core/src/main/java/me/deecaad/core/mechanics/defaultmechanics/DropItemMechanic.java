@@ -10,12 +10,12 @@ import me.deecaad.core.file.serializers.VectorSerializer;
 import me.deecaad.core.mechanics.CastData;
 import me.deecaad.core.utils.EntityTransform;
 import me.deecaad.core.utils.ImmutableVector;
-import me.deecaad.core.utils.Quaternion;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.joml.Quaterniond;
 
 /**
  * Drops a real item at the target location.
@@ -45,7 +45,7 @@ public class DropItemMechanic extends Mechanic {
 
         world.dropItem(spawnPosition, item, itemEntity -> {
             EntityTransform localTransform = cast.getTarget() == null ? null : new EntityTransform(cast.getTarget());
-            Quaternion localRotation = localTransform == null ? null : localTransform.getLocalRotation();
+            Quaterniond localRotation = localTransform == null ? null : localTransform.getLocalRotation();
             itemEntity.setVelocity(velocity.provide(localRotation).multiply(1.0 / 20.0));
         });
     }

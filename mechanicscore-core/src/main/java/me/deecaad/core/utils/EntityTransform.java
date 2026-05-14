@@ -9,6 +9,8 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
+import org.joml.Quaterniond;
+import org.joml.Vector3d;
 
 /**
  * Wraps a bukkit {@link Entity} to use {@link Transform} methods easily. Entity transforms cannot
@@ -47,35 +49,30 @@ public class EntityTransform extends Transform {
     }
 
     @Override
-    public Quaternion getLocalRotation() {
-        Vector view = entity.getLocation().getDirection();
-        Vector localUp = Quaternion.UP;
-        if (localUp.equals(view))
-            localUp = Quaternion.BACKWARD; // TODO improve
-
-        return Quaternion.lookAt(entity.getLocation().getDirection(), localUp);
+    public Quaterniond getLocalRotation() {
+        return Transform.lookAt(entity.getLocation().getDirection(), new Vector(0, 1, 0));
     }
 
     @Override
-    public void setLocalRotation(Quaternion localRotation) {
-        Vector euler = localRotation.getEulerAngles();
+    public void setLocalRotation(Quaterniond localRotation) {
+        // Boundary translation: decompose the standard right-handed rotation into Minecraft's
+        // yaw/pitch. Minecraft yaw increases clockwise (viewed from above), which is the opposite
+        // of a standard +Y rotation, so the yaw component must be negated.
+        Vector3d euler = localRotation.getEulerAnglesYXZ(new Vector3d());
         if (entity.getType() == EntityType.ARMOR_STAND) {
             ArmorStand stand = (ArmorStand) entity;
-            stand.setHeadPose(new EulerAngle(euler.getX(), euler.getY(), euler.getZ()));
-        } else if (MinecraftVersions.UPDATE_AQUATIC.isAtLeast()) {
-            entity.setRotation((float) euler.getX(), (float) euler.getY());
+            stand.setHeadPose(new EulerAngle(euler.x, euler.y, euler.z));
         } else {
-            Location loc = entity.getLocation();
-            loc.setYaw((float) euler.getX());
-            loc.setPitch((float) euler.getY());
-            entity.teleport(loc); // This call to legacy teleport is fine, since it is 1.12
+            float yaw = (float) Math.toDegrees(-euler.y);
+            float pitch = (float) Math.toDegrees(euler.x);
+            entity.setRotation(yaw, pitch);
         }
     }
 
     @Override
-    public void applyRotation(Quaternion rotation) {
-        Quaternion local = getLocalRotation();
-        local.multiply(rotation);
+    public void applyRotation(Quaterniond rotation) {
+        Quaterniond local = getLocalRotation();
+        local.mul(rotation);
         setLocalRotation(local);
     }
 }
