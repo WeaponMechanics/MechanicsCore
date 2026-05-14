@@ -110,7 +110,7 @@ jreleaser {
         authors.add("CJCrafter <collinjbarber@gmail.com>")
         authors.add("DeeCaaD <perttu.kangas@hotmail.fi>")
         license = "MIT" // SPDX identifier
-        copyright = "Copyright © 2023-2025 CJCrafter, DeeCaaD"
+        copyright = "Copyright © 2023-2026 CJCrafter, DeeCaaD"
 
         links {
             homepage.set("https://github.com/WeaponMechanics/MechanicsCore")
