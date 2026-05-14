@@ -17,6 +17,16 @@ public abstract class RelativeTargeter extends Targeter {
         return isUseTarget;
     }
 
+    /**
+     * Usually used to force a targeter to use target, when nothing else makes
+     * sense.
+     *
+     * @param isUseTarget Whether to use the target.
+     */
+    public void setUseTarget(boolean isUseTarget) {
+        this.isUseTarget = isUseTarget;
+    }
+
     @Override
     protected Targeter applyParentArgs(SerializeData data, Targeter targeter) throws SerializerException {
         RelativeTargeter relativeTargeter = (RelativeTargeter) super.applyParentArgs(data, targeter);
