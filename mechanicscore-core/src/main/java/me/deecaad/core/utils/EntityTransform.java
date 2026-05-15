@@ -1,7 +1,6 @@
 package me.deecaad.core.utils;
 
 import com.cjcrafter.foliascheduler.ServerImplementation;
-import com.cjcrafter.foliascheduler.util.MinecraftVersions;
 import me.deecaad.core.MechanicsCore;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
@@ -13,33 +12,56 @@ import org.joml.Quaterniond;
 import org.joml.Vector3d;
 
 /**
- * Wraps a bukkit {@link Entity} to use {@link Transform} methods easily. Entity transforms cannot
- * have parents, but they can have children. Not very performance friendly when having many
- * children, since the quaternions are not cached every tick.
- * <p>
- * TODO add cache to deal with potential performance problems
+ * Wraps a bukkit {@link Entity} as a {@link Transform}. Entity transforms cannot have a parent, but
+ * they can have children. This transform tries to follow the attached entity as close as possible.
  */
 public class EntityTransform extends Transform {
 
     private final Entity entity;
 
+    private Vector cachedPosition;
+    private Quaterniond cachedRotation;
+    private double lastX, lastY, lastZ;
+    private float lastYaw, lastPitch;
+
     public EntityTransform(Entity entity) {
         this.entity = entity;
+        refresh();
+    }
+
+    private boolean refresh() {
+        Location loc = entity.getLocation();
+        boolean changed = loc.getX() != lastX || loc.getY() != lastY || loc.getZ() != lastZ
+            || loc.getYaw() != lastYaw || loc.getPitch() != lastPitch;
+        lastX = loc.getX();
+        lastY = loc.getY();
+        lastZ = loc.getZ();
+        lastYaw = loc.getYaw();
+        lastPitch = loc.getPitch();
+        cachedPosition = loc.toVector();
+        cachedRotation = Transform.fromYawPitch(loc.getYaw(), loc.getPitch());
+        return changed;
     }
 
     @Override
-    public Transform getParent() {
+    public void update() {
+        if (refresh())
+            propagate();
+    }
+
+    @Override
+    public TransformLike getParent() {
         return null; // cannot have a parent
     }
 
     @Override
-    public void setParent(Transform parent) {
+    public void setParent(TransformLike parent) {
         throw new IllegalArgumentException("EntityTransform cannot have parent");
     }
 
     @Override
     public Vector getLocalPosition() {
-        return entity.getLocation().toVector();
+        return cachedPosition.clone();
     }
 
     @Override
@@ -50,7 +72,7 @@ public class EntityTransform extends Transform {
 
     @Override
     public Quaterniond getLocalRotation() {
-        return Transform.lookAt(entity.getLocation().getDirection(), new Vector(0, 1, 0));
+        return new Quaterniond(cachedRotation);
     }
 
     @Override

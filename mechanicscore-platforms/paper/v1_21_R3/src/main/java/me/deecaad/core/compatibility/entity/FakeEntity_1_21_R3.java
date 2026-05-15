@@ -180,29 +180,6 @@ public class FakeEntity_1_21_R3 extends FakeEntity {
     }
 
     @Override
-    public void setRotation(float yaw, float pitch) {
-        if (offset != null) {
-            yaw += offset.getYaw();
-            pitch += offset.getPitch();
-        }
-
-        location.setYaw(yaw);
-        location.setPitch(pitch);
-        entity.setYHeadRot(yaw);
-        entity.setXRot(yaw);
-        entity.setYRot(pitch);
-
-        byte byteYaw = convertYaw(yaw);
-        Rot packet = new Rot(cache, byteYaw, convertPitch(pitch), false);
-        ClientboundRotateHeadPacket head = new ClientboundRotateHeadPacket(entity, byteYaw);
-
-        sendPackets(packet, head);
-
-        if (type == EntityType.ARMOR_STAND || entity instanceof Display)
-            updateMeta();
-    }
-
-    @Override
     public void setPositionRaw(double x, double y, double z, float yaw, float pitch) {
         ClientboundTeleportEntityPacket packet = new ClientboundTeleportEntityPacket(entity.getId(), PositionMoveRotation.of(entity), Set.of(), entity.onGround());
         ClientboundRotateHeadPacket head = new ClientboundRotateHeadPacket(entity, convertYaw(yaw));

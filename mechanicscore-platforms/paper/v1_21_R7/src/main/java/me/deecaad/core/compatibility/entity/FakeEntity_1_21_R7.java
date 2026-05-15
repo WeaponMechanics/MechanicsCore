@@ -191,29 +191,6 @@ public class FakeEntity_1_21_R7 extends FakeEntity {
     }
 
     @Override
-    public void setRotation(float yaw, float pitch) {
-        if (offset != null) {
-            yaw += offset.getYaw();
-            pitch += offset.getPitch();
-        }
-
-        location.setYaw(yaw);
-        location.setPitch(pitch);
-        entity.setYHeadRot(yaw);
-        entity.setXRot(yaw);
-        entity.setYRot(pitch);
-
-        byte byteYaw = convertYaw(yaw);
-        Rot packet = new Rot(cache, byteYaw, convertPitch(pitch), false);
-        ClientboundRotateHeadPacket head = new ClientboundRotateHeadPacket(entity, byteYaw);
-
-        sendPackets(packet, head);
-
-        if (type == EntityType.ARMOR_STAND || entity instanceof Display)
-            updateMeta();
-    }
-
-    @Override
     public void setPositionRaw(double x, double y, double z, float yaw, float pitch) {
         ClientboundTeleportEntityPacket packet = new ClientboundTeleportEntityPacket(entity.getId(), PositionMoveRotation.of(entity), Set.of(), entity.onGround());
         ClientboundRotateHeadPacket head = new ClientboundRotateHeadPacket(entity, convertYaw(yaw));
@@ -235,7 +212,7 @@ public class FakeEntity_1_21_R7 extends FakeEntity {
             ? new ClientboundAddEntityPacket(entity, serverEntity)
             : new ClientboundAddEntityPacket(entity, serverEntity, type == EntityType.FALLING_BLOCK ? Block.getId(block) : 0);
 
-        ClientboundSetEntityDataPacket meta = new ClientboundSetEntityDataPacket(cache, getEntityData(entity.getEntityData(), false));
+        ClientboundSetEntityDataPacket meta = new ClientboundSetEntityDataPacket(cache, getEntityData(entity.getEntityData(), true));
         ClientboundRotateHeadPacket head = new ClientboundRotateHeadPacket(entity, convertYaw(getYaw()));
         Rot look = new Rot(cache, convertYaw(getYaw()), convertPitch(getPitch()), false);
         ClientboundSetEntityMotionPacket velocity = new ClientboundSetEntityMotionPacket(cache, new Vec3(motion.getX(), motion.getY(), motion.getZ()));
@@ -257,6 +234,8 @@ public class FakeEntity_1_21_R7 extends FakeEntity {
 
             connections.add(connection);
         }
+
+        showChildren();
     }
 
     @Override
@@ -278,6 +257,7 @@ public class FakeEntity_1_21_R7 extends FakeEntity {
             connection.send(equipment);
 
         connections.add(connection);
+        showChildren(player);
     }
 
     @Override
@@ -292,6 +272,8 @@ public class FakeEntity_1_21_R7 extends FakeEntity {
     public void remove() {
         sendPackets(new ClientboundRemoveEntitiesPacket(cache));
         connections.clear();
+        removeChildren();
+        stopTicking();
     }
 
     @Override
@@ -304,6 +286,8 @@ public class FakeEntity_1_21_R7 extends FakeEntity {
         if (!connections.remove(connection)) {
             throw new IllegalStateException("Tried to remove player that was never added");
         }
+
+        removeChildren(player);
     }
 
     @Override

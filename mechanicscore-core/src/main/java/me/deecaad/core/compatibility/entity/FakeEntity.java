@@ -1,5 +1,8 @@
 package me.deecaad.core.compatibility.entity;
 
+import me.deecaad.core.utils.Transform;
+import me.deecaad.core.utils.TransformLike;
+import me.deecaad.core.utils.TransformTicker;
 import org.bukkit.EntityEffect;
 import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
@@ -9,6 +12,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Quaterniond;
+
+import java.util.function.Consumer;
 
 import static me.deecaad.core.utils.NumberUtil.square;
 
@@ -21,7 +27,7 @@ import static me.deecaad.core.utils.NumberUtil.square;
  * per player. After changing a visual effect (metadata + display name + gravity + etc), a metadata
  * packet must be sent using {@link #updateMeta()}.
  */
-public abstract class FakeEntity {
+public abstract class FakeEntity implements TransformLike {
 
     // Use these constants to change an entity's metadata. Note that '2' is
     // intentionally missing due to it being unused in new MC versions.
@@ -34,15 +40,118 @@ public abstract class FakeEntity {
     public static final int GLIDING_FLAG = 7;
 
     protected final EntityType type;
+    protected final Transform transform;
     protected Location location;
     protected Location offset;
     protected Vector motion;
     protected int cache = -1;
+    private boolean forceTeleport;
+    private TransformTicker ticker;
 
     public FakeEntity(@NotNull Location location, @NotNull EntityType type) {
         this.type = type;
         this.location = new Location(location.getWorld(), 0, 0, 0);
         this.motion = new Vector();
+        this.transform = new Transform(this,
+            new Vector(location.getX(), location.getY(), location.getZ()),
+            Transform.fromYawPitch(location.getYaw(), location.getPitch()));
+    }
+
+    /**
+     * Returns the {@link Transform} that drives this entity's position and rotation. The transform
+     * is the source of truth -- attach it as a child of another transform to build hierarchies of
+     * fake entities that move together.
+     *
+     * @return The non-null transform.
+     */
+    @Override
+    public @NotNull Transform getTransform() {
+        return transform;
+    }
+
+    /**
+     * Materializes the current world {@link #getTransform() transform} into move/teleport packets.
+     * Called automatically when this entity (or a parent) is moved.
+     */
+    @Override
+    public final void applyTransform() {
+        Vector world = transform.getPosition();
+        Quaterniond rotation = transform.getRotation();
+        double x = world.getX();
+        double y = world.getY();
+        double z = world.getZ();
+        float yaw = Transform.yaw(rotation);
+        float pitch = Transform.pitch(rotation);
+
+        if (offset != null) {
+            x += offset.getX();
+            y += offset.getY();
+            z += offset.getZ();
+            yaw += offset.getYaw();
+            pitch += offset.getPitch();
+        }
+
+        boolean raw = forceTeleport;
+        forceTeleport = false;
+        double lengthSquared = raw ? 0.0 : square(x - location.getX()) + square(y - location.getY()) + square(z - location.getZ());
+
+        if (raw || lengthSquared == 0.0 || lengthSquared > 64.0) {
+            setLocation(x, y, z, yaw, pitch);
+            setPositionRaw(x, y, z, yaw, pitch);
+        } else {
+            setPositionRotation(x - location.getX(), y - location.getY(), z - location.getZ(), yaw, pitch);
+            setLocation(x, y, z, yaw, pitch);
+        }
+
+        if (type == EntityType.ARMOR_STAND)
+            updateMeta();
+    }
+
+    /**
+     * Starts driving this entity's transform tree once per tick. Required for hierarchies that
+     * change continuously (children of an {@link me.deecaad.core.utils.EntityTransform}, animated
+     * transforms). Call {@link #stopTicking()} when the entity is removed.
+     */
+    public void startTicking() {
+        if (ticker == null)
+            ticker = new TransformTicker(this, location);
+        ticker.start();
+    }
+
+    /**
+     * Stops the per-tick driver started by {@link #startTicking()}.
+     */
+    public void stopTicking() {
+        if (ticker != null)
+            ticker.stop();
+    }
+
+    // Cascade helpers for version classes to call from show/remove. They walk the transform
+    // subtree, traversing through plain Transform nodes to reach deeper fake entities.
+
+    protected final void showChildren() {
+        forEachFakeChild(transform, FakeEntity::show);
+    }
+
+    protected final void showChildren(@NotNull Player player) {
+        forEachFakeChild(transform, child -> child.show(player));
+    }
+
+    protected final void removeChildren() {
+        forEachFakeChild(transform, FakeEntity::remove);
+    }
+
+    protected final void removeChildren(@NotNull Player player) {
+        forEachFakeChild(transform, child -> child.remove(player));
+    }
+
+    private static void forEachFakeChild(@NotNull Transform node, @NotNull Consumer<FakeEntity> action) {
+        for (TransformLike child : node.getChildren()) {
+            if (child instanceof FakeEntity fakeEntity)
+                action.accept(fakeEntity);
+            else
+                forEachFakeChild(child.getTransform(), action);
+        }
     }
 
     public EntityType getType() {
@@ -188,15 +297,15 @@ public abstract class FakeEntity {
     public abstract void setMotion(double dx, double dy, double dz);
 
     /**
-     * Sends an entity rotation packet to all players who can see this entity.
-     * <p>
-     * Implementing classes should set <code>this.location</code> using {@link Location#setYaw(float)}
-     * and {@link Location#setPitch(float)}.
+     * Sets the absolute rotation of the entity, updating the {@link #getTransform() transform} and
+     * sending the resulting packets to all viewers.
      *
      * @param yaw The absolute yaw rotation of the entity.
      * @param pitch The absolute pitch rotation of the entity.
      */
-    public abstract void setRotation(float yaw, float pitch);
+    public final void setRotation(float yaw, float pitch) {
+        transform.setRotation(Transform.fromYawPitch(yaw, pitch));
+    }
 
     /**
      * Shorthand for calling {@link #setPosition(double, double, double, float, float)}.
@@ -250,29 +359,8 @@ public abstract class FakeEntity {
      * @param raw true to always use a teleport packet.
      */
     public final void setPosition(double x, double y, double z, float yaw, float pitch, boolean raw) {
-        if (offset != null) {
-            x += offset.getX();
-            y += offset.getY();
-            z += offset.getZ();
-            yaw += offset.getYaw();
-            pitch += offset.getPitch();
-        }
-
-        double lengthSquared = raw ? 0.0 : square(x - location.getX()) + square(y - location.getY()) + square(z - location.getZ());
-
-        // When the change of position >8, then we cannot use the move-look
-        // packet since it is limited by the size of a short. When we cannot
-        // use move-look, we use a teleport packet instead.
-        if (raw || lengthSquared == 0.0 || lengthSquared > 64.0) {
-            setLocation(x, y, z, yaw, pitch);
-            setPositionRaw(x, y, z, yaw, pitch);
-        } else {
-            setPositionRotation(x - location.getX(), y - location.getY(), z - location.getZ(), yaw, pitch);
-            setLocation(x, y, z, yaw, pitch);
-        }
-
-        if (type == EntityType.ARMOR_STAND)
-            updateMeta();
+        this.forceTeleport = raw;
+        transform.set(new Vector(x, y, z), Transform.fromYawPitch(yaw, pitch));
     }
 
     // private since nobody should use this method
@@ -312,7 +400,7 @@ public abstract class FakeEntity {
 
     protected final byte convertPitch(float degrees) {
         degrees *= 256.0f / 360.0f;
-        if (!type.isAlive()) {
+        if (!type.isAlive() && !isDisplay()) {
             return (byte) -degrees;
         }
         return (byte) degrees;
@@ -324,12 +412,16 @@ public abstract class FakeEntity {
             case ARROW -> (byte) -degrees;
             case WITHER_SKULL, ENDER_DRAGON -> (byte) (degrees - 128.0f);
             default -> {
-                if (!type.isAlive() && type != EntityType.ARMOR_STAND) {
+                if (!type.isAlive() && type != EntityType.ARMOR_STAND && !isDisplay()) {
                     yield (byte) (degrees - 64.0f);
                 }
                 yield (byte) degrees;
             }
         };
+    }
+
+    private boolean isDisplay() {
+        return type == EntityType.BLOCK_DISPLAY || type == EntityType.ITEM_DISPLAY || type == EntityType.TEXT_DISPLAY;
     }
 
     /**

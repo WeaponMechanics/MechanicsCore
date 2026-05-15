@@ -1,9 +1,15 @@
 package me.deecaad.core;
 
+import com.cjcrafter.foliascheduler.TaskImplementation;
 import dev.jorel.commandapi.CommandAPICommand;
 import me.deecaad.core.commands.CommandHelpBuilder;
+import me.deecaad.core.compatibility.CompatibilityAPI;
+import me.deecaad.core.compatibility.entity.EntityCompatibility;
+import me.deecaad.core.compatibility.entity.FakeEntity;
+import me.deecaad.core.utils.EntityTransform;
 import me.deecaad.core.utils.StringUtil;
 import me.deecaad.core.utils.TableBuilder;
+import me.deecaad.core.utils.TransformTicker;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -12,14 +18,25 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Display;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
+import org.bukkit.util.Transformation;
+import org.bukkit.util.Vector;
+import org.joml.Quaterniond;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.newline;
@@ -51,6 +68,29 @@ public final class MechanicsCoreCommand {
                     .withShortDescription("Shows all plugins currently using MechanicsCore")
                     .executesPlayer((player, args) -> {
                         listPlugins(player);
+                    })))
+            .withSubcommand(new CommandAPICommand("test")
+                .withPermission("mechanicscore.commands.test")
+                .withShortDescription("Spawns fake display entities to verify the transform API")
+                .withSubcommand(new CommandAPICommand("display")
+                    .withShortDescription("Spawns a block, item, and text display in front of you")
+                    .executesPlayer((player, args) -> {
+                        testDisplay(player);
+                    }))
+                .withSubcommand(new CommandAPICommand("orbit")
+                    .withShortDescription("Spawns a parent display with child displays orbiting it")
+                    .executesPlayer((player, args) -> {
+                        testOrbit(player);
+                    }))
+                .withSubcommand(new CommandAPICommand("follow")
+                    .withShortDescription("Spawns displays that follow you via an EntityTransform")
+                    .executesPlayer((player, args) -> {
+                        testFollow(player);
+                    }))
+                .withSubcommand(new CommandAPICommand("clear")
+                    .withShortDescription("Removes all spawned test entities")
+                    .executesPlayer((player, args) -> {
+                        testClear(player);
                     })));
 
         CommandHelpBuilder helpBuilder = new CommandHelpBuilder(Style.style(NamedTextColor.GOLD), Style.style(NamedTextColor.GRAY));
@@ -171,6 +211,138 @@ public final class MechanicsCoreCommand {
 
         sender.sendMessage(colorComponent.append(decorationComponent).append(miscComponent).append(new TableBuilder.Line('=', Style.style(NamedTextColor.GRAY, TextDecoration.STRIKETHROUGH))
             .build()));
+    }
+
+    private static final List<FakeEntity> testEntities = new ArrayList<>();
+    private static final List<TransformTicker> testTickers = new ArrayList<>();
+    private static final List<TaskImplementation<Void>> testTasks = new ArrayList<>();
+
+    private static void testDisplay(Player player) {
+        EntityCompatibility compat = CompatibilityAPI.getEntityCompatibility();
+        try {
+            Location base = inFront(player, 3);
+            Vector right = base.getDirection().crossProduct(new Vector(0, 1, 0)).normalize();
+
+            var block = compat.generateFakeBlockDisplay(base.clone().subtract(right), Material.LODESTONE.createBlockData());
+            block.setTransformation(scale(1.0f));
+            block.setBillboard(Display.Billboard.FIXED);
+            block.updateMeta();
+            block.show();
+            testEntities.add(block);
+
+            var item = compat.generateFakeItemDisplay(base.clone(), new ItemStack(Material.DIAMOND_SWORD));
+            item.setTransformation(scale(1.0f));
+            item.setBillboard(Display.Billboard.VERTICAL);
+            item.updateMeta();
+            item.show();
+            testEntities.add(item);
+
+            var text = compat.generateFakeTextDisplay(base.clone().add(right), text("MechanicsCore", NamedTextColor.GOLD));
+            text.setBillboard(Display.Billboard.CENTER);
+            text.setSeeThrough(true);
+            text.updateMeta();
+            text.show();
+            testEntities.add(text);
+
+            player.sendMessage(text("Spawned 3 display entities. Use /mechanicscore test clear to remove.", NamedTextColor.GREEN));
+        } catch (UnsupportedOperationException e) {
+            player.sendMessage(text("Fake display entities are not supported on this server version.", NamedTextColor.RED));
+        }
+    }
+
+    private static void testOrbit(Player player) {
+        EntityCompatibility compat = CompatibilityAPI.getEntityCompatibility();
+        try {
+            Location center = inFront(player, 4);
+
+            var parent = compat.generateFakeBlockDisplay(center, Material.SEA_LANTERN.createBlockData());
+            parent.setTransformation(scale(0.5f));
+            parent.setBillboard(Display.Billboard.FIXED);
+            parent.updateMeta();
+
+            int count = 6;
+            double radius = 2.0;
+            for (int i = 0; i < count; i++) {
+                double angle = 2 * Math.PI * i / count;
+                Location childLoc = center.clone().add(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+                var child = compat.generateFakeItemDisplay(childLoc, new ItemStack(Material.AMETHYST_SHARD));
+                child.setTransformation(scale(0.75f));
+                child.setBillboard(Display.Billboard.FIXED);
+                child.setTeleportDuration(3);
+                child.updateMeta();
+                parent.getTransform().addChild(child);
+            }
+
+            parent.show(); // cascades to children
+            testEntities.add(parent); // remove() cascades to children
+
+            Consumer<TaskImplementation<Void>> spin = task ->
+                parent.getTransform().applyRotation(new Quaterniond().rotateY(Math.toRadians(4)));
+            testTasks.add(MechanicsCore.getInstance().getFoliaScheduler().region(center).runAtFixedRate(spin, 1, 1));
+
+            player.sendMessage(text("Spawned an orbiting hierarchy (1 parent + " + count + " children).", NamedTextColor.GREEN));
+        } catch (UnsupportedOperationException e) {
+            player.sendMessage(text("Fake display entities are not supported on this server version.", NamedTextColor.RED));
+        }
+    }
+
+    private static void testFollow(Player player) {
+        EntityCompatibility compat = CompatibilityAPI.getEntityCompatibility();
+        try {
+            EntityTransform playerTransform = new EntityTransform(player);
+            Location loc = player.getLocation();
+
+            var marker = compat.generateFakeBlockDisplay(loc.clone().add(0, 2.5, 0), Material.GLOWSTONE.createBlockData());
+            marker.setTransformation(scale(0.4f));
+            marker.setBillboard(Display.Billboard.FIXED);
+            marker.setTeleportDuration(3);
+            marker.updateMeta();
+
+            var label = compat.generateFakeTextDisplay(loc.clone().add(0, 3.2, 0), text(player.getName(), NamedTextColor.AQUA));
+            label.setBillboard(Display.Billboard.CENTER);
+            label.setSeeThrough(true);
+            label.setTeleportDuration(3);
+            label.updateMeta();
+
+            playerTransform.addChild(marker);
+            playerTransform.addChild(label);
+            marker.show();
+            label.show();
+            testEntities.add(marker);
+            testEntities.add(label);
+
+            TransformTicker ticker = new TransformTicker(playerTransform, loc);
+            ticker.start();
+            testTickers.add(ticker);
+
+            player.sendMessage(text("Spawned displays following you. They orbit as you turn.", NamedTextColor.GREEN));
+        } catch (UnsupportedOperationException e) {
+            player.sendMessage(text("Fake display entities are not supported on this server version.", NamedTextColor.RED));
+        }
+    }
+
+    private static void testClear(Player player) {
+        for (TransformTicker ticker : testTickers)
+            ticker.stop();
+        for (TaskImplementation<Void> task : testTasks)
+            task.cancel();
+        for (FakeEntity entity : testEntities)
+            entity.remove();
+
+        int count = testEntities.size();
+        testTickers.clear();
+        testTasks.clear();
+        testEntities.clear();
+        player.sendMessage(text("Cleared " + count + " test entities.", NamedTextColor.GREEN));
+    }
+
+    private static Location inFront(Player player, double distance) {
+        Location eye = player.getEyeLocation();
+        return eye.add(eye.getDirection().multiply(distance));
+    }
+
+    private static Transformation scale(float scale) {
+        return new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(scale, scale, scale), new Quaternionf());
     }
 
     private static class ColorData {
