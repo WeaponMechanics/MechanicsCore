@@ -9,7 +9,7 @@ import me.deecaad.core.compatibility.entity.FakeEntity;
 import me.deecaad.core.utils.EntityTransform;
 import me.deecaad.core.utils.StringUtil;
 import me.deecaad.core.utils.TableBuilder;
-import me.deecaad.core.utils.TransformTicker;
+import me.deecaad.core.tick.TransformTree;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -214,7 +214,7 @@ public final class MechanicsCoreCommand {
     }
 
     private static final List<FakeEntity> testEntities = new ArrayList<>();
-    private static final List<TransformTicker> testTickers = new ArrayList<>();
+    private static final List<TransformTree> testTrees = new ArrayList<>();
     private static final List<TaskImplementation<Void>> testTasks = new ArrayList<>();
 
     private static void testDisplay(Player player) {
@@ -311,9 +311,9 @@ public final class MechanicsCoreCommand {
             testEntities.add(marker);
             testEntities.add(label);
 
-            TransformTicker ticker = new TransformTicker(playerTransform, loc);
-            ticker.start();
-            testTickers.add(ticker);
+            TransformTree tree = new TransformTree(playerTransform, loc);
+            MechanicsCore.getInstance().getTickManager().add(tree);
+            testTrees.add(tree);
 
             player.sendMessage(text("Spawned displays following you. They orbit as you turn.", NamedTextColor.GREEN));
         } catch (UnsupportedOperationException e) {
@@ -322,15 +322,15 @@ public final class MechanicsCoreCommand {
     }
 
     private static void testClear(Player player) {
-        for (TransformTicker ticker : testTickers)
-            ticker.stop();
+        for (TransformTree tree : testTrees)
+            tree.stop();
         for (TaskImplementation<Void> task : testTasks)
             task.cancel();
         for (FakeEntity entity : testEntities)
             entity.remove();
 
         int count = testEntities.size();
-        testTickers.clear();
+        testTrees.clear();
         testTasks.clear();
         testEntities.clear();
         player.sendMessage(text("Cleared " + count + " test entities.", NamedTextColor.GREEN));

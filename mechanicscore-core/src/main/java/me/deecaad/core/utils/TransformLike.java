@@ -24,9 +24,10 @@ public interface TransformLike {
     }
 
     /**
-     * Called once per tick by a {@link TransformTicker}. Dynamic transforms (ones that track an
-     * external source or animate over time) override this to recompute their local transform and
-     * propagate the change to children. Implementations must not restructure the tree from here.
+     * Called once per tick by a ticking system (e.g. {@code me.deecaad.core.tick.TickManager} via
+     * {@code TransformTree}). Dynamic transforms (ones that track an external source or animate
+     * over time) override this to recompute their local transform and propagate the change to
+     * children. Implementations must not restructure the tree from here.
      */
     default void update() {
     }

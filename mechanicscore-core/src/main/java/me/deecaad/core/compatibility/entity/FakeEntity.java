@@ -1,8 +1,9 @@
 package me.deecaad.core.compatibility.entity;
 
+import me.deecaad.core.MechanicsCore;
+import me.deecaad.core.tick.TransformTree;
 import me.deecaad.core.utils.Transform;
 import me.deecaad.core.utils.TransformLike;
-import me.deecaad.core.utils.TransformTicker;
 import org.bukkit.EntityEffect;
 import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
@@ -46,7 +47,7 @@ public abstract class FakeEntity implements TransformLike {
     protected Vector motion;
     protected int cache = -1;
     private boolean forceTeleport;
-    private TransformTicker ticker;
+    private TransformTree tickTree;
 
     public FakeEntity(@NotNull Location location, @NotNull EntityType type) {
         this.type = type;
@@ -113,17 +114,20 @@ public abstract class FakeEntity implements TransformLike {
      * transforms). Call {@link #stopTicking()} when the entity is removed.
      */
     public void startTicking() {
-        if (ticker == null)
-            ticker = new TransformTicker(this, location);
-        ticker.start();
+        if (tickTree != null)
+            return;
+        tickTree = new TransformTree(this, location);
+        MechanicsCore.getInstance().getTickManager().add(tickTree);
     }
 
     /**
      * Stops the per-tick driver started by {@link #startTicking()}.
      */
     public void stopTicking() {
-        if (ticker != null)
-            ticker.stop();
+        if (tickTree != null) {
+            tickTree.stop();
+            tickTree = null;
+        }
     }
 
     // Cascade helpers for version classes to call from show/remove. They walk the transform

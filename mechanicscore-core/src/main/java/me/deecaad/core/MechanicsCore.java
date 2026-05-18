@@ -12,6 +12,7 @@ import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerInstancer;
 import me.deecaad.core.listeners.ItemCraftListener;
 import me.deecaad.core.listeners.MechanicsCastListener;
+import me.deecaad.core.tick.TickManager;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -29,6 +30,8 @@ public class MechanicsCore extends MechanicsPlugin {
 
     private static MechanicsCore INSTANCE;
 
+    private TickManager tickManager;
+
     public void onLoad() {
         INSTANCE = this;
         CommandAPI.onLoad(new CommandAPIPaperConfig(this));
@@ -41,6 +44,29 @@ public class MechanicsCore extends MechanicsPlugin {
     public void onEnable() {
         CommandAPI.onEnable();
         super.onEnable();
+    }
+
+    @Override
+    public void init() {
+        super.init();
+        tickManager = TickManager.create(this, getFoliaScheduler());
+    }
+
+    @Override
+    public void onDisable() {
+        if (tickManager != null) {
+            tickManager.shutdown();
+            tickManager = null;
+        }
+        super.onDisable();
+    }
+
+    /**
+     * @return The shared tick manager for this plugin (drives all registered {@link
+     *         me.deecaad.core.tick.Tickable}s).
+     */
+    public @NotNull TickManager getTickManager() {
+        return tickManager;
     }
 
     /**

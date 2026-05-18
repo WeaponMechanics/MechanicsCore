@@ -204,7 +204,7 @@ public class Transform implements TransformLike {
 
     /**
      * Walks this transform and its descendants, calling {@link TransformLike#update()} on each.
-     * Invoked once per tick by a {@link TransformTicker}.
+     * Intended to be invoked once per tick by an external ticking system.
      */
     public void tick() {
         owner.update();
