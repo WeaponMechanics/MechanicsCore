@@ -27,6 +27,7 @@ public abstract class AbstractEmitter<S extends EmitterSettings> implements Emit
     private @Nullable World world;
     private int age;
     private double accumulator;
+    private volatile boolean stopped;
 
     protected AbstractEmitter(@NotNull S settings) {
         this.settings = settings;
@@ -74,8 +75,15 @@ public abstract class AbstractEmitter<S extends EmitterSettings> implements Emit
         return Math.min(1.0, age / (double) d);
     }
 
+    /** Requests early termination; the next tick returns {@code true}. */
+    public void stop() {
+        this.stopped = true;
+    }
+
     @Override
     public final boolean tick() {
+        if (stopped)
+            return true;
         if (world == null)
             throw new IllegalStateException("Emitter world not set; call spawnAt(...) or setWorld(...) before adding to a TickManager");
 

@@ -6,9 +6,26 @@ import me.deecaad.core.commands.CommandHelpBuilder;
 import me.deecaad.core.compatibility.CompatibilityAPI;
 import me.deecaad.core.compatibility.entity.EntityCompatibility;
 import me.deecaad.core.compatibility.entity.FakeEntity;
+import me.deecaad.core.emitter.AbstractEmitter;
+import me.deecaad.core.emitter.DisplayEntityEmitter;
+import me.deecaad.core.emitter.DisplayEntityEmitterSettings;
+import me.deecaad.core.emitter.ParticleEmitter;
+import me.deecaad.core.emitter.ParticleEmitterSettings;
+import me.deecaad.core.file.serializers.Direction;
+import me.deecaad.core.transition.Easing;
+import me.deecaad.core.transition.Interpolators;
+import me.deecaad.core.transition.Keyframe;
+import me.deecaad.core.transition.Transition;
 import me.deecaad.core.utils.EntityTransform;
 import me.deecaad.core.utils.StringUtil;
 import me.deecaad.core.utils.TableBuilder;
+import me.deecaad.core.utils.shape.CircleShape;
+import me.deecaad.core.utils.shape.ConeShape;
+import me.deecaad.core.utils.shape.LineShape;
+import me.deecaad.core.utils.shape.PointShape;
+import me.deecaad.core.utils.shape.Shape;
+import me.deecaad.core.utils.shape.SphereShape;
+import me.deecaad.core.tick.TickManager;
 import me.deecaad.core.tick.TransformTree;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -20,8 +37,10 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
@@ -87,6 +106,33 @@ public final class MechanicsCoreCommand {
                     .executesPlayer((player, args) -> {
                         testFollow(player);
                     }))
+                .withSubcommand(new CommandAPICommand("emitter")
+                    .withShortDescription("Spawns emitters to verify the emitter system")
+                    .withSubcommand(new CommandAPICommand("fountain")
+                        .withShortDescription("Continuous flame fountain from a sphere shape")
+                        .executesPlayer((player, args) -> {
+                            testEmitterFountain(player);
+                        }))
+                    .withSubcommand(new CommandAPICommand("burst")
+                        .withShortDescription("Burst-mode emitter with a particle-type transition")
+                        .executesPlayer((player, args) -> {
+                            testEmitterBurst(player);
+                        }))
+                    .withSubcommand(new CommandAPICommand("shapes")
+                        .withShortDescription("One emitter per shape primitive, in a row")
+                        .executesPlayer((player, args) -> {
+                            testEmitterShapes(player);
+                        }))
+                    .withSubcommand(new CommandAPICommand("display")
+                        .withShortDescription("Display entity emitter with scale + block-cycle transitions")
+                        .executesPlayer((player, args) -> {
+                            testEmitterDisplay(player);
+                        }))
+                    .withSubcommand(new CommandAPICommand("trail")
+                        .withShortDescription("Particle trail emitter parented to your EntityTransform")
+                        .executesPlayer((player, args) -> {
+                            testEmitterTrail(player);
+                        })))
                 .withSubcommand(new CommandAPICommand("clear")
                     .withShortDescription("Removes all spawned test entities")
                     .executesPlayer((player, args) -> {
@@ -216,6 +262,7 @@ public final class MechanicsCoreCommand {
     private static final List<FakeEntity> testEntities = new ArrayList<>();
     private static final List<TransformTree> testTrees = new ArrayList<>();
     private static final List<TaskImplementation<Void>> testTasks = new ArrayList<>();
+    private static final List<AbstractEmitter<?>> testEmitters = new ArrayList<>();
 
     private static void testDisplay(Player player) {
         EntityCompatibility compat = CompatibilityAPI.getEntityCompatibility();
@@ -321,19 +368,179 @@ public final class MechanicsCoreCommand {
         }
     }
 
+    private static void testEmitterFountain(Player player) {
+        Location origin = inFront(player, 2.5).subtract(0, 1, 0);
+
+        ParticleEmitterSettings settings = ParticleEmitterSettings.builder()
+            .particle(Particle.FLAME)
+            .countPerPoint(1)
+            .particleSpeed(0.3)
+            .shape(new SphereShape(0.4, true))
+            .direction(Direction.UP)
+            .speed(0.4)
+            .rate(5.0)
+            .durationTicks(200)
+            .build();
+
+        ParticleEmitter emitter = new ParticleEmitter(settings);
+        emitter.spawnAt(origin);
+        MechanicsCore.getInstance().getTickManager().add(emitter);
+        testEmitters.add(emitter);
+
+        player.sendMessage(text("Spawned a 10s flame fountain. /mechanicscore test clear to stop early.", NamedTextColor.GREEN));
+    }
+
+    private static void testEmitterBurst(Player player) {
+        Location origin = inFront(player, 3);
+        int duration = 100;
+
+        Transition<Particle> particleCycle = new Transition<>(
+            List.of(
+                new Keyframe<>(0.0, Particle.FLAME, Easing.LINEAR),
+                new Keyframe<>(0.5, Particle.SOUL_FIRE_FLAME, Easing.LINEAR),
+                new Keyframe<>(1.0, Particle.END_ROD, Easing.LINEAR)),
+            Interpolators.stepped(),
+            duration);
+
+        ParticleEmitterSettings settings = ParticleEmitterSettings.builder()
+            .particle(Particle.FLAME)
+            .countPerPoint(1)
+            .particleSpeed(0.6)
+            .shape(new PointShape())
+            .direction(Direction.UP)
+            .speed(0.0)
+            .burst(30, 20)
+            .durationTicks(duration)
+            .particleTransition(particleCycle)
+            .build();
+
+        ParticleEmitter emitter = new ParticleEmitter(settings);
+        emitter.spawnAt(origin);
+        MechanicsCore.getInstance().getTickManager().add(emitter);
+        testEmitters.add(emitter);
+
+        player.sendMessage(text("Spawned a 5s burst emitter (flame → soul fire → end rod).", NamedTextColor.GREEN));
+    }
+
+    private static void testEmitterShapes(Player player) {
+        Location base = inFront(player, 4);
+        Vector right = base.getDirection().crossProduct(new Vector(0, 1, 0)).normalize();
+
+        spawnShapeEmitter(base.clone().subtract(right.clone().multiply(2.5)), new SphereShape(0.6, false), Particle.HEART);
+        spawnShapeEmitter(base.clone().subtract(right.clone().multiply(0.8)), new CircleShape(0.8, CircleShape.Axis.Y), Particle.HAPPY_VILLAGER);
+        spawnShapeEmitter(base.clone().add(right.clone().multiply(0.8)), new ConeShape(Math.toRadians(20), 1.5), Particle.CRIT);
+        spawnShapeEmitter(base.clone().add(right.clone().multiply(2.5)), new LineShape(1.5), Particle.END_ROD);
+
+        player.sendMessage(text("Spawned 4 emitters: sphere, circle, cone, line.", NamedTextColor.GREEN));
+    }
+
+    private static void spawnShapeEmitter(Location origin, Shape shape, Particle particle) {
+        ParticleEmitterSettings settings = ParticleEmitterSettings.builder()
+            .particle(particle)
+            .countPerPoint(1)
+            .particleSpeed(0.0)
+            .shape(shape)
+            .direction(Direction.UP)
+            .speed(0.0)
+            .rate(2.0)
+            .durationTicks(200)
+            .build();
+
+        ParticleEmitter emitter = new ParticleEmitter(settings);
+        emitter.spawnAt(origin);
+        MechanicsCore.getInstance().getTickManager().add(emitter);
+        testEmitters.add(emitter);
+    }
+
+    private static void testEmitterDisplay(Player player) {
+        try {
+            Location origin = inFront(player, 4);
+            int itemLifetime = 40;
+
+            Transition<Vector3f> scalePulse = new Transition<>(
+                List.of(
+                    new Keyframe<>(0.0, new Vector3f(0, 0, 0), Easing.EASE_OUT),
+                    new Keyframe<>(0.25, new Vector3f(0.5f, 0.5f, 0.5f), Easing.LINEAR),
+                    new Keyframe<>(0.75, new Vector3f(0.5f, 0.5f, 0.5f), Easing.EASE_IN),
+                    new Keyframe<>(1.0, new Vector3f(0, 0, 0), Easing.LINEAR)),
+                Interpolators.VECTOR3F,
+                itemLifetime);
+
+            Transition<org.bukkit.block.data.BlockData> blockCycle = new Transition<>(
+                List.of(
+                    new Keyframe<>(0.0, Material.RED_STAINED_GLASS.createBlockData(), Easing.LINEAR),
+                    new Keyframe<>(0.25, Material.ORANGE_STAINED_GLASS.createBlockData(), Easing.LINEAR),
+                    new Keyframe<>(0.5, Material.YELLOW_STAINED_GLASS.createBlockData(), Easing.LINEAR),
+                    new Keyframe<>(0.75, Material.LIME_STAINED_GLASS.createBlockData(), Easing.LINEAR),
+                    new Keyframe<>(1.0, Material.BLUE_STAINED_GLASS.createBlockData(), Easing.LINEAR)),
+                Interpolators.stepped(),
+                itemLifetime);
+
+            DisplayEntityEmitterSettings settings = DisplayEntityEmitterSettings.builder()
+                .displayType(EntityType.BLOCK_DISPLAY)
+                .displayData(Material.RED_STAINED_GLASS.createBlockData())
+                .shape(new SphereShape(1.2, true))
+                .direction(Direction.UP)
+                .speed(0.15)
+                .rate(0.5)
+                .durationTicks(200)
+                .itemLifetimeTicks(itemLifetime)
+                .liveCap(40)
+                .scale(scalePulse)
+                .blockCycle(blockCycle)
+                .build();
+
+            DisplayEntityEmitter emitter = new DisplayEntityEmitter(settings);
+            emitter.spawnAt(origin);
+            MechanicsCore.getInstance().getTickManager().add(emitter);
+            testEmitters.add(emitter);
+
+            player.sendMessage(text("Spawned a display emitter (stained glass cycles + scale pulse).", NamedTextColor.GREEN));
+        } catch (UnsupportedOperationException e) {
+            player.sendMessage(text("Fake display entities are not supported on this server version.", NamedTextColor.RED));
+        }
+    }
+
+    private static void testEmitterTrail(Player player) {
+        ParticleEmitterSettings settings = ParticleEmitterSettings.builder()
+            .particle(Particle.FLAME)
+            .countPerPoint(1)
+            .particleSpeed(0.0)
+            .shape(new SphereShape(0.25, false))
+            .direction(Direction.UP)
+            .speed(0.0)
+            .rate(3.0)
+            .durationTicks(-1)
+            .build();
+
+        ParticleEmitter trail = new ParticleEmitter(settings);
+        trail.spawnAt(player.getLocation().add(0, 1, 0));
+        MechanicsCore.getInstance().getTickManager().add(trail);
+        testEmitters.add(trail);
+
+        Consumer<TaskImplementation<Void>> follow = t ->
+            trail.getTransform().setPosition(player.getLocation().toVector().add(new Vector(0, 1, 0)));
+        testTasks.add(MechanicsCore.getInstance().getFoliaScheduler().region(player.getLocation()).runAtFixedRate(follow, 1, 1));
+
+        player.sendMessage(text("Spawned a flame trail following your position. /mechanicscore test clear to stop.", NamedTextColor.GREEN));
+    }
+
     private static void testClear(Player player) {
         for (TransformTree tree : testTrees)
             tree.stop();
         for (TaskImplementation<Void> task : testTasks)
             task.cancel();
+        for (AbstractEmitter<?> emitter : testEmitters)
+            emitter.stop();
         for (FakeEntity entity : testEntities)
             entity.remove();
 
-        int count = testEntities.size();
+        int count = testEntities.size() + testEmitters.size();
         testTrees.clear();
         testTasks.clear();
+        testEmitters.clear();
         testEntities.clear();
-        player.sendMessage(text("Cleared " + count + " test entities.", NamedTextColor.GREEN));
+        player.sendMessage(text("Cleared " + count + " test entities/emitters.", NamedTextColor.GREEN));
     }
 
     private static Location inFront(Player player, double distance) {
