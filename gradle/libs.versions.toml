@@ -27,7 +27,7 @@ kotlin = "2.3.21"
 xSeries = "13.6.0"
 
 # Testing dependencies
-junit = "5.11.4"
+junit = "6.1.0"
 
 
 [libraries]
