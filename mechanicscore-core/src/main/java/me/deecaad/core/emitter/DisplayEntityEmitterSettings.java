@@ -9,16 +9,20 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaterniond;
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
 
 import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
- * {@link EmitterSettings} for a {@link DisplayEntityEmitter}. Adds the display type
- * ({@code BLOCK_DISPLAY}, {@code ITEM_DISPLAY}, or {@code TEXT_DISPLAY}), the initial display data,
- * and per-entity transitions for transform (translation/scale/rotation), velocity, and stepped
- * block/item cycling.
+ * {@link EmitterSettings} for a {@link DisplayEntityEmitter}. Adds the display type, initial data,
+ * per-entity transitions (transform/velocity/cycles), physics (acceleration, drag), per-entity
+ * randomization (lifetime/scale/cycle phase), spin, and optional kill hooks.
  */
 public final class DisplayEntityEmitterSettings extends EmitterSettings {
+
+    private static final Vector3f ZERO = new Vector3f();
 
     private final EntityType displayType;
     private final Object displayData;
@@ -28,6 +32,19 @@ public final class DisplayEntityEmitterSettings extends EmitterSettings {
     private final @Nullable Transition<Vector> velocity;
     private final @Nullable Transition<BlockData> blockCycle;
     private final @Nullable Transition<ItemStack> itemCycle;
+
+    private final Vector3f acceleration;
+    private final double drag;
+
+    private final int lifetimeJitterTicks;
+    private final Vector3f scaleJitter;
+    private final int cyclePhaseJitterTicks;
+
+    private final @Nullable Vector3f spinAxis;
+    private final double spinRadiansPerTick;
+
+    private final @Nullable Predicate<EmittedDisplay> killWhen;
+    private final @Nullable Consumer<EmittedDisplay> onKilled;
 
     private DisplayEntityEmitterSettings(@NotNull Builder b) {
         super(b);
@@ -44,6 +61,47 @@ public final class DisplayEntityEmitterSettings extends EmitterSettings {
         this.velocity = b.velocity;
         this.blockCycle = b.blockCycle;
         this.itemCycle = b.itemCycle;
+
+        this.acceleration = new Vector3f(b.acceleration);
+        if (b.drag < 0.0 || b.drag > 1.0)
+            throw new IllegalArgumentException("drag must be in [0, 1], got " + b.drag);
+        this.drag = b.drag;
+
+        if (b.lifetimeJitterTicks < 0)
+            throw new IllegalArgumentException("lifetimeJitterTicks must be >= 0, got " + b.lifetimeJitterTicks);
+        if (b.lifetimeJitterTicks >= b.emittedLifetimeTicks)
+            throw new IllegalArgumentException(
+                "lifetimeJitterTicks (" + b.lifetimeJitterTicks + ") must be < emittedLifetimeTicks ("
+                    + b.emittedLifetimeTicks + ") so the minimum lifetime stays >= 1");
+        this.lifetimeJitterTicks = b.lifetimeJitterTicks;
+        this.scaleJitter = new Vector3f(b.scaleJitter);
+        if (b.cyclePhaseJitterTicks < 0)
+            throw new IllegalArgumentException("cyclePhaseJitterTicks must be >= 0, got " + b.cyclePhaseJitterTicks);
+        this.cyclePhaseJitterTicks = b.cyclePhaseJitterTicks;
+
+        if (b.spinAxis != null) {
+            if (b.spinAxis.lengthSquared() < 1e-12f)
+                throw new IllegalArgumentException("spinAxis must be non-zero");
+            this.spinAxis = new Vector3f(b.spinAxis).normalize();
+        } else {
+            this.spinAxis = null;
+        }
+        this.spinRadiansPerTick = b.spinRadiansPerTick;
+
+        int lifetime = getEmittedLifetimeTicks();
+        validateTransitionDuration("translation", translation, lifetime);
+        validateTransitionDuration("scale", scale, lifetime);
+        validateTransitionDuration("rotation", rotation, lifetime);
+        validateTransitionDuration("velocity", velocity, lifetime);
+
+        this.killWhen = b.killWhen;
+        this.onKilled = b.onKilled;
+    }
+
+    private static void validateTransitionDuration(String name, @Nullable Transition<?> t, int lifetime) {
+        if (t != null && t.getDurationTicks() != lifetime)
+            throw new IllegalArgumentException(
+                name + " transition durationTicks (" + t.getDurationTicks() + ") must equal emittedLifetimeTicks (" + lifetime + ")");
     }
 
     public @NotNull EntityType getDisplayType() {
@@ -78,6 +136,42 @@ public final class DisplayEntityEmitterSettings extends EmitterSettings {
         return itemCycle;
     }
 
+    public @NotNull Vector3fc getAcceleration() {
+        return acceleration;
+    }
+
+    public double getDrag() {
+        return drag;
+    }
+
+    public int getLifetimeJitterTicks() {
+        return lifetimeJitterTicks;
+    }
+
+    public @NotNull Vector3fc getScaleJitter() {
+        return scaleJitter;
+    }
+
+    public int getCyclePhaseJitterTicks() {
+        return cyclePhaseJitterTicks;
+    }
+
+    public @Nullable Vector3fc getSpinAxis() {
+        return spinAxis;
+    }
+
+    public double getSpinRadiansPerTick() {
+        return spinRadiansPerTick;
+    }
+
+    public @Nullable Predicate<EmittedDisplay> getKillWhen() {
+        return killWhen;
+    }
+
+    public @Nullable Consumer<EmittedDisplay> getOnKilled() {
+        return onKilled;
+    }
+
     public static @NotNull Builder builder() {
         return new Builder();
     }
@@ -92,6 +186,19 @@ public final class DisplayEntityEmitterSettings extends EmitterSettings {
         private @Nullable Transition<Vector> velocity;
         private @Nullable Transition<BlockData> blockCycle;
         private @Nullable Transition<ItemStack> itemCycle;
+
+        private Vector3f acceleration = new Vector3f(ZERO);
+        private double drag = 0.0;
+
+        private int lifetimeJitterTicks = 0;
+        private Vector3f scaleJitter = new Vector3f(ZERO);
+        private int cyclePhaseJitterTicks = 0;
+
+        private @Nullable Vector3f spinAxis;
+        private double spinRadiansPerTick = 0.0;
+
+        private @Nullable Predicate<EmittedDisplay> killWhen;
+        private @Nullable Consumer<EmittedDisplay> onKilled;
 
         @Override protected @NotNull Builder self() {
             return this;
@@ -138,6 +245,61 @@ public final class DisplayEntityEmitterSettings extends EmitterSettings {
 
         public @NotNull Builder itemCycle(@Nullable Transition<ItemStack> itemCycle) {
             this.itemCycle = itemCycle;
+            return this;
+        }
+
+        public @NotNull Builder acceleration(@NotNull Vector3fc acceleration) {
+            this.acceleration = new Vector3f(acceleration);
+            return this;
+        }
+
+        public @NotNull Builder drag(double drag) {
+            this.drag = drag;
+            return this;
+        }
+
+        public @NotNull Builder lifetimeJitterTicks(int lifetimeJitterTicks) {
+            this.lifetimeJitterTicks = lifetimeJitterTicks;
+            return this;
+        }
+
+        public @NotNull Builder scaleJitter(@NotNull Vector3fc scaleJitter) {
+            this.scaleJitter = new Vector3f(scaleJitter);
+            return this;
+        }
+
+        public @NotNull Builder cyclePhaseJitterTicks(int cyclePhaseJitterTicks) {
+            this.cyclePhaseJitterTicks = cyclePhaseJitterTicks;
+            return this;
+        }
+
+        /**
+         * Axis around which each emitted entity spins; normalized at build time. Combined with
+         * {@link #spinRadiansPerTick(double)} to drive continuous rotation on top of any authored
+         * rotation transition.
+         */
+        public @NotNull Builder spinAxis(@Nullable Vector3fc spinAxis) {
+            this.spinAxis = spinAxis == null ? null : new Vector3f(spinAxis);
+            return this;
+        }
+
+        public @NotNull Builder spinRadiansPerTick(double spinRadiansPerTick) {
+            this.spinRadiansPerTick = spinRadiansPerTick;
+            return this;
+        }
+
+        /**
+         * Optional predicate evaluated each tick on every live emission. When it returns {@code true}
+         * the entity is destroyed (and {@link #onKilled(Consumer)} fires if set). When {@code null},
+         * the kill path is bypassed entirely with zero per-tick cost.
+         */
+        public @NotNull Builder killWhen(@Nullable Predicate<EmittedDisplay> killWhen) {
+            this.killWhen = killWhen;
+            return this;
+        }
+
+        public @NotNull Builder onKilled(@Nullable Consumer<EmittedDisplay> onKilled) {
+            this.onKilled = onKilled;
             return this;
         }
     }

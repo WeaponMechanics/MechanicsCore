@@ -97,6 +97,10 @@ public abstract class AbstractEmitter<S extends EmitterSettings> implements Emit
     }
 
     private int computeEmitCount() {
+        int duration = settings.getDurationTicks();
+        if (duration >= 0 && age >= duration)
+            return 0;
+
         if (settings.getBurstCount() > 0)
             return age % settings.getBurstInterval() == 0 ? settings.getBurstCount() : 0;
 
@@ -110,6 +114,8 @@ public abstract class AbstractEmitter<S extends EmitterSettings> implements Emit
         ShapePoint sp = settings.getShape().getPoint(ThreadLocalRandom.current().nextDouble());
         Vector worldOffset = Transform.rotate(transform.getRotation(), sp.offset());
         Vector worldPos = transform.getPosition().add(worldOffset);
+        // Spawn yaw/pitch are 0 by Location default. DisplayEntityEmitter depends on this so
+        // translation-based motion equals world-space; do not pass yaw/pitch here.
         Location point = new Location(world, worldPos.getX(), worldPos.getY(), worldPos.getZ());
 
         Vector worldDir;

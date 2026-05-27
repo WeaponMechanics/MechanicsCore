@@ -457,14 +457,14 @@ public final class MechanicsCoreCommand {
             Location origin = inFront(player, 4);
             int itemLifetime = 40;
 
-            Transition<Vector3f> scalePulse = new Transition<>(
-                List.of(
-                    new Keyframe<>(0.0, new Vector3f(0, 0, 0), Easing.EASE_OUT),
-                    new Keyframe<>(0.25, new Vector3f(0.5f, 0.5f, 0.5f), Easing.LINEAR),
-                    new Keyframe<>(0.75, new Vector3f(0.5f, 0.5f, 0.5f), Easing.EASE_IN),
-                    new Keyframe<>(1.0, new Vector3f(0, 0, 0), Easing.LINEAR)),
+            Transition<Vector3f> scalePulse = Transition.pulse(
+                new Vector3f(0, 0, 0),
+                new Vector3f(0.5f, 0.5f, 0.5f),
+                new Vector3f(0, 0, 0),
                 Interpolators.VECTOR3F,
-                itemLifetime);
+                itemLifetime,
+                Easing.EASE_OUT,
+                Easing.EASE_IN);
 
             Transition<org.bukkit.block.data.BlockData> blockCycle = new Transition<>(
                 List.of(
@@ -481,13 +481,20 @@ public final class MechanicsCoreCommand {
                 .displayData(Material.RED_STAINED_GLASS.createBlockData())
                 .shape(new SphereShape(1.2, true))
                 .direction(Direction.UP)
-                .speed(0.15)
+                .speed(0.35)
                 .rate(0.5)
                 .durationTicks(200)
-                .itemLifetimeTicks(itemLifetime)
+                .emittedLifetimeTicks(itemLifetime)
                 .liveCap(40)
                 .scale(scalePulse)
                 .blockCycle(blockCycle)
+                .acceleration(new Vector3f(0, -0.04f, 0))
+                .drag(0.02)
+                .lifetimeJitterTicks(8)
+                .scaleJitter(new Vector3f(0.1f, 0.1f, 0.1f))
+                .cyclePhaseJitterTicks(10)
+                .spinAxis(new Vector3f(0.3f, 1, 0.2f))
+                .spinRadiansPerTick(0.18)
                 .build();
 
             DisplayEntityEmitter emitter = new DisplayEntityEmitter(settings);
@@ -495,7 +502,7 @@ public final class MechanicsCoreCommand {
             MechanicsCore.getInstance().getTickManager().add(emitter);
             testEmitters.add(emitter);
 
-            player.sendMessage(text("Spawned a display emitter (stained glass cycles + scale pulse).", NamedTextColor.GREEN));
+            player.sendMessage(text("Spawned a display emitter (gravity + tumble + jittered cycles).", NamedTextColor.GREEN));
         } catch (UnsupportedOperationException e) {
             player.sendMessage(text("Fake display entities are not supported on this server version.", NamedTextColor.RED));
         }

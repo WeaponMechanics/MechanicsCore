@@ -20,7 +20,7 @@ public abstract class EmitterSettings {
     private final double rate;
     private final int burstCount;
     private final int burstInterval;
-    private final int itemLifetimeTicks;
+    private final int emittedLifetimeTicks;
     private final int liveCap;
 
     protected EmitterSettings(@NotNull Builder<?> b) {
@@ -31,7 +31,7 @@ public abstract class EmitterSettings {
         this.rate = b.rate;
         this.burstCount = b.burstCount;
         this.burstInterval = Math.max(1, b.burstInterval);
-        this.itemLifetimeTicks = b.itemLifetimeTicks;
+        this.emittedLifetimeTicks = b.emittedLifetimeTicks;
         this.liveCap = b.liveCap;
     }
 
@@ -66,8 +66,8 @@ public abstract class EmitterSettings {
         return burstInterval;
     }
 
-    public int getItemLifetimeTicks() {
-        return itemLifetimeTicks;
+    public int getEmittedLifetimeTicks() {
+        return emittedLifetimeTicks;
     }
 
     public int getLiveCap() {
@@ -87,7 +87,7 @@ public abstract class EmitterSettings {
         protected double rate = 1.0;
         protected int burstCount;
         protected int burstInterval = 1;
-        protected int itemLifetimeTicks = 20;
+        protected int emittedLifetimeTicks = 20;
         protected int liveCap = Integer.MAX_VALUE;
 
         protected abstract @NotNull B self();
@@ -128,8 +128,8 @@ public abstract class EmitterSettings {
             return self();
         }
 
-        public @NotNull B itemLifetimeTicks(int itemLifetimeTicks) {
-            this.itemLifetimeTicks = itemLifetimeTicks;
+        public @NotNull B emittedLifetimeTicks(int emittedLifetimeTicks) {
+            this.emittedLifetimeTicks = emittedLifetimeTicks;
             return self();
         }
 

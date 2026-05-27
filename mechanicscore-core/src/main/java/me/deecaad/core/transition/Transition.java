@@ -107,4 +107,50 @@ public final class Transition<T> {
     public @NotNull T evaluateAtTick(int tick) {
         return evaluate(tick / (double) durationTicks);
     }
+
+    /**
+     * Single-keyframe transition that returns {@code value} at every time.
+     */
+    public static <T> @NotNull Transition<T> constant(@NotNull T value, @NotNull Interpolator<T> interpolator, int durationTicks) {
+        return new Transition<>(
+            List.of(
+                new Keyframe<>(0.0, value, Easing.LINEAR),
+                new Keyframe<>(1.0, value, Easing.LINEAR)),
+            interpolator,
+            durationTicks);
+    }
+
+    /**
+     * Two-keyframe transition from {@code from} to {@code to} with {@link Easing#LINEAR} easing.
+     */
+    public static <T> @NotNull Transition<T> lerp(@NotNull T from, @NotNull T to, @NotNull Interpolator<T> interpolator, int durationTicks) {
+        return lerp(from, to, interpolator, durationTicks, Easing.LINEAR);
+    }
+
+    /**
+     * Two-keyframe transition from {@code from} to {@code to} with the given easing applied across
+     * the segment.
+     */
+    public static <T> @NotNull Transition<T> lerp(@NotNull T from, @NotNull T to, @NotNull Interpolator<T> interpolator, int durationTicks, @NotNull Easing easing) {
+        return new Transition<>(
+            List.of(
+                new Keyframe<>(0.0, from, easing),
+                new Keyframe<>(1.0, to, Easing.LINEAR)),
+            interpolator,
+            durationTicks);
+    }
+
+    /**
+     * Three-keyframe pulse: {@code start} → {@code peak} (at t=0.5) → {@code end}, with {@code in}
+     * easing on the rise and {@code out} easing on the fall.
+     */
+    public static <T> @NotNull Transition<T> pulse(@NotNull T start, @NotNull T peak, @NotNull T end, @NotNull Interpolator<T> interpolator, int durationTicks, @NotNull Easing in, @NotNull Easing out) {
+        return new Transition<>(
+            List.of(
+                new Keyframe<>(0.0, start, in),
+                new Keyframe<>(0.5, peak, out),
+                new Keyframe<>(1.0, end, Easing.LINEAR)),
+            interpolator,
+            durationTicks);
+    }
 }
