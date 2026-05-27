@@ -59,7 +59,7 @@ public class FakeEntity_1_21_R4 extends FakeEntity {
     // Store this since using Enum#values() is especially slow
     public static final EquipmentSlot[] SLOTS = EquipmentSlot.values();
 
-    private final Entity entity;
+    protected final Entity entity;
     private final ServerEntity serverEntity;
     private final List<ServerGamePacketListenerImpl> connections; // store the player connection to avoid type cast
 
@@ -100,6 +100,19 @@ public class FakeEntity_1_21_R4 extends FakeEntity {
                     Display.ItemDisplay temp = net.minecraft.world.entity.EntityType.ITEM_DISPLAY.create(handle, EntitySpawnReason.COMMAND);
                     temp.setPos(x, y, z);
                     temp.setItemStack(CraftItemStack.asNMSCopy((org.bukkit.inventory.ItemStack) data));
+                    yield temp;
+                }
+                case BLOCK_DISPLAY -> {
+                    Display.BlockDisplay temp = net.minecraft.world.entity.EntityType.BLOCK_DISPLAY.create(handle, EntitySpawnReason.COMMAND);
+                    temp.setPos(x, y, z);
+                    temp.setBlockState(data.getClass() == Material.class
+                        ? ((CraftBlockData) ((Material) data).createBlockData()).getState()
+                        : ((CraftBlockData) data).getState());
+                    yield temp;
+                }
+                case TEXT_DISPLAY -> {
+                    Display.TextDisplay temp = net.minecraft.world.entity.EntityType.TEXT_DISPLAY.create(handle, EntitySpawnReason.COMMAND);
+                    temp.setPos(x, y, z);
                     yield temp;
                 }
                 default -> world.createEntity(location, type.getEntityClass(), true);

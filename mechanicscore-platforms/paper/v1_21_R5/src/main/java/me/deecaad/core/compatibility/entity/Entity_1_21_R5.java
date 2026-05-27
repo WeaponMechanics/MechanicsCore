@@ -71,6 +71,12 @@ public class Entity_1_21_R5 implements EntityCompatibility {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public <T extends FakeEntity & FakeDisplayEntity> T generateFakeDisplay(Location location, EntityType type, Object data) {
+        return (T) new FakeDisplayEntity_1_21_R5(location, type, data);
+    }
+
+    @Override
     public void setSlot(Player bukkit, EquipmentSlot slot, @Nullable ItemStack item) {
         if (item == null) {
             item = bukkit.getEquipment().getItem(slot);
