@@ -10,7 +10,7 @@ geyser = "2.7.0-SNAPSHOT"
 mythicMobs = "5.12.0"
 placeholderApi = "2.11.6"
 vault = "1.7.1"
-vivecraft = "3.0.0"
+vivecraft = "3.1.0"
 worldedit = "7.3.14"
 worldguard = "7.0.16"
 
