@@ -12,6 +12,7 @@ import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerInstancer;
 import me.deecaad.core.listeners.ItemCraftListener;
 import me.deecaad.core.listeners.MechanicsCastListener;
+import me.deecaad.core.mechanics.GlobalMechanicsLoader;
 import me.deecaad.core.tick.TickManager;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
@@ -108,6 +109,14 @@ public class MechanicsCore extends MechanicsPlugin {
     public @NotNull CompletableFuture<Void> handleCommands() {
         MechanicsCoreCommand.build();
         return super.handleCommands();
+    }
+
+    @Override
+    public @NotNull CompletableFuture<Void> handleConfigs() {
+        // Loads plugins/MechanicsCore/mechanics/ into the global block registry so
+        // any mechanics list can call user-defined blocks. Runs on enable and reload.
+        GlobalMechanicsLoader.load(this);
+        return super.handleConfigs();
     }
 
     /**

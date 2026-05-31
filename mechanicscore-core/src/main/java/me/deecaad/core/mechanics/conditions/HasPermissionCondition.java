@@ -3,9 +3,9 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,9 +13,6 @@ public class HasPermissionCondition extends Condition {
 
     private String permission;
 
-    /**
-     * Default constructor for serializer.
-     */
     public HasPermissionCondition() {
     }
 
@@ -24,12 +21,10 @@ public class HasPermissionCondition extends Condition {
     }
 
     @Override
-    protected boolean isAllowed0(CastData cast) {
-        LivingEntity target = cast.getTarget();
-        if (target == null)
+    protected boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        if (subject == null || subject.entity() == null)
             return false;
-
-        return target.hasPermission(permission);
+        return subject.entity().hasPermission(permission);
     }
 
     @Override
@@ -45,7 +40,6 @@ public class HasPermissionCondition extends Condition {
     @NotNull @Override
     public Condition serialize(@NotNull SerializeData data) throws SerializerException {
         String permission = data.of("Permission").assertExists().get(String.class).get();
-
         return applyParentArgs(data, new HasPermissionCondition(permission));
     }
 }

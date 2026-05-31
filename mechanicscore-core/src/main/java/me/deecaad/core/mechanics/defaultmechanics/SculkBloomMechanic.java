@@ -3,7 +3,8 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.SculkCatalyst;
@@ -14,9 +15,6 @@ public class SculkBloomMechanic extends ActivateBlockMechanic<SculkCatalyst> {
 
     private int charge;
 
-    /**
-     * Default constructor for serializer
-     */
     public SculkBloomMechanic() {
         super(SculkCatalyst.class);
     }
@@ -37,11 +35,10 @@ public class SculkBloomMechanic extends ActivateBlockMechanic<SculkCatalyst> {
     }
 
     @Override
-    protected void use0(CastData cast) {
-        Location target = cast.getTargetLocation();
-        if (target == null)
+    public void use0(CastScope scope, Target subject) {
+        if (subject == null)
             return;
-
+        Location target = subject.location();
         forEachBlock(target, catalyst -> catalyst.bloom(target.getBlock(), charge));
     }
 
@@ -49,5 +46,10 @@ public class SculkBloomMechanic extends ActivateBlockMechanic<SculkCatalyst> {
     public @NotNull Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
         int charge = data.of("Charge").assertRange(1, null).getInt().orElse(5);
         return applyParentArgs(data, new SculkBloomMechanic(charge));
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.LOCATION;
     }
 }

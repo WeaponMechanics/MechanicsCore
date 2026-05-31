@@ -5,54 +5,63 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.serializers.VectorProvider;
 import me.deecaad.core.file.serializers.VectorSerializer;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Context;
+import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.utils.EntityTransform;
 import me.deecaad.core.utils.VectorUtil;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.util.Vector;
+import org.joml.Quaterniond;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * Checks whether the subject lies within a cone projected from an apex context
+ * (defaults to {@code source}).
+ */
 public class InConeCondition extends Condition {
 
     private VectorProvider direction;
-    private double cosAngle; // Cosine of the angle
+    private double cosAngle;
+    private @NotNull String apexName = CastScope.SOURCE;
 
-    /**
-     * Default constructor for serializer.
-     */
     public InConeCondition() {
     }
 
-    public InConeCondition(@Nullable VectorProvider direction, double angle) {
+    public InConeCondition(@Nullable VectorProvider direction, double angle, @NotNull String apexName) {
         this.direction = direction;
         this.cosAngle = Math.cos(Math.toRadians(angle));
+        this.apexName = apexName;
     }
 
     @Override
-    public boolean isAllowed0(@NotNull CastData cast) {
-        Location sourceLocation = cast.getSource().getEyeLocation();
-        Vector source = sourceLocation.toVector();
+    public boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        if (subject == null)
+            return false;
+
+        Context apexContext = scope.getContext(apexName);
+        Target apex = apexContext == null ? null : apexContext.first();
+        if (apex == null)
+            return false;
+
+        Location apexLocation = apex.entity() != null ? apex.entity().getEyeLocation() : apex.location();
+        Vector source = apexLocation.toVector();
         Vector direction;
         if (this.direction != null) {
-            // might be normalized... normalize it
-            EntityTransform localTransform = new EntityTransform(cast.getSource());
-            direction = this.direction.provide(localTransform.getLocalRotation()).normalize();
+            Quaterniond rotation = apex.entity() != null ? new EntityTransform(apex.entity()).getLocalRotation() : null;
+            direction = this.direction.provide(rotation).normalize();
         } else {
-            // this is always a normalized vector
-            direction = sourceLocation.getDirection();
+            direction = apexLocation.getDirection();
         }
 
-        // Adjust the source location so that the cone's origin is moved back a
-        // bit. This helps get overlapping entities.
+        // Move the cone's origin back a bit to catch overlapping entities.
         VectorUtil.addScaledVector(source, direction, -0.5);
 
-        Vector target = cast.getTargetLocation().toVector();
+        Vector target = subject.location().toVector();
         Vector toTarget = target.clone().subtract(source).normalize();
-
-        double dot = direction.dot(toTarget);
-        return dot >= cosAngle;
+        return direction.dot(toTarget) >= cosAngle;
     }
 
     @Override
@@ -69,6 +78,12 @@ public class InConeCondition extends Condition {
     public @NotNull Condition serialize(@NotNull SerializeData data) throws SerializerException {
         double angle = data.of("Angle").assertRange(0.0, 180.0).getDouble().orElse(30.0);
         VectorProvider direction = data.of("Direction").serialize(VectorSerializer.class).orElse(null);
-        return applyParentArgs(data, new InConeCondition(direction, angle));
+        String apexName = data.of("Apex").get(String.class).orElse(CastScope.SOURCE);
+        return applyParentArgs(data, new InConeCondition(direction, angle, apexName));
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.LOCATION;
     }
 }

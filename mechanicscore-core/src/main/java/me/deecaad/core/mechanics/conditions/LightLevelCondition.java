@@ -3,7 +3,8 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.jetbrains.annotations.NotNull;
@@ -15,9 +16,6 @@ public class LightLevelCondition extends Condition {
     private int min;
     private int max;
 
-    /**
-     * Default constructor for serializer.
-     */
     public LightLevelCondition() {
     }
 
@@ -40,8 +38,10 @@ public class LightLevelCondition extends Condition {
     }
 
     @Override
-    public boolean isAllowed0(CastData cast) {
-        Block block = cast.getTargetLocation().getBlock();
+    public boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        if (subject == null)
+            return false;
+        Block block = subject.location().getBlock();
         int light = mode.getLightLevel(block);
         return min <= light && max >= light;
     }
@@ -61,7 +61,6 @@ public class LightLevelCondition extends Condition {
         LightLevelMode mode = data.of("Mode").getEnum(LightLevelMode.class).orElse(LightLevelMode.BOTH);
         int min = data.of("Min").assertRange(0, 15).getInt().orElse(0);
         int max = data.of("Max").assertRange(0, 15).getInt().orElse(15);
-
         return applyParentArgs(data, new LightLevelCondition(mode, min, max));
     }
 
@@ -87,5 +86,10 @@ public class LightLevelCondition extends Condition {
         };
 
         abstract int getLightLevel(Block block);
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.LOCATION;
     }
 }

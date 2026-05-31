@@ -3,24 +3,20 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class GlidingCondition extends Condition {
 
-    /**
-     * Default constructor for serializer.
-     */
     public GlidingCondition() {
     }
 
     @Override
-    protected boolean isAllowed0(CastData cast) {
-        LivingEntity target = cast.getTarget();
-        return target != null && target.isGliding();
+    protected boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        return subject != null && subject.entity() != null && subject.entity().isGliding();
     }
 
     @Override

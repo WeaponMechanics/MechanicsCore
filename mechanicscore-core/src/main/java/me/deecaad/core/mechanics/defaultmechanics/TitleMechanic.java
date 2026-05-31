@@ -3,7 +3,8 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.placeholder.PlaceholderMessage;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
@@ -19,9 +20,6 @@ public class TitleMechanic extends Mechanic {
     private @Nullable PlaceholderMessage subtitle;
     private Title.Times times;
 
-    /**
-     * Default constructor for serializer.
-     */
     public TitleMechanic() {
     }
 
@@ -44,14 +42,12 @@ public class TitleMechanic extends Mechanic {
     }
 
     @Override
-    public void use0(CastData cast) {
-        if (!(cast.getTarget() instanceof Player player))
+    public void use0(CastScope scope, Target subject) {
+        if (subject == null || !(subject.entity() instanceof Player player))
             return;
 
-        // Parse and send the message to the 1 player
-        // TODO this method would benefit from having access to the target list
-        Component titleComponent = title == null ? Component.empty() : title.replaceAndDeserialize(cast);
-        Component subtitleComponent = subtitle == null ? Component.empty() : subtitle.replaceAndDeserialize(cast);
+        Component titleComponent = title == null ? Component.empty() : title.replaceAndDeserialize(scope);
+        Component subtitleComponent = subtitle == null ? Component.empty() : subtitle.replaceAndDeserialize(scope);
         Title title = Title.title(titleComponent, subtitleComponent, times);
         player.showTitle(title);
     }
@@ -74,11 +70,20 @@ public class TitleMechanic extends Mechanic {
         int stay = data.of("Stay").assertRange(0, null).getInt().orElse(70);
         int fadeOut = data.of("Fade_Out").assertRange(0, null).getInt().orElse(20);
 
-        // User should define at least one of these...
         if (title == null && subtitle == null)
             throw data.exception(null, "Missing both 'title' and 'subtitle' options");
 
         Title.Times times = Title.Times.times(Ticks.duration(fadeIn), Ticks.duration(stay), Ticks.duration(fadeOut));
         return applyParentArgs(data, new TitleMechanic(title, subtitle, times));
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.PLAYER;
+    }
+
+    @Override
+    public boolean isBatchablePlayerEffect() {
+        return true;
     }
 }

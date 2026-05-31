@@ -3,25 +3,20 @@ package me.deecaad.core.mechanics.targeters;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Context;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
-import org.bukkit.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Collections;
-import java.util.Iterator;
 
 public class WorldTargeter extends Targeter {
 
     private String worldName;
-    private World worldCache;
+    private boolean playersOnly;
 
-    /**
-     * Default constructor for serializer.
-     */
     public WorldTargeter() {
     }
 
@@ -33,44 +28,44 @@ public class WorldTargeter extends Targeter {
         return worldName;
     }
 
-    public World getWorldCache() {
-        return worldCache;
-    }
-
-    public void setWorldCache(World worldCache) {
-        this.worldCache = worldCache;
-    }
-
     @Override
     public boolean isEntity() {
         return true;
     }
 
+    /**
+     * Resolves the world: an explicit world name if set, otherwise the world of
+     * the {@code From=} context (defaults to source).
+     */
+    protected @Nullable World resolveWorld(@NotNull CastScope scope) {
+        if (worldName != null)
+            return Bukkit.getWorld(worldName);
+        Context from = scope.getContext(getFrom());
+        Target first = from == null ? null : from.first();
+        return first == null ? null : first.world();
+    }
+
     @Override
-    public Iterator<CastData> getTargets0(CastData cast) {
-        if (worldCache == null || worldName == null)
-            worldCache = worldName == null ? cast.getSource().getWorld() : Bukkit.getWorld(worldName);
-
-        // User may have typed the name of the world wrong... It is case-sensitive
-        if (worldCache == null) {
+    public @NotNull Context target(@NotNull CastScope scope) {
+        World world = resolveWorld(scope);
+        if (world == null) {
             MechanicsCore.getInstance().getDebugger().warning("There was an error getting the world for '" + worldName + "'");
-            return Collections.emptyIterator();
+            return Context.empty();
         }
+        return wrap(Context.ofEntities(playersOnly ? world.getPlayers() : world.getLivingEntities()));
+    }
 
-        // Loop through every living entity in the world
-        Iterator<LivingEntity> entityIterator = worldCache.getLivingEntities().iterator();
-        return new Iterator<>() {
-            @Override
-            public boolean hasNext() {
-                return entityIterator.hasNext();
-            }
+    @Override
+    public @NotNull me.deecaad.core.mechanics.targeters.Targeter specialize(@NotNull me.deecaad.core.mechanics.scope.TargetKind demand) {
+        // Every consumer is satisfied by players: getPlayers() is far cheaper than getLivingEntities().
+        if (demand == me.deecaad.core.mechanics.scope.TargetKind.PLAYER)
+            playersOnly = true;
+        return this;
+    }
 
-            @Override
-            public CastData next() {
-                cast.setTargetEntity(entityIterator.next());
-                return cast;
-            }
-        };
+    @Override
+    public @Nullable Object groupKey() {
+        return "world:" + worldName + ":" + playersOnly + ":" + isEye() + ":" + (getOffset() != null) + ":" + getFrom();
     }
 
     @Override
@@ -91,11 +86,8 @@ public class WorldTargeter extends Targeter {
     }
 
     /**
-     * Returns <code>true</code> if this targeter uses the default values. This is checked in the
-     * {@link me.deecaad.core.mechanics.PlayerEffectMechanicList} to determine if a mechanic is eligible
-     * to have its targeters cached for improved performance.
-     *
-     * @return true if this has default values.
+     * Returns <code>true</code> if this targeter uses the default values (no eye,
+     * offset, or explicit world).
      */
     public boolean isDefaultValues() {
         return !isEye() && getOffset() == null && worldName == null;

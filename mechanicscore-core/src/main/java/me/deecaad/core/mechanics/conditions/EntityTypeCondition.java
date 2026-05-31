@@ -3,7 +3,8 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.EntityType;
 import org.jetbrains.annotations.NotNull;
@@ -13,9 +14,6 @@ public class EntityTypeCondition extends Condition {
 
     private EntityType type;
 
-    /**
-     * Default constructor for serializer.
-     */
     public EntityTypeCondition() {
     }
 
@@ -24,8 +22,8 @@ public class EntityTypeCondition extends Condition {
     }
 
     @Override
-    public boolean isAllowed0(CastData cast) {
-        return cast.getTarget() != null && cast.getTarget().getType() == type;
+    public boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        return subject != null && subject.entity() != null && subject.entity().getType() == type;
     }
 
     @Override

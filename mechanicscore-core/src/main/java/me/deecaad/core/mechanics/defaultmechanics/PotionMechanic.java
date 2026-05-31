@@ -4,7 +4,8 @@ import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.simple.RegistryValueSerializer;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -15,9 +16,6 @@ public class PotionMechanic extends Mechanic {
 
     private PotionEffect potion;
 
-    /**
-     * Default constructor for serializer.
-     */
     public PotionMechanic() {
     }
 
@@ -30,11 +28,10 @@ public class PotionMechanic extends Mechanic {
     }
 
     @Override
-    public void use0(CastData cast) {
-        if (cast.getTarget() == null)
+    public void use0(CastScope scope, Target subject) {
+        if (subject == null || subject.entity() == null)
             return;
-
-        cast.getTarget().addPotionEffect(potion);
+        subject.entity().addPotionEffect(potion);
     }
 
     @Override
@@ -62,10 +59,6 @@ public class PotionMechanic extends Mechanic {
         return applyParentArgs(data, new PotionMechanic(effect));
     }
 
-    /**
-     * This enum makes it easier for users to select ambient/hide/show instead of using 2 separate
-     * booleans.
-     */
     public enum ParticleMode {
         HIDE,
         NORMAL,

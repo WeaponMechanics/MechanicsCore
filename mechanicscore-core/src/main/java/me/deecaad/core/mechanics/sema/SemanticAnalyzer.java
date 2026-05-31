@@ -1,0 +1,175 @@
+package me.deecaad.core.mechanics.sema;
+
+import me.deecaad.core.file.InlineSerializer;
+import me.deecaad.core.file.MapConfigLike;
+import me.deecaad.core.file.SerializeData;
+import me.deecaad.core.file.Serializer;
+import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.mechanics.ast.BlockNode;
+import me.deecaad.core.mechanics.ast.InlineCallNode;
+import me.deecaad.core.mechanics.ast.ProgramNode;
+import me.deecaad.core.mechanics.ast.StmtNode;
+import me.deecaad.core.mechanics.ast.SubjectNode;
+import me.deecaad.core.mechanics.conditions.Condition;
+import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
+import me.deecaad.core.mechanics.diagnostic.Diagnostic;
+import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
+import me.deecaad.core.mechanics.diagnostic.Severity;
+import me.deecaad.core.mechanics.program.MechanicBlock;
+import me.deecaad.core.mechanics.program.Program;
+import me.deecaad.core.mechanics.program.Statement;
+import me.deecaad.core.mechanics.program.Subject;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.targeters.Targeter;
+import me.deecaad.core.utils.StringUtil;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Resolves a parsed {@link ProgramNode} into the executable instance IR
+ * ({@link Program}), reusing the existing {@code serialize(SerializeData)}
+ * methods (catch-convert on error) and collecting diagnostics. Returns a Program
+ * regardless; callers only run it when the reporter has no errors.
+ */
+public final class SemanticAnalyzer {
+
+    private final SymbolSource symbols;
+
+    public SemanticAnalyzer() {
+        this(new GlobalSymbolSource());
+    }
+
+    public SemanticAnalyzer(@NotNull SymbolSource symbols) {
+        this.symbols = symbols;
+    }
+
+    public @NotNull Program analyze(@NotNull ProgramNode program, @NotNull File file, @NotNull DiagnosticReporter reporter) {
+        Set<String> blockNames = program.blocks().keySet();
+        Map<String, MechanicBlock> blocks = new LinkedHashMap<>();
+
+        for (Map.Entry<String, BlockNode> entry : program.blocks().entrySet()) {
+            BlockNode block = entry.getValue();
+            List<Statement> statements = new ArrayList<>();
+            for (StmtNode node : block.statements()) {
+                Statement statement = resolveStatement(node, blockNames, file, reporter);
+                if (statement != null)
+                    statements.add(statement);
+            }
+            blocks.put(entry.getKey(), new MechanicBlock(block.name(), statements));
+        }
+
+        return new Program(blocks, program.entry());
+    }
+
+    private @Nullable Statement resolveStatement(@NotNull StmtNode node, @NotNull Set<String> blockNames,
+                                                 @NotNull File file, @NotNull DiagnosticReporter reporter) {
+        return switch (node) {
+            case StmtNode.Assign assign -> new Statement.Assignment(assign.var(),
+                ExprLower.lower(assign.value(), reporter));
+            case StmtNode.Bind bind -> {
+                Targeter targeter = resolveTargeter(bind.targeter(), file, reporter);
+                yield targeter == null ? null : new Statement.Binding(bind.contextName(), targeter);
+            }
+            case StmtNode.Invoke invoke -> resolveInvoke(invoke, blockNames, file, reporter);
+            case StmtNode.Error ignored -> null;
+        };
+    }
+
+    private @Nullable Statement resolveInvoke(@NotNull StmtNode.Invoke invoke, @NotNull Set<String> blockNames,
+                                              @NotNull File file, @NotNull DiagnosticReporter reporter) {
+        InlineCallNode call = invoke.call();
+        String name = call.name();
+        Subject subject = toSubject(invoke.subject(), file, reporter);
+        List<Condition> conds = resolveConditions(invoke.conditions(), file, reporter);
+
+        Mechanic mechanicProto = symbols.mechanic(name);
+        if (mechanicProto != null) {
+            Mechanic mechanic = serializeOrNull(mechanicProto, call, file, reporter);
+            return mechanic == null ? null : new Statement.BuiltinInvocation(mechanic, subject, conds);
+        }
+
+        if (blockNames.contains(name) || symbols.blockNames().contains(name.toLowerCase(Locale.ROOT))) {
+            if (hasArgs(call))
+                reporter.error(call.nameLoc(), "Block '" + name + "' takes no arguments",
+                    "Set the variables it reads before the call, e.g. '$dmg = 10' then '" + name + "{}'");
+            return new Statement.BlockInvocation(name, subject, conds);
+        }
+
+        Set<String> options = new LinkedHashSet<>(symbols.mechanicNames());
+        options.addAll(blockNames);
+        options.addAll(symbols.blockNames());
+        reporter.error(call.nameLoc(), "Unknown mechanic or block '" + name + "'", suggest(name, options));
+        return null;
+    }
+
+    private @NotNull Subject toSubject(@Nullable SubjectNode node, @NotNull File file,
+                                       @NotNull DiagnosticReporter reporter) {
+        if (node == null)
+            return new Subject.Reference(CastScope.TARGET);
+        if (node instanceof SubjectNode.Ref ref)
+            return new Subject.Reference(ref.contextName());
+        SubjectNode.Inline inline = (SubjectNode.Inline) node;
+        Targeter targeter = resolveTargeter(inline.targeter(), file, reporter);
+        return targeter == null ? new Subject.Reference(CastScope.TARGET) : new Subject.Inline(targeter);
+    }
+
+    private @Nullable Targeter resolveTargeter(@NotNull InlineCallNode call, @NotNull File file, @NotNull DiagnosticReporter reporter) {
+        Targeter proto = symbols.targeter(call.name());
+        if (proto == null) {
+            reporter.error(call.nameLoc(), "Unknown targeter '" + call.name() + "'", suggest(call.name(), symbols.targeterNames()));
+            return null;
+        }
+        return serializeOrNull(proto, call, file, reporter);
+    }
+
+    private @NotNull List<Condition> resolveConditions(@NotNull List<InlineCallNode> nodes, @NotNull File file,
+                                                       @NotNull DiagnosticReporter reporter) {
+        List<Condition> result = new ArrayList<>(nodes.size());
+        for (InlineCallNode node : nodes) {
+            Condition proto = symbols.condition(node.name());
+            if (proto == null) {
+                reporter.error(node.nameLoc(), "Unknown condition '" + node.name() + "'", suggest(node.name(), symbols.conditionNames()));
+                continue;
+            }
+            Condition condition = serializeOrNull(proto, node, file, reporter);
+            if (condition != null)
+                result.add(condition);
+        }
+        return result;
+    }
+
+    private static boolean hasArgs(@NotNull InlineCallNode call) {
+        for (String key : call.args().keySet())
+            if (!key.equals(InlineSerializer.UNIQUE_IDENTIFIER))
+                return true;
+        return false;
+    }
+
+    private <T extends Serializer<T>> @Nullable T serializeOrNull(@NotNull T proto, @NotNull InlineCallNode call,
+                                                                  @NotNull File file, @NotNull DiagnosticReporter reporter) {
+        MapConfigLike config = new MapConfigLike(call.args())
+            .setDebugInfo(file, call.loc().source().configPath(), call.loc().source().rawLine());
+        SerializeData data = new SerializeData(file, null, config);
+        try {
+            return proto.serialize(data);
+        } catch (SerializerException ex) {
+            String message = ex.getMessages().isEmpty() ? "Invalid arguments" : String.join(" | ", ex.getMessages());
+            reporter.report(new Diagnostic(Severity.ERROR, message, call.loc().source(), call.nameLoc().span(), List.of(), null));
+            return null;
+        }
+    }
+
+    private static @Nullable String suggest(@NotNull String actual, @NotNull Iterable<String> options) {
+        String best = StringUtil.didYouMean(actual, options);
+        return best == null ? null : "Did you mean '" + best + "'?";
+    }
+}

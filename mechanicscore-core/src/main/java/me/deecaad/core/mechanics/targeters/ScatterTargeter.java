@@ -3,7 +3,7 @@ package me.deecaad.core.mechanics.targeters;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.utils.RandomUtil;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -11,11 +11,12 @@ import org.bukkit.World;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collections;
 import java.util.Iterator;
 
 /**
- * Strictly speaking, a random assortment of points is not a shape. But the shape targeter targets a
- * list of points, not a shape, so this is fine.
+ * Strictly speaking, a random assortment of points is not a shape. But the shape
+ * targeter targets a list of points, not a shape, so this is fine.
  */
 public class ScatterTargeter extends ShapeTargeter {
 
@@ -24,9 +25,6 @@ public class ScatterTargeter extends ShapeTargeter {
     private double verticalRange;
     private boolean isTraceDown;
 
-    /**
-     * Default constructor for serializer
-     */
     public ScatterTargeter() {
     }
 
@@ -38,17 +36,13 @@ public class ScatterTargeter extends ShapeTargeter {
     }
 
     @Override
-    public @NotNull Iterator<Vector> getPoints(@NotNull CastData cast) {
-
-        // Get world for traceDown
-        Location origin = cast.getTargetLocation();
-        World world = cast.getTargetWorld();
-        if (origin == null || world == null) {
-            MechanicsCore.getInstance().getDebugger().severe("Tried to use useTarget=true with Scatter{}, but there was no target");
-            return EmptyIterator.emptyIterator();
+    public @NotNull Iterator<Vector> getPoints(@NotNull CastScope scope, @NotNull Location origin) {
+        World world = origin.getWorld();
+        if (world == null) {
+            MechanicsCore.getInstance().getDebugger().severe("Tried to use Scatter{} but the origin had no world");
+            return Collections.emptyIterator();
         }
 
-        // Max attempts to try traceDown
         final int maxAttempts = 5;
 
         return new Iterator<>() {

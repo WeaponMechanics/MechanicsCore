@@ -34,6 +34,7 @@ dependencies {
     testImplementation(libs.foliaScheduler)
     testImplementation(libs.junitApi)
     testImplementation(libs.junitParams)
+    testImplementation(libs.mockito)
     testRuntimeOnly(libs.junitEngine)
     testRuntimeOnly(libs.junitPlatformLauncher)
 }
