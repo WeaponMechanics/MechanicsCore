@@ -12,6 +12,7 @@ public enum KeyType {
     COLOR,
     MATERIAL,
     ENTITY,
+    SOUND,
     ENUM,
     REGISTRY,
     REGISTRY_SERIALIZER,

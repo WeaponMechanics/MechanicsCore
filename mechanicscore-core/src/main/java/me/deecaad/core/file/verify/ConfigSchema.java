@@ -75,6 +75,10 @@ public record ConfigSchema(@NotNull List<KeySpec> keys, boolean allowUnknown) {
             return add(name, KeyType.ENTITY);
         }
 
+        public Builder soundKey(String name) {
+            return add(name, KeyType.SOUND);
+        }
+
         public Builder enumKey(String name, Class<? extends Enum<?>> enumType) {
             add(name, KeyType.ENUM);
             last().enumType = enumType;

@@ -27,7 +27,6 @@ import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.Sound;
 import org.bukkit.Tag;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
@@ -343,7 +342,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
         if (data.has("Equippable")) {
             EquippableComponent armor = itemMeta.getEquippable();
             armor.setSlot(data.of("Equippable.Slot").assertExists().getEnum(EquipmentSlot.class).get());
-            armor.setEquipSound(data.of("Equippable.Equip_Sound").getBukkitRegistry(Sound.class).orElse(null));
+            armor.setEquipSound(data.of("Equippable.Equip_Sound").getSound().orElse(null));
             armor.setModel(data.of("Equippable.Model").getNamespacedKey().orElse(null));
             armor.setCameraOverlay(data.of("Equippable.Camera_Overlay").getNamespacedKey().orElse(null));
             armor.setDispensable(data.of("Equippable.Dispensable").getBool().orElse(true));
@@ -693,7 +692,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
         public ConfigSchema schema() {
             return ConfigSchema.builder()
                 .enumKey("Slot", EquipmentSlot.class).required()
-                .registryKey("Equip_Sound", Sound.class)
+                .soundKey("Equip_Sound")
                 .stringKey("Model")
                 .stringKey("Camera_Overlay")
                 .boolKey("Dispensable")

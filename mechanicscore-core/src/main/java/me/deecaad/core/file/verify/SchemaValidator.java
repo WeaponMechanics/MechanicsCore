@@ -135,6 +135,7 @@ public final class SchemaValidator {
             case COLOR -> acc.getAdventure();
             case MATERIAL -> acc.getMaterial();
             case ENTITY -> acc.getEntityType();
+            case SOUND -> acc.getSound();
             case ENUM -> acc.getEnum((Class) spec.enumType());
             case NESTED -> coerceNested(spec, data, path, out);
             case REGISTRY -> {

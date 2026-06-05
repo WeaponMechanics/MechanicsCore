@@ -113,7 +113,7 @@ public class SoundMechanic extends Mechanic {
     @Override
     protected @NotNull ConfigSchema.Builder schemaBuilder() {
         return super.schemaBuilder()
-            .registryKey("Sound", Sound.class).required()
+            .soundKey("Sound").required()
             .doubleKey("Volume").range(0.0, null)
             .doubleKey("Pitch").range(0.5, 2.0)
             .doubleKey("Noise").range(0.0, 1.5)
@@ -124,7 +124,7 @@ public class SoundMechanic extends Mechanic {
 
     @NotNull @Override
     public Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
-        Sound sound = data.of("Sound").assertExists().getBukkitRegistry(Sound.class).get();
+        Sound sound = data.of("Sound").assertExists().getSound().get();
         float volume = (float) data.of("Volume").assertRange(0, null).getDouble().orElse(1.0);
         float pitch = (float) data.of("Pitch").assertRange(0.5, 2.0).getDouble().orElse(1.0);
         float noise = (float) data.of("Noise").assertRange(0.0, 1.5).getDouble().orElse(0.0);

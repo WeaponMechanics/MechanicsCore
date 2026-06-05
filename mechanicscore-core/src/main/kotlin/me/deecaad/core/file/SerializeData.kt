@@ -4,6 +4,7 @@ import com.cjcrafter.foliascheduler.util.MinecraftVersions
 import com.cjcrafter.foliascheduler.util.ReflectionUtil
 import com.cryptomorin.xseries.XEntityType
 import com.cryptomorin.xseries.XMaterial
+import com.cryptomorin.xseries.XSound
 import com.cryptomorin.xseries.particles.XParticle
 import me.deecaad.core.file.SerializerException.Companion.builder
 import me.deecaad.core.file.simple.DoubleSerializer
@@ -20,6 +21,7 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Particle
 import org.bukkit.Registry
+import org.bukkit.Sound
 import org.bukkit.entity.EntityType
 import org.bukkit.inventory.ItemStack
 import java.io.File
@@ -750,6 +752,42 @@ class SerializeData {
                         relative,
                         "Your version, " + MinecraftVersions.getCurrent() + ", doesn't support '" + entityType.get().name + "'",
                         "Try using a different material or update your server to a newer version!",
+                    )
+
+            return Optional.of(parsed)
+        }
+
+        /**
+         * Uses [XSound] to parse a [Sound]. Going through XSeries keeps configs working across
+         * Minecraft versions and accepts both the legacy 'ENTITY_GENERIC_EXPLODE' and the namespaced
+         * 'entity.generic.explode' forms.
+         *
+         * @return The sound from config, or empty.
+         * @throws SerializerException If the user defined an invalid sound.
+         */
+        @Throws(SerializerException::class)
+        fun getSound(): Optional<Sound> {
+            var input = config.getString(getPath(relative))
+
+            // Use assertExists for required keys
+            if (input == null) {
+                return Optional.empty()
+            }
+
+            input = input.trim()
+            val xsound = XSound.of(input)
+            if (xsound.isEmpty) {
+                throw builder()
+                    .locationRaw(location)
+                    .buildInvalidOption(input, XSound.REGISTRY.map { it.name() })
+            }
+
+            val parsed =
+                xsound.get().get()
+                    ?: throw exception(
+                        relative,
+                        "Your version, " + MinecraftVersions.getCurrent() + ", doesn't support '" + xsound.get().name() + "'",
+                        "Try using a different sound or update your server to a newer version!",
                     )
 
             return Optional.of(parsed)
