@@ -37,7 +37,7 @@ import java.util.Map;
  * errors do. Bukkit's {@code YamlConfiguration} discards those marks, which is why we read YAML here
  * instead.
  *
- * <p>Key matching is case-sensitive and dotted-path, matching the previous Bukkit behavior.
+ * <p>Key matching is case-sensitive and dotted-path.
  */
 public final class SnakeYamlConfig implements ConfigLike {
 

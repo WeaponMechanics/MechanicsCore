@@ -12,8 +12,7 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
- * An immutable, ordered set of {@link Target targets} bound to a name. Replaces
- * the single mutable target slot of the old CastData. {@code source} and
+ * An immutable, ordered set of {@link Target targets} bound to a name. {@code source} and
  * {@code target} are just two built-in contexts; users can create more.
  */
 public final class Context implements Iterable<Target> {

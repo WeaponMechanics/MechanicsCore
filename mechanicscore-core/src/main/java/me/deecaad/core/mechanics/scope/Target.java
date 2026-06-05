@@ -7,8 +7,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A single target. Unifies the entity/location split that the old CastData
- * handled with separate {@code targetEntity} and {@code targetLocation} fields.
+ * A single target, unifying an entity and a location into one type. Either may be absent: an entity
+ * target also carries its location, and a pure-location target has no entity.
  */
 public interface Target {
 

@@ -18,10 +18,9 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * The runtime state of a cast. Replaces the old CastData. Instead of a fixed
- * source/target pair, a scope holds a map of named {@link Context contexts} and
- * a map of {@code $variables}. {@code source} and {@code target} are the two
- * built-in contexts.
+ * The runtime state of a cast. Instead of a fixed source/target pair, a scope holds a map of named
+ * {@link Context contexts} and a map of {@code $variables}. {@code source} and {@code target} are
+ * the two built-in contexts.
  *
  * <p>
  * A single scope is shared across the whole cast, including block calls. Blocks

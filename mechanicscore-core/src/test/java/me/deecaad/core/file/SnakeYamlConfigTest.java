@@ -29,7 +29,7 @@ class SnakeYamlConfigTest {
 
         assertEquals(5, config.get("Weapon.Shoot.Damage"));
         assertTrue(config.contains("Weapon.Shoot.Damage"));
-        assertFalse(config.contains("Weapon.Shoot.damage")); // case-sensitive, like the old Bukkit backend
+        assertFalse(config.contains("Weapon.Shoot.damage")); // case-sensitive
         assertNull(config.get("Weapon.Missing", null));
     }
 
@@ -39,7 +39,7 @@ class SnakeYamlConfigTest {
 
         assertEquals(List.of("A", "A.B", "A.B.C", "A.D"), config.getKeys(null, true));
         assertEquals(List.of("A"), config.getKeys(null, false));
-        // keys under a sub-section are relative to that section (matches the old Bukkit backend)
+        // keys under a sub-section are relative to that section
         assertEquals(List.of("B", "D"), config.getKeys("A", false));
     }
 

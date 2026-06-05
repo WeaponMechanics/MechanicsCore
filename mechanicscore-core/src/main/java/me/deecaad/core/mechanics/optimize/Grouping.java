@@ -16,8 +16,7 @@ import java.util.Map;
 /**
  * Merges consecutive batchable, unconditioned, unscheduled mechanics that share
  * a subject query into one {@link Statement.GroupedInvoke}, so the (potentially
- * expensive) subject query runs once instead of once per mechanic. Generalizes
- * the old PlayerEffectMechanicList.
+ * expensive) subject query runs once instead of once per mechanic.
  */
 public final class Grouping {
 
