@@ -5,7 +5,7 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * A circle centered at the emitter origin, lying in the plane perpendicular to {@link Axis axis}.
- * {@code t} parameterizes the angle around the circle ({@code t * 2π}), giving deterministic, evenly
+ * {@code t} parameterizes the angle around the circle ({@code t * 2*pi}), giving deterministic, evenly
  * distributed points. The emission direction is the radial outward normal in the circle's plane.
  */
 public final class CircleShape implements Shape {

@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
@@ -29,12 +30,17 @@ public class HasPermissionCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "has_permission");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "has_permission");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/conditions/has-permission";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().stringKey("Permission").required();
     }
 
     @NotNull @Override

@@ -9,6 +9,18 @@ public interface ConfigLike {
 
     boolean contains(String key);
 
+    /**
+     * Enumerates the child keys under the given path. Used to diff present config keys against a
+     * serializer's declared schema for hallucinated-key detection.
+     *
+     * @param path The dotted path of the section, or null/empty for the root.
+     * @param deep Whether to include nested keys (dotted) or only immediate children.
+     * @return The child keys, or an empty collection if the path is not a section.
+     */
+    default Collection<String> getKeys(String path, boolean deep) {
+        return List.of();
+    }
+
     default Object get(String key) {
         return get(key, null);
     }

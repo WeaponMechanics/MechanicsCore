@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.serializers.VectorProvider;
 import me.deecaad.core.file.serializers.VectorSerializer;
 import me.deecaad.core.mechanics.scope.CastScope;
@@ -66,12 +67,17 @@ public class InConeCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "incone");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "incone");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/conditions/incone";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().doubleKey("Angle").range(0.0, 180.0).nested("Direction", VectorSerializer.class).stringKey("Apex");
     }
 
     @Override

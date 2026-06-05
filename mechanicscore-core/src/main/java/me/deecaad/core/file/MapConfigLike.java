@@ -5,6 +5,7 @@ import me.deecaad.core.utils.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -71,6 +72,11 @@ public class MapConfigLike implements ConfigLike {
     }
 
     @Override
+    public Collection<String> getKeys(String path, boolean deep) {
+        return List.copyOf(config.keySet());
+    }
+
+    @Override
     public String getLocation(File localFile, String localPath) {
         Holder holder = config.get(normalizeString(localPath));
         if (holder == null)
@@ -83,6 +89,15 @@ public class MapConfigLike implements ConfigLike {
     }
 
     public @NotNull String normalizeString(@NotNull String str) {
+        return normalizeKey(str);
+    }
+
+    /**
+     * The canonical config-key normalization (lowercase, strip spaces and underscores). The
+     * unknown-key diff in SchemaValidator must use this exact rule so inline keys match how they
+     * are stored here.
+     */
+    public static @NotNull String normalizeKey(@NotNull String str) {
         return str.toLowerCase(Locale.ROOT).replace(" ", "").replace("_", "");
     }
 

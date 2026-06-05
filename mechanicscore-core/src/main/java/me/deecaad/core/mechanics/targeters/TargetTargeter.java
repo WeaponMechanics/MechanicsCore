@@ -26,13 +26,14 @@ public class TargetTargeter extends Targeter {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "target");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "target");
     }
 
     @Nullable @Override
     public String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/targeters/target";
     }
+
 
     @NotNull @Override
     public Targeter serialize(@NotNull SerializeData data) throws SerializerException {

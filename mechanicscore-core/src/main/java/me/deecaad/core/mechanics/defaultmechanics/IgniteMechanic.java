@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
@@ -22,7 +23,7 @@ public class IgniteMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "ignite");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "ignite");
     }
 
     @Override
@@ -35,6 +36,11 @@ public class IgniteMechanic extends Mechanic {
         if (subject == null || subject.entity() == null)
             return;
         subject.entity().setFireTicks(ticks);
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().intKey("Time");
     }
 
     @NotNull @Override

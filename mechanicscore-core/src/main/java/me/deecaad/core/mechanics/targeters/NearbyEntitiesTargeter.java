@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.targeters;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Context;
 import me.deecaad.core.mechanics.scope.Target;
@@ -97,12 +98,17 @@ public class NearbyEntitiesTargeter extends Targeter {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "nearby_entities");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "nearby_entities");
     }
 
     @Nullable @Override
     public String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/targeters/nearbyentities";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().doubleKey("Radius").required().range(0.0, null).intKey("Limit").range(0, null).stringKey("Exclude");
     }
 
     @NotNull @Override

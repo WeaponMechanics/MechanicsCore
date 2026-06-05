@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.serializers.AnyVectorProvider;
 import me.deecaad.core.file.serializers.ItemSerializer;
 import me.deecaad.core.file.serializers.VectorProvider;
@@ -52,7 +53,12 @@ public class DropItemMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "dropitem");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "dropitem");
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().include(new ItemSerializer().schema()).nested("Velocity", VectorSerializer.class);
     }
 
     @Override

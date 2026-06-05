@@ -35,6 +35,7 @@ dependencies {
     testImplementation(libs.junitApi)
     testImplementation(libs.junitParams)
     testImplementation(libs.mockito)
+    testImplementation(libs.mockBukkit)
     testRuntimeOnly(libs.junitEngine)
     testRuntimeOnly(libs.junitPlatformLauncher)
 }

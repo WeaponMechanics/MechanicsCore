@@ -4,9 +4,11 @@ import me.deecaad.core.file.InlineSerializer;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.serializers.ChanceSerializer;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.mechanics.scope.TargetKind;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * A Mechanic is a single action an admin writes in config. The behavior lives in
@@ -62,6 +64,26 @@ public abstract class Mechanic implements InlineSerializer<Mechanic> {
      */
     public boolean isBatchablePlayerEffect() {
         return false;
+    }
+
+    /**
+     * Contributes the parent-arg keys every mechanic accepts (read in {@link #applyParentArgs}).
+     * Subclasses override and append: {@code return super.schemaBuilder().doubleKey("Damage");}.
+     * {@code Chance} is a lenient string key because {@link ChanceSerializer} also accepts
+     * percentages like {@code "50%"}. The chain runs through {@code super}, so a subclass cannot
+     * skip an ancestor's keys.
+     */
+    protected ConfigSchema.Builder schemaBuilder() {
+        return ConfigSchema.builder()
+            .intKey("Repeat_Amount").range(1, null)
+            .intKey("Repeat_Interval").range(1, null)
+            .intKey("Delay_Before_Play").range(0, null)
+            .stringKey("Chance");
+    }
+
+    @Override
+    public final @NotNull ConfigSchema schema() {
+        return schemaBuilder().build();
     }
 
     public Mechanic applyParentArgs(SerializeData data, Mechanic mechanic) throws SerializerException {

@@ -6,7 +6,7 @@ import me.deecaad.core.mechanics.ast.ExprNode;
 import me.deecaad.core.mechanics.ast.InlineCallNode;
 import me.deecaad.core.mechanics.ast.StmtNode;
 import me.deecaad.core.mechanics.ast.SubjectNode;
-import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
+import me.deecaad.core.diagnostic.DiagnosticReporter;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

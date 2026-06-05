@@ -8,6 +8,7 @@ import me.deecaad.core.file.InlineSerializer;
 import me.deecaad.core.file.MapConfigLike;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.SimpleSerializer;
 import me.deecaad.core.file.serializers.ColorSerializer;
 import me.deecaad.core.mechanics.Conditions;
@@ -55,7 +56,7 @@ public class FireworkMechanic extends Mechanic {
 
         @Override
         public @NotNull NamespacedKey getKey() {
-            return new NamespacedKey(MechanicsCore.getInstance(), "firework_effect");
+            return new NamespacedKey(MechanicsCore.NAMESPACE, "firework_effect");
         }
 
         @NotNull @Override
@@ -173,12 +174,21 @@ public class FireworkMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "firework");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "firework");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/mechanics/firework";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder()
+            .rawListKey("Effects")
+            .intKey("Flight_Time")
+            .registrySerializerKey("Viewers", Targeters.REGISTRY)
+            .registrySerializerListKey("Viewer_Conditions", Conditions.REGISTRY);
     }
 
     @NotNull @Override

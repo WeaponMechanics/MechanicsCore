@@ -29,6 +29,11 @@ import java.util.jar.JarFile;
  */
 public class MechanicsCore extends MechanicsPlugin {
 
+    /**
+     * The namespace used for this plugin's {@link org.bukkit.NamespacedKey}s.
+     */
+    public static final String NAMESPACE = "mechanicscore";
+
     private static MechanicsCore INSTANCE;
 
     private TickManager tickManager;

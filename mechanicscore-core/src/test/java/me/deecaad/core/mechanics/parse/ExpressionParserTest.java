@@ -1,8 +1,8 @@
 package me.deecaad.core.mechanics.parse;
 
 import me.deecaad.core.mechanics.ast.ExprNode;
-import me.deecaad.core.mechanics.ast.SourceRef;
-import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
+import me.deecaad.core.diagnostic.SourceRef;
+import me.deecaad.core.diagnostic.DiagnosticReporter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

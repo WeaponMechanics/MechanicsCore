@@ -1,6 +1,7 @@
 package me.deecaad.core.file;
 
 import me.deecaad.core.MechanicsCore;
+import me.deecaad.core.file.verify.ConfigSchema;
 import org.bukkit.configuration.ConfigurationSection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -152,4 +153,16 @@ public interface Serializer<T> {
      * @throws SerializerException If there is an error in config.
      */
     @NotNull T serialize(@NotNull SerializeData data) throws SerializerException;
+
+    /**
+     * Declares every config key this serializer accepts. When non-null, the framework validates raw
+     * config against this schema (presence, type, range, unknown keys) for exact hallucinated-key
+     * detection and JSON Schema export. The schema is validation + export only; construction always
+     * goes through {@link #serialize(SerializeData)}. Defaults to null (no schema declared).
+     *
+     * @return The nullable declared schema.
+     */
+    default @Nullable ConfigSchema schema() {
+        return null;
+    }
 }

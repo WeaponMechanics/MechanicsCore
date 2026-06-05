@@ -4,6 +4,7 @@ import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.MapConfigLike;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.simple.RegistryValueSerializer;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
@@ -53,12 +54,17 @@ public class OnGroundCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "onground");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "onground");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/conditions/on-ground";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().doubleKey("distanceFromGround").range(0.0, null).rawListKey("blocks");
     }
 
     @Override

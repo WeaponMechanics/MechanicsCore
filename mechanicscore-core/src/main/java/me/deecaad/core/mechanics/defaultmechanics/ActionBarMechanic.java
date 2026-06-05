@@ -4,6 +4,7 @@ import com.cjcrafter.foliascheduler.TaskImplementation;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.placeholder.PlaceholderMessage;
@@ -68,12 +69,17 @@ public class ActionBarMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "actionbar");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "actionbar");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/mechanics/action-bar";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().colorKey("Message").required().intKey("Time").range(40, null);
     }
 
     @NotNull @Override

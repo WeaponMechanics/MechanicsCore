@@ -12,6 +12,7 @@ import me.deecaad.core.compatibility.nbt.NBTCompatibility;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.simple.BooleanSerializer;
 import me.deecaad.core.file.simple.ByNameSerializer;
 import me.deecaad.core.file.simple.CsvSerializer;
@@ -102,6 +103,46 @@ public class ItemSerializer implements Serializer<ItemStack> {
     }
 
     @Override
+    public @Nullable ConfigSchema schema() {
+        return ConfigSchema.builder()
+            .stringKey("Type").required()
+            .stringKey("Name")
+            .rawListKey("Lore")
+            .boolKey("Unbreakable")
+            .intKey("Custom_Model_Data")
+            .stringKey("Item_Model")
+            .intKey("Max_Stack_Size").range(1, 99)
+            .boolKey("Enchantment_Glint_Override")
+            .stringKey("Damage_Resistant")
+            .listKey("Enchantments", 1,
+                new RegistryValueSerializer<>(Enchantment.class, true),
+                new IntSerializer(1))
+            .boolKey("Hide_Flags")
+            .stringKey("Skull_Owning_Player")
+            .stringKey("Potion_Color")
+            .stringKey("Leather_Color")
+            .stringKey("Trim_Pattern")
+            .stringKey("Trim_Material")
+            .intKey("Light_Level").range(0, null)
+            .boolKey("Deny_Use_In_Crafting")
+            .listKey("Tags", 1,
+                new StringSerializer(),
+                new IntSerializer())
+            .listKey("Attributes", 2,
+                new RegistryValueSerializer<>(Attribute.class, true),
+                new DoubleSerializer(),
+                new ByNameSerializer<>(EquipmentSlotGroup.class, SLOT_GROUPS_BY_NAME),
+                new EnumValueSerializer<>(AttributeModifier.Operation.class, false))
+            .nested("Durability", DurabilitySchema.class)
+            .nested("Tool", ToolSchema.class)
+            .nested("Food", FoodSchema.class)
+            .nested("Equippable", EquippableSchema.class)
+            .nested("Firework", FireworkSchema.class)
+            .nested("Recipe", RecipeSchema.class)
+            .build();
+    }
+
+    @Override
     @NotNull public ItemStack serialize(@NotNull SerializeData data) throws SerializerException {
         return serializeWithTags(data, Collections.emptyMap());
     }
@@ -131,6 +172,9 @@ public class ItemSerializer implements Serializer<ItemStack> {
     }
 
     public void applyTags(@NotNull ItemStack item, @NotNull Map<String, Object> tags) {
+        if (tags.isEmpty())
+            return;
+
         NBTCompatibility nbt = CompatibilityAPI.getNBTCompatibility();
 
         for (Map.Entry<String, Object> entry : tags.entrySet()) {
@@ -341,7 +385,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
 
                 // Attributes need a completely unique key to avoid attributes
                 // overridding each other.
-                NamespacedKey key = new NamespacedKey(MechanicsCore.getInstance(), attribute.getKey().getKey() + "-" + slot);
+                NamespacedKey key = new NamespacedKey(MechanicsCore.NAMESPACE, attribute.getKey().getKey() + "-" + slot);
                 AttributeModifier modifier = new AttributeModifier(key, amount, operation, slot);
                 itemMeta.addAttributeModifier(attribute, modifier);
             }
@@ -524,7 +568,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
         result.setAmount(resultAmount);
 
         // Namespaced keys for recipes were added in MC 1.12
-        ShapedRecipe recipe = new ShapedRecipe(new NamespacedKey(MechanicsCore.getInstance(), data.getKey()), result);
+        ShapedRecipe recipe = new ShapedRecipe(new NamespacedKey(MechanicsCore.NAMESPACE, data.getKey()), result);
 
         // Bukkit.getRecipe was added in 1.16. We have a try-catch block
         // below in this method to handle 1.12 through 1.15
@@ -598,5 +642,101 @@ public class ItemSerializer implements Serializer<ItemStack> {
                 throw ex;
         }
         return itemStack;
+    }
+
+    // Nested-section schemas. These declare the keys of ItemSerializer's sub-sections so the verifier
+    // catches hallucinated keys inside them too. Construction stays in serializeWithoutRecipe (above);
+    // the validator only reads schema(), so serialize() is never called on these.
+    private abstract static class SectionSchema implements Serializer<Object> {
+        @Override
+        public @NotNull Object serialize(@NotNull SerializeData data) throws SerializerException {
+            throw new UnsupportedOperationException(getClass().getSimpleName() + " is schema-only");
+        }
+    }
+
+    public static final class DurabilitySchema extends SectionSchema {
+        @Override
+        public ConfigSchema schema() {
+            return ConfigSchema.builder()
+                .intKey("Max_Damage").required().range(0, null)
+                .intKey("Damage").range(0, null)
+                .build();
+        }
+    }
+
+    public static final class ToolSchema extends SectionSchema {
+        @Override
+        public ConfigSchema schema() {
+            return ConfigSchema.builder()
+                .doubleKey("Default_Mining_Speed")
+                .intKey("Damage_Per_Block")
+                .listKey("Rules", 2,
+                    new RegistryValueSerializer<>(BlockType.class, true),
+                    new DoubleSerializer(),
+                    new BooleanSerializer())
+                .build();
+        }
+    }
+
+    public static final class FoodSchema extends SectionSchema {
+        @Override
+        public ConfigSchema schema() {
+            return ConfigSchema.builder()
+                .intKey("Nutrition").required().range(0, null)
+                .doubleKey("Saturation").range(0.0, null)
+                .boolKey("Can_Always_Eat")
+                .build();
+        }
+    }
+
+    public static final class EquippableSchema extends SectionSchema {
+        @Override
+        public ConfigSchema schema() {
+            return ConfigSchema.builder()
+                .enumKey("Slot", EquipmentSlot.class).required()
+                .registryKey("Equip_Sound", Sound.class)
+                .stringKey("Model")
+                .stringKey("Camera_Overlay")
+                .boolKey("Dispensable")
+                .boolKey("Swappable")
+                .boolKey("Damage_On_Hurt")
+                .listKey("Entities", 1,
+                    new RegistryValueSerializer<>(EntityType.class, true))
+                .build();
+        }
+    }
+
+    public static final class FireworkSchema extends SectionSchema {
+        @Override
+        public ConfigSchema schema() {
+            return ConfigSchema.builder()
+                .intKey("Power").range(0, 255)
+                .listKey("Effects", 2,
+                    new EnumValueSerializer<>(FireworkEffect.Type.class, false),
+                    new CsvSerializer<>(new ColorSerializer()),
+                    new BooleanSerializer(),
+                    new BooleanSerializer(),
+                    new CsvSerializer<>(new ColorSerializer())).required()
+                .build();
+        }
+    }
+
+    public static final class RecipeSchema extends SectionSchema {
+        @Override
+        public ConfigSchema schema() {
+            return ConfigSchema.builder()
+                .intKey("Output_Amount").range(1, 64)
+                .rawListKey("Shape").required()
+                .nested("Ingredients", IngredientsSchema.class)
+                .build();
+        }
+    }
+
+    public static final class IngredientsSchema extends SectionSchema {
+        @Override
+        public ConfigSchema schema() {
+            // Recipe ingredient keys are user-defined single characters; accept any.
+            return ConfigSchema.builder().allowUnknown().build();
+        }
     }
 }

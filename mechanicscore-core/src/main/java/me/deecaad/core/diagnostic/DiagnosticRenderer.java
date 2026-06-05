@@ -1,8 +1,6 @@
-package me.deecaad.core.mechanics.diagnostic;
+package me.deecaad.core.diagnostic;
 
 import me.deecaad.core.MechanicsLogger;
-import me.deecaad.core.mechanics.ast.SourceRef;
-import me.deecaad.core.mechanics.ast.Span;
 import me.deecaad.core.utils.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -13,7 +11,8 @@ import java.util.logging.Level;
 /**
  * Renders a {@link Diagnostic} into the same "located at ... ^^^" pretty style
  * used by {@code SerializerException}/{@code MapConfigLike}, and logs it via the
- * plugin Debugger.
+ * plugin Debugger. Diagnostics with no source position ({@link Span#NONE} or an
+ * empty raw line) render as a header + location only, with no caret.
  */
 public final class DiagnosticRenderer {
 
@@ -24,21 +23,38 @@ public final class DiagnosticRenderer {
 
     public static @NotNull List<String> render(@NotNull Diagnostic diagnostic) {
         List<String> lines = new ArrayList<>();
-        lines.add((diagnostic.severity() == Severity.ERROR ? "Error: " : "Warning: ") + diagnostic.message());
+        lines.add(prefix(diagnostic.severity()) + diagnostic.message());
         lines.add(location(diagnostic.source()));
-        lines.add(INDENT + diagnostic.source().rawLine());
-        lines.add(caret(diagnostic.primary()));
-        for (Span secondary : diagnostic.secondary())
-            lines.add(caret(secondary));
+
+        boolean hasCaret = diagnostic.primary().line() >= 0 && !diagnostic.source().rawLine().isEmpty();
+        if (hasCaret) {
+            lines.add(INDENT + diagnostic.source().rawLine());
+            lines.add(caret(diagnostic.primary()));
+            for (Span secondary : diagnostic.secondary())
+                lines.add(caret(secondary));
+        }
+
         if (diagnostic.hint() != null)
             lines.add("Hint: " + diagnostic.hint());
         return lines;
     }
 
     public static void log(@NotNull MechanicsLogger debug, @NotNull Diagnostic diagnostic) {
-        Level level = diagnostic.severity() == Severity.ERROR ? Level.SEVERE : Level.WARNING;
+        Level level = switch (diagnostic.severity()) {
+            case ERROR -> Level.SEVERE;
+            case WARNING -> Level.WARNING;
+            case INFO -> Level.INFO;
+        };
         List<String> lines = render(diagnostic);
         debug.log(level, lines.toArray(new String[0]));
+    }
+
+    private static @NotNull String prefix(@NotNull Severity severity) {
+        return switch (severity) {
+            case ERROR -> "Error: ";
+            case WARNING -> "Warning: ";
+            case INFO -> "Info: ";
+        };
     }
 
     private static @NotNull String location(@NotNull SourceRef source) {

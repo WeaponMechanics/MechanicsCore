@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
@@ -44,7 +45,7 @@ public class DamageMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "damage");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "damage");
     }
 
     @Override
@@ -64,6 +65,14 @@ public class DamageMechanic extends Mechanic {
         target.damage(damage);
         if (resetHitCooldown)
             target.setNoDamageTicks(0);
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder()
+            .doubleKey("Damage")
+            .boolKey("Ignore_Armor")
+            .boolKey("Reset_Cooldown");
     }
 
     @NotNull @Override

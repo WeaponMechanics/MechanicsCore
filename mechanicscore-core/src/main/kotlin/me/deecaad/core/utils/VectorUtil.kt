@@ -268,8 +268,8 @@ object VectorUtil {
         b: Vector,
     ): Double {
         // This uses the formula for the dot product of two vectors:
-        // a · b = |a| * |b| * cos(θ)
-        // θ = acos(a · b / (|a| * |b|))
+        // a dot b = |a| * |b| * cos(theta)
+        // theta = acos(a dot b / (|a| * |b|))
 
         // Check for zero-length vectors to avoid division by zero
         val lengthsProduct = sqrt(a.lengthSquared() * b.lengthSquared())

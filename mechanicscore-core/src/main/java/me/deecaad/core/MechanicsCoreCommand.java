@@ -419,7 +419,7 @@ public final class MechanicsCoreCommand {
         MechanicsCore.getInstance().getTickManager().add(emitter);
         testEmitters.add(emitter);
 
-        player.sendMessage(text("Spawned a 5s burst emitter (flame → soul fire → end rod).", NamedTextColor.GREEN));
+        player.sendMessage(text("Spawned a 5s burst emitter (flame to soul fire to end rod).", NamedTextColor.GREEN));
     }
 
     private static void testEmitterShapes(Player player) {

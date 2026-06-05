@@ -19,7 +19,7 @@ public class SculkShriekMechanic extends ActivateBlockMechanic<SculkShrieker> {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "sculkshriek");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "sculkshriek");
     }
 
     @Override
@@ -33,6 +33,7 @@ public class SculkShriekMechanic extends ActivateBlockMechanic<SculkShrieker> {
             return;
         forEachBlock(player.getLocation(), shrieker -> shrieker.tryShriek(player));
     }
+
 
     @Override
     public @NotNull Mechanic serialize(@NotNull SerializeData data) throws SerializerException {

@@ -1,6 +1,10 @@
 package me.deecaad.core.file;
 
 import me.deecaad.core.MechanicsLogger;
+import me.deecaad.core.diagnostic.Diagnostic;
+import me.deecaad.core.diagnostic.DiagnosticRenderer;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.file.verify.SchemaValidator;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
@@ -8,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class FileReader {
@@ -186,6 +191,7 @@ public class FileReader {
         Serializer<?> savedSerializer = null;
 
         YamlConfiguration configuration = YamlConfiguration.loadConfiguration(file);
+        YamlPositions positions = YamlPositions.ofFile(file);
         for (String key : configuration.getKeys(true)) {
 
             // Remove the starsWithDeny if the key does no longer start with it
@@ -245,7 +251,7 @@ public class FileReader {
                             // SerializerException can be thrown whenever the
                             // user input an invalid value. We should log the
                             // exception.
-                            Object valid = serializer.serialize(new SerializeData(file, key, new BukkitConfig(configuration)));
+                            Object valid = serializeWithSchema(serializer, new SerializeData(file, key, new BukkitConfig(configuration)), positions);
                             filledMap.set(key, valid);
 
                             // Only update the startsWithDeny if this is the "main serializer"
@@ -292,6 +298,23 @@ public class FileReader {
         }
 
         return filledMap;
+    }
+
+    /**
+     * Serializes through {@link Serializer#serialize(SerializeData)} (the constructor). When the
+     * serializer declares a {@link Serializer#schema()}, the schema is validated first and any
+     * diagnostics are logged; hard errors are still produced by {@code serialize} itself, preserving
+     * the existing catch-and-log flow.
+     */
+    private Object serializeWithSchema(Serializer<?> serializer, SerializeData data, YamlPositions positions) throws SerializerException {
+        ConfigSchema schema = serializer.schema();
+        if (schema != null) {
+            List<Diagnostic> diagnostics = new ArrayList<>();
+            SchemaValidator.validate(schema, data, diagnostics);
+            for (Diagnostic diagnostic : diagnostics)
+                DiagnosticRenderer.log(debug, positions.enrich(diagnostic));
+        }
+        return serializer.serialize(data);
     }
 
     /**

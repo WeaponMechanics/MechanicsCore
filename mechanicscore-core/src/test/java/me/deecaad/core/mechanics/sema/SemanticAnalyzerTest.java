@@ -2,14 +2,15 @@ package me.deecaad.core.mechanics.sema;
 
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.ast.BlockNode;
 import me.deecaad.core.mechanics.ast.ProgramNode;
 import me.deecaad.core.mechanics.ast.StmtNode;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
-import me.deecaad.core.mechanics.diagnostic.Diagnostic;
-import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
-import me.deecaad.core.mechanics.diagnostic.Severity;
+import me.deecaad.core.diagnostic.Diagnostic;
+import me.deecaad.core.diagnostic.DiagnosticReporter;
+import me.deecaad.core.diagnostic.Severity;
 import me.deecaad.core.mechanics.parse.StatementParser;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
@@ -40,6 +41,11 @@ class SemanticAnalyzerTest {
         @Override
         public NamespacedKey getKey() {
             return new NamespacedKey("test", "fake");
+        }
+
+        @Override
+        protected ConfigSchema.Builder schemaBuilder() {
+            return super.schemaBuilder().intKey("Amount");
         }
 
         @Override

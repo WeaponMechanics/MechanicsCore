@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.targeters;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.utils.RandomUtil;
 import org.bukkit.Location;
@@ -93,7 +94,12 @@ public class ScatterTargeter extends ShapeTargeter {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "scatter");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "scatter");
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().intKey("Points").required().doubleKey("Horizontal_Range").range(0.0, null).doubleKey("Vertical_Range").range(0.0, null).boolKey("Trace_Down");
     }
 
     @NotNull @Override

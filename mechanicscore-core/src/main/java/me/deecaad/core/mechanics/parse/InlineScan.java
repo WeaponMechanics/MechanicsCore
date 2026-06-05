@@ -4,9 +4,9 @@ import me.deecaad.core.file.InlineSerializer;
 import me.deecaad.core.file.MapConfigLike;
 import me.deecaad.core.mechanics.ast.InlineCallNode;
 import me.deecaad.core.mechanics.ast.Loc;
-import me.deecaad.core.mechanics.ast.SourceRef;
-import me.deecaad.core.mechanics.ast.Span;
-import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
+import me.deecaad.core.diagnostic.SourceRef;
+import me.deecaad.core.diagnostic.Span;
+import me.deecaad.core.diagnostic.DiagnosticReporter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

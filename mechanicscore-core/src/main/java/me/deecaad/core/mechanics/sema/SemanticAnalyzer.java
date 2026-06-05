@@ -12,9 +12,14 @@ import me.deecaad.core.mechanics.ast.StmtNode;
 import me.deecaad.core.mechanics.ast.SubjectNode;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
-import me.deecaad.core.mechanics.diagnostic.Diagnostic;
-import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
-import me.deecaad.core.mechanics.diagnostic.Severity;
+import me.deecaad.core.diagnostic.Diagnostic;
+import me.deecaad.core.diagnostic.DiagnosticKind;
+import me.deecaad.core.diagnostic.DiagnosticReporter;
+import me.deecaad.core.diagnostic.Severity;
+import me.deecaad.core.diagnostic.Span;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.file.verify.SchemaValidator;
+import me.deecaad.core.mechanics.parse.InlineScan;
 import me.deecaad.core.mechanics.program.MechanicBlock;
 import me.deecaad.core.mechanics.program.Program;
 import me.deecaad.core.mechanics.program.Statement;
@@ -159,13 +164,58 @@ public final class SemanticAnalyzer {
         MapConfigLike config = new MapConfigLike(call.args())
             .setDebugInfo(file, call.loc().source().configPath(), call.loc().source().rawLine());
         SerializeData data = new SerializeData(file, null, config);
+
+        // Schema validation first: catches hallucinated args + type/range errors that serialize()
+        // would silently ignore or report less precisely. On a blocking error we stop here so the
+        // error is not reported twice (once by the schema, once by serialize()).
+        ConfigSchema schema = proto.schema();
+        if (schema != null) {
+            List<Diagnostic> diagnostics = new ArrayList<>();
+            SchemaValidator.validate(schema, data, diagnostics);
+            boolean blocking = false;
+            for (Diagnostic diagnostic : diagnostics) {
+                reporter.report(reanchor(diagnostic, call));
+                if (diagnostic.severity() == Severity.ERROR)
+                    blocking = true;
+            }
+            if (blocking)
+                return null;
+        }
+
         try {
             return proto.serialize(data);
         } catch (SerializerException ex) {
             String message = ex.getMessages().isEmpty() ? "Invalid arguments" : String.join(" | ", ex.getMessages());
-            reporter.report(new Diagnostic(Severity.ERROR, message, call.loc().source(), call.nameLoc().span(), List.of(), null));
+            reporter.report(new Diagnostic(Severity.ERROR, DiagnosticKind.OTHER, message, call.loc().source(), call.nameLoc().span(), List.of(), null));
             return null;
         }
+    }
+
+    /**
+     * Re-anchors a schema diagnostic (which has no column info) to the offending inline argument's
+     * source span, so the caret points at the actual key. Falls back to the call name when the key
+     * cannot be located (e.g. a missing-required key or a deeply nested diagnostic).
+     */
+    private @NotNull Diagnostic reanchor(@NotNull Diagnostic diagnostic, @NotNull InlineCallNode call) {
+        String key = diagnostic.source().configPath();
+        MapConfigLike.Holder holder = findHolder(call, key);
+        Span span;
+        if (holder != null) {
+            int col = InlineScan.argColumn(call, holder);
+            span = Span.of(call.nameLoc().span().line(), col, col + key.length());
+        } else {
+            span = call.nameLoc().span();
+        }
+        return new Diagnostic(diagnostic.severity(), diagnostic.kind(), diagnostic.message(),
+            call.loc().source(), span, List.of(), diagnostic.hint());
+    }
+
+    private static @Nullable MapConfigLike.Holder findHolder(@NotNull InlineCallNode call, @NotNull String key) {
+        String norm = MapConfigLike.normalizeKey(key);
+        for (Map.Entry<String, MapConfigLike.Holder> entry : call.args().entrySet())
+            if (MapConfigLike.normalizeKey(entry.getKey()).equals(norm))
+                return entry.getValue();
+        return null;
     }
 
     private static @Nullable String suggest(@NotNull String actual, @NotNull Iterable<String> options) {

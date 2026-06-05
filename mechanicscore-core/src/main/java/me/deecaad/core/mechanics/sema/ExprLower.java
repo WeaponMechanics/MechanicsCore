@@ -1,7 +1,7 @@
 package me.deecaad.core.mechanics.sema;
 
 import me.deecaad.core.mechanics.ast.ExprNode;
-import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
+import me.deecaad.core.diagnostic.DiagnosticReporter;
 import me.deecaad.core.mechanics.expression.Expression;
 import me.deecaad.core.mechanics.expression.ExpressionFunctions;
 import me.deecaad.core.mechanics.expression.Properties;

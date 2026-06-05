@@ -22,13 +22,14 @@ public class SprintingCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "sprinting");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "sprinting");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/conditions/sprinting";
     }
+
 
     @NotNull @Override
     public Condition serialize(@NotNull SerializeData data) throws SerializerException {

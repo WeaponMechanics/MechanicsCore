@@ -5,7 +5,7 @@ import me.deecaad.core.mechanics.ast.ProgramNode;
 import me.deecaad.core.mechanics.ast.StmtNode;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
-import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
+import me.deecaad.core.diagnostic.DiagnosticReporter;
 import me.deecaad.core.mechanics.expression.ExpressionParser;
 import me.deecaad.core.mechanics.parse.StatementParser;
 import me.deecaad.core.mechanics.program.GlobalBlocks;

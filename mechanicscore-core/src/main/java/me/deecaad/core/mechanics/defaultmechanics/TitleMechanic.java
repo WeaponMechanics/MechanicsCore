@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.placeholder.PlaceholderMessage;
@@ -54,12 +55,17 @@ public class TitleMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "title");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "title");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/mechanics/title";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().colorKey("Title").colorKey("Subtitle").intKey("Fade_In").range(0, null).intKey("Stay").range(0, null).intKey("Fade_Out").range(0, null);
     }
 
     @NotNull @Override

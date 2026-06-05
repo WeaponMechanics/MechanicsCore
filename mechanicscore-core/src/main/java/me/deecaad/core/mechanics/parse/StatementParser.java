@@ -3,11 +3,11 @@ package me.deecaad.core.mechanics.parse;
 import me.deecaad.core.mechanics.ast.ExprNode;
 import me.deecaad.core.mechanics.ast.InlineCallNode;
 import me.deecaad.core.mechanics.ast.Loc;
-import me.deecaad.core.mechanics.ast.SourceRef;
-import me.deecaad.core.mechanics.ast.Span;
+import me.deecaad.core.diagnostic.SourceRef;
+import me.deecaad.core.diagnostic.Span;
 import me.deecaad.core.mechanics.ast.StmtNode;
 import me.deecaad.core.mechanics.ast.SubjectNode;
-import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
+import me.deecaad.core.diagnostic.DiagnosticReporter;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;

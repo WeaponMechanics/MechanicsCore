@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.expression.Expression;
 import me.deecaad.core.mechanics.expression.ExpressionException;
 import me.deecaad.core.mechanics.expression.ExpressionParser;
@@ -38,12 +39,17 @@ public class CheckCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "check");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "check");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/conditions/check";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().stringKey("If").required();
     }
 
     @NotNull @Override

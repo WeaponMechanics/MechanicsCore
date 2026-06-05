@@ -21,13 +21,14 @@ public class GlidingCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "gliding");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "gliding");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/conditions/gliding";
     }
+
 
     @NotNull @Override
     public Condition serialize(@NotNull SerializeData data) throws SerializerException {

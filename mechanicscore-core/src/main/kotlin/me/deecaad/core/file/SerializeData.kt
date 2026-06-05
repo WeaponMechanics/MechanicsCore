@@ -79,6 +79,36 @@ class SerializeData {
         return this
     }
 
+    companion object {
+        /**
+         * Test-only drift guard: when recording is on, every key read through [of]/[ofList]/[has] is
+         * collected, so a test can assert a serializer reads exactly the keys its schema declares.
+         * Guarded by a single boolean check, so production has no measurable cost.
+         */
+        @JvmStatic
+        var recordingAccess: Boolean = false
+
+        @JvmStatic
+        val accessedKeys: MutableSet<String> = java.util.Collections.synchronizedSet(LinkedHashSet())
+
+        @JvmStatic
+        fun startRecording() {
+            accessedKeys.clear()
+            recordingAccess = true
+        }
+
+        @JvmStatic
+        fun stopRecording(): Set<String> {
+            recordingAccess = false
+            return LinkedHashSet(accessedKeys)
+        }
+
+        private fun recordAccess(relative: String?) {
+            if (recordingAccess && relative != null)
+                accessedKeys.add(relative)
+        }
+    }
+
     /**
      * Returns the path to the key.
      *
@@ -174,6 +204,7 @@ class SerializeData {
             return back().of(split.last())
         }
 
+        recordAccess(relative)
         return ConfigAccessor(relative)
     }
 
@@ -190,6 +221,7 @@ class SerializeData {
             val split = key!!.split("\\.".toRegex()).dropLastWhile { it.isEmpty() }
             return back().ofList(split.last())
         }
+        recordAccess(relative)
         return ConfigListAccessor(relative)
     }
 
@@ -201,6 +233,7 @@ class SerializeData {
      * @return `true` if the key exists.
      */
     fun has(relative: String?): Boolean {
+        recordAccess(relative)
         return if (usingStep) pathToConfig!!.contains(getPath(relative)!!) else config.contains(getPath(relative))
     }
 
@@ -927,26 +960,14 @@ class SerializeData {
          * @return A serialized instance.
          * @throws SerializerException If there are any errors in config.
          */
+        @Suppress("UNCHECKED_CAST")
         @Throws(SerializerException::class)
         fun <T : InlineSerializer<T>> serializeRegistry(registry: Registry<T>): Optional<T> {
-            if (config !is MapConfigLike) throw UnsupportedOperationException("Cannot use registries with $config")
-            if (!has(relative)) {
-                return Optional.empty()
+            var result: T? = null
+            forEachRegistryEntry(registry, true) { serializer, nested ->
+                result = (serializer as Serializer<T>).serialize(nested)
             }
-
-            val map = assertExists().get(MutableMap::class.java)
-            val temp: ConfigLike =
-                MapConfigLike(map.get() as MutableMap<String, MapConfigLike.Holder>)
-                    .setDebugInfo(config.file, config.path, config.fullLine)
-            val nested = SerializeData(file, null, temp)
-
-            val key = nested.of(InlineSerializer.UNIQUE_IDENTIFIER).assertExists().get(String::class.java).get()
-            val base = registry.matchAny(key)
-                ?: throw builder()
-                    .locationRaw(location)
-                    .buildInvalidRegistryOption(key, registry)
-
-            return Optional.of(base.serialize(nested))
+            return Optional.ofNullable(result)
         }
 
         /**
@@ -987,47 +1008,70 @@ class SerializeData {
             return Optional.of(impliedType.serialize(nested))
         }
 
+        @Suppress("UNCHECKED_CAST")
         @Throws(SerializerException::class)
         fun <T : InlineSerializer<T>> getRegistryList(registry: Registry<T>): List<T> {
-            if (config !is MapConfigLike) throw UnsupportedOperationException("Cannot use registries with $config")
-            if (!has(relative)) return listOf()
-
-            val list = config.getList(getPath(relative)) as List<MapConfigLike.Holder?>
             val returnValue: MutableList<T> = ArrayList()
+            forEachRegistryEntry(registry, false) { serializer, nested ->
+                returnValue.add((serializer as Serializer<T>).serialize(nested))
+            }
+            return returnValue
+        }
 
-            for (i in list.indices) {
-                val map =
-                    list[i]!!.value as? Map<*, *> ?: throw listException(
-                        relative,
-                        i,
-                        "Expected an inline serializer like 'sound(sound=entity.generic.explosion)', but instead got '${list[i]!!.value}'",
-                    )
+        /**
+         * Shared traversal of a registry-of-serializers key. Resolves each chosen serializer by its
+         * [InlineSerializer.UNIQUE_IDENTIFIER] and hands the caller the picked serializer plus the
+         * child [SerializeData] of its inline args, leaving the action to decide what to do (the
+         * schema validator recurses the nested schema; [serializeRegistry]/[getRegistryList]
+         * construct). Throws on an unknown registry id or a malformed list element.
+         *
+         * @param registry The registry of inline serializers.
+         * @param single   true for a single inline value, false for a list of them.
+         * @param action   Receives (picked serializer, child data) per entry.
+         */
+        @Throws(SerializerException::class)
+        fun forEachRegistryEntry(
+            registry: Registry<out Keyed>,
+            single: Boolean,
+            action: java.util.function.BiConsumer<Serializer<*>, SerializeData>,
+        ) {
+            if (config !is MapConfigLike) throw UnsupportedOperationException("Cannot use registries with $config")
+            if (!has(relative)) return
 
-                val id =
-                    (map[InlineSerializer.UNIQUE_IDENTIFIER] as? MapConfigLike.Holder)?.value?.toString()
+            if (single) {
+                val map = assertExists().get(MutableMap::class.java)
+                val temp: ConfigLike =
+                    MapConfigLike(map.get() as MutableMap<String, MapConfigLike.Holder>)
+                        .setDebugInfo(config.file, config.path, config.fullLine)
+                val nested = SerializeData(file, null, temp)
+
+                val key = nested.of(InlineSerializer.UNIQUE_IDENTIFIER).assertExists().get(String::class.java).get()
+                val base = registry.matchAny(key)
+                    ?: throw builder().locationRaw(location).buildInvalidRegistryOption(key, registry)
+                action.accept(base as Serializer<*>, nested)
+            } else {
+                val list = config.getList(getPath(relative)) as List<MapConfigLike.Holder?>
+                for (i in list.indices) {
+                    val map = list[i]!!.value as? Map<*, *>
                         ?: throw listException(
                             relative,
                             i,
-                            "Could not identify any valid type",
+                            "Expected an inline serializer like 'sound(sound=entity.generic.explosion)', but instead got '${list[i]!!.value}'",
                         )
-
-                val serializer: T = registry.matchAny(id)
-                    ?: throw builder()
-                        .locationRaw(location)
-                        .buildInvalidRegistryOption(id, registry)
-
-                val temp: ConfigLike =
-                    MapConfigLike(map as Map<String, MapConfigLike.Holder>).setDebugInfo(
-                        config.file,
-                        config.path,
-                        config.fullLine,
-                    )
-
-                val nested = SerializeData(file, null, temp)
-                returnValue.add(serializer.serialize(nested))
+                    val id = (map[InlineSerializer.UNIQUE_IDENTIFIER] as? MapConfigLike.Holder)?.value?.toString()
+                        ?: throw listException(relative, i, "Could not identify any valid type")
+                    val serializer = registry.matchAny(id)
+                        ?: throw builder().locationRaw(location).buildInvalidRegistryOption(id, registry)
+                    val temp: ConfigLike =
+                        MapConfigLike(map as Map<String, MapConfigLike.Holder>).setDebugInfo(
+                            config.file,
+                            config.path,
+                            config.fullLine,
+                        )
+                    val nested = SerializeData(file, null, temp)
+                    action.accept(serializer as Serializer<*>, nested)
+                }
             }
-
-            return returnValue
         }
 
         @Throws(SerializerException::class)

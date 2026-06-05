@@ -1,4 +1,4 @@
-package me.deecaad.core.mechanics.diagnostic;
+package me.deecaad.core.diagnostic;
 
 import me.deecaad.core.mechanics.ast.Loc;
 import org.jetbrains.annotations.NotNull;
@@ -9,8 +9,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Accumulates {@link Diagnostic}s across a compile. Front-end stages record and
- * continue rather than throwing, so a single compile reports every problem.
+ * Accumulates {@link Diagnostic}s across a pass. Front-end stages record and
+ * continue rather than throwing, so a single pass reports every problem.
  */
 public final class DiagnosticReporter {
 
@@ -21,7 +21,7 @@ public final class DiagnosticReporter {
     }
 
     public void error(@NotNull Loc loc, @NotNull String message, @Nullable String hint) {
-        diagnostics.add(new Diagnostic(Severity.ERROR, message, loc.source(), loc.span(), List.of(), hint));
+        diagnostics.add(new Diagnostic(Severity.ERROR, DiagnosticKind.OTHER, message, loc.source(), loc.span(), List.of(), hint));
     }
 
     public void warning(@NotNull Loc loc, @NotNull String message) {
@@ -29,7 +29,7 @@ public final class DiagnosticReporter {
     }
 
     public void warning(@NotNull Loc loc, @NotNull String message, @Nullable String hint) {
-        diagnostics.add(new Diagnostic(Severity.WARNING, message, loc.source(), loc.span(), List.of(), hint));
+        diagnostics.add(new Diagnostic(Severity.WARNING, DiagnosticKind.OTHER, message, loc.source(), loc.span(), List.of(), hint));
     }
 
     public void report(@NotNull Diagnostic diagnostic) {

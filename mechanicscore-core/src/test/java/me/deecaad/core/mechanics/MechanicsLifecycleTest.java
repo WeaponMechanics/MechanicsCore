@@ -8,7 +8,7 @@ import me.deecaad.core.mechanics.ast.StmtNode;
 import me.deecaad.core.mechanics.conditions.CheckCondition;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
-import me.deecaad.core.mechanics.diagnostic.DiagnosticReporter;
+import me.deecaad.core.diagnostic.DiagnosticReporter;
 import me.deecaad.core.mechanics.expression.Expression;
 import me.deecaad.core.mechanics.optimize.Optimizer;
 import me.deecaad.core.mechanics.parse.StatementParser;

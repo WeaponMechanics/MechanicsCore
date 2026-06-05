@@ -22,13 +22,14 @@ public class SneakingCondition extends Condition {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "sneaking");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "sneaking");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/conditions/sneaking";
     }
+
 
     @NotNull @Override
     public Condition serialize(@NotNull SerializeData data) throws SerializerException {

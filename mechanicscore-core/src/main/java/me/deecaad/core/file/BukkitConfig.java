@@ -4,6 +4,7 @@ import me.deecaad.core.utils.SerializerUtil;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.List;
 
 public class BukkitConfig implements ConfigLike {
@@ -37,5 +38,13 @@ public class BukkitConfig implements ConfigLike {
     @Override
     public String getLocation(File localFile, String localPath) {
         return SerializerUtil.foundAt(localFile, localPath);
+    }
+
+    @Override
+    public Collection<String> getKeys(String path, boolean deep) {
+        ConfigurationSection section = (path == null || path.isEmpty()) ? config : config.getConfigurationSection(path);
+        if (section == null)
+            return List.of();
+        return section.getKeys(deep);
     }
 }

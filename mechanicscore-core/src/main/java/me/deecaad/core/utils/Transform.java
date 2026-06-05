@@ -265,7 +265,7 @@ public class Transform implements TransformLike {
 
     /**
      * Extracts the Minecraft yaw (degrees) from a JOML rotation. Computed from the rotated forward
-     * vector to avoid the gimbal lock that {@code getEulerAnglesYXZ} hits at pitch = ±90°.
+     * vector to avoid the gimbal lock that {@code getEulerAnglesYXZ} hits at pitch = +/-90 degrees.
      *
      * @param rotation The non-null rotation.
      * @return The Minecraft yaw, in degrees.

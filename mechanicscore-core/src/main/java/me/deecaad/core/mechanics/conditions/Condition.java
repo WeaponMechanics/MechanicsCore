@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.file.InlineSerializer;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.mechanics.scope.TargetKind;
@@ -43,6 +44,19 @@ public abstract class Condition implements InlineSerializer<Condition> {
      */
     public TargetKind requiredTarget() {
         return TargetKind.LIVING_ENTITY;
+    }
+
+    /**
+     * Contributes the parent-arg keys every condition accepts (read in {@link #applyParentArgs}).
+     * Subclasses override and append via {@code super.schemaBuilder()}.
+     */
+    protected ConfigSchema.Builder schemaBuilder() {
+        return ConfigSchema.builder().boolKey("Inverted");
+    }
+
+    @Override
+    public final @NotNull ConfigSchema schema() {
+        return schemaBuilder().build();
     }
 
     protected Condition applyParentArgs(SerializeData data, Condition condition) throws SerializerException {

@@ -141,7 +141,7 @@ public final class Transition<T> {
     }
 
     /**
-     * Three-keyframe pulse: {@code start} → {@code peak} (at t=0.5) → {@code end}, with {@code in}
+     * Three-keyframe pulse: {@code start} to {@code peak} (at t=0.5) to {@code end}, with {@code in}
      * easing on the rise and {@code out} easing on the fall.
      */
     public static <T> @NotNull Transition<T> pulse(@NotNull T start, @NotNull T peak, @NotNull T end, @NotNull Interpolator<T> interpolator, int durationTicks, @NotNull Easing in, @NotNull Easing out) {

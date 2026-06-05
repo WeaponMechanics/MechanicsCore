@@ -6,6 +6,7 @@ import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.serializers.AnyVectorProvider;
 import me.deecaad.core.file.serializers.VectorProvider;
 import me.deecaad.core.file.serializers.VectorSerializer;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Context;
 import me.deecaad.core.mechanics.scope.EntityTarget;
@@ -121,6 +122,22 @@ public abstract class Targeter implements InlineSerializer<Targeter> {
                 out.add(pointTarget(target.location()));
         }
         return Context.of(out);
+    }
+
+    /**
+     * Contributes the parent-arg keys every targeter accepts (read in {@link #applyParentArgs}).
+     * Subclasses override and append via {@code super.schemaBuilder()}.
+     */
+    protected ConfigSchema.Builder schemaBuilder() {
+        return ConfigSchema.builder()
+            .nested("Offset", VectorSerializer.class)
+            .boolKey("Eye")
+            .stringKey("From");
+    }
+
+    @Override
+    public final @NotNull ConfigSchema schema() {
+        return schemaBuilder().build();
     }
 
     protected Targeter applyParentArgs(SerializeData data, Targeter targeter) throws SerializerException {

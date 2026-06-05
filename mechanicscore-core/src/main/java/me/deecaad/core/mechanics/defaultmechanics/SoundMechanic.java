@@ -3,6 +3,7 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.Conditions;
 import me.deecaad.core.mechanics.Targeters;
 import me.deecaad.core.mechanics.conditions.Condition;
@@ -101,12 +102,24 @@ public class SoundMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "sound");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "sound");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/mechanics/sound";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder()
+            .registryKey("Sound", Sound.class).required()
+            .doubleKey("Volume").range(0.0, null)
+            .doubleKey("Pitch").range(0.5, 2.0)
+            .doubleKey("Noise").range(0.0, 1.5)
+            .enumKey("Category", SoundCategory.class)
+            .registrySerializerKey("Listeners", Targeters.REGISTRY)
+            .registrySerializerListKey("Listener_Conditions", Conditions.REGISTRY);
     }
 
     @NotNull @Override
