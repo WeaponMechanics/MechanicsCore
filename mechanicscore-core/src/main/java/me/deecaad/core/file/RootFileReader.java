@@ -1,19 +1,15 @@
 package me.deecaad.core.file;
 
-import kotlin.text.Charsets;
 import me.deecaad.core.MechanicsLogger;
 import me.deecaad.core.MechanicsPlugin;
 import me.deecaad.core.utils.FileUtil;
 import org.bukkit.configuration.InvalidConfigurationException;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.Listener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -132,9 +128,9 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                 @Override
                 public @NotNull FileVisitResult visitFile(@NotNull Path file, @NotNull BasicFileAttributes attrs) {
                     if (isYaml(file) && isUnderTemplates(root, file)) {
-                        YamlConfiguration yaml = load(file);
+                        SnakeYamlConfig yaml = load(file);
                         if (yaml != null)
-                            templates.registerFile(file.toFile(), yaml);
+                            templates.registerFile(file.toFile(), yaml.root());
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -147,13 +143,13 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                     if (!isYaml(file) || isUnderTemplates(root, file))
                         return FileVisitResult.CONTINUE;
 
-                    YamlConfiguration config = load(file);
+                    SnakeYamlConfig config = load(file);
                     if (config == null)
                         return FileVisitResult.CONTINUE;
 
-                    // Inline 'Path_To' references on the raw config before any serialization, so the
+                    // Inline 'Path_To' references on the raw value tree before any serialization, so the
                     // expanded config is equivalent to hand-typed inline config.
-                    TemplateExpander.expand(config, templates, file.toFile(), debugger);
+                    TemplateExpander.expand(config.root(), templates, file.toFile(), debugger);
 
                     // By using the FileReader here, we can use all normal serializers and validators.
                     // This lets other plugins save their own data to the final config.
@@ -170,9 +166,9 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                     }
 
                     // Go through each key from root, and deserialize as the root type
-                    for (String key : config.getKeys(false)) {
+                    for (String key : config.getKeys(null, false)) {
                         try {
-                            SerializeData data = new SerializeData(file.toFile(), key, new BukkitConfig(config));
+                            SerializeData data = new SerializeData(file.toFile(), key, config);
                             R obj = data.of().assertExists().serialize(serializerClass).get();
                             accumulate.set(key, obj);
                         } catch (SerializerException ex) {
@@ -202,11 +198,9 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
         return false;
     }
 
-    private @Nullable YamlConfiguration load(@NotNull Path file) {
-        try (InputStream stream = Files.newInputStream(file)) {
-            YamlConfiguration config = new YamlConfiguration();
-            config.load(new InputStreamReader(stream, Charsets.UTF_8));
-            return config;
+    private @Nullable SnakeYamlConfig load(@NotNull Path file) {
+        try {
+            return SnakeYamlConfig.ofFile(file.toFile());
         } catch (IOException | InvalidConfigurationException ex) {
             debugger.warning("Failed to load " + file + "!", ex);
             return null;

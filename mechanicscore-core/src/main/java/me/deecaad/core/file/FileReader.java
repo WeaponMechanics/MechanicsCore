@@ -5,12 +5,12 @@ import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticRenderer;
 import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.verify.SchemaValidator;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -178,7 +178,14 @@ public class FileReader {
      * @return the map with file's configurations
      */
     public @NotNull Configuration fillOneFile(File file) {
-        return fillOneFile(YamlConfiguration.loadConfiguration(file), file);
+        SnakeYamlConfig configuration;
+        try {
+            configuration = SnakeYamlConfig.ofFile(file);
+        } catch (IOException | InvalidConfigurationException ex) {
+            debug.warning("Failed to load " + file + "!", ex);
+            return new FastConfiguration();
+        }
+        return fillOneFile(configuration, file);
     }
 
     /**
@@ -190,7 +197,7 @@ public class FileReader {
      * @param file the source file (for diagnostics)
      * @return the map with file's configurations
      */
-    public @NotNull Configuration fillOneFile(YamlConfiguration configuration, File file) {
+    public @NotNull Configuration fillOneFile(SnakeYamlConfig configuration, File file) {
         Configuration filledMap = new FastConfiguration();
 
         // If a serializer is found, it's path is saved here. Any
@@ -198,8 +205,7 @@ public class FileReader {
         // Meaning booleans, numbers, etc. are skipped
         String startsWithDeny = null;
 
-        YamlPositions positions = YamlPositions.ofFile(file);
-        for (String key : configuration.getKeys(true)) {
+        for (String key : configuration.getKeys(null, true)) {
 
             // Remove the starsWithDeny if the key does no longer start with it
             // Booleans, numbers, etc. can then be saved again
@@ -243,7 +249,7 @@ public class FileReader {
                         continue;
                     }
 
-                    if (!serializer.shouldSerialize(new SerializeData(file, key, new BukkitConfig(configuration)))) {
+                    if (!serializer.shouldSerialize(new SerializeData(file, key, configuration))) {
                         debug.finest("Skipping " + key + " due to skip");
                         continue;
                     }
@@ -253,7 +259,7 @@ public class FileReader {
                         // SerializerException can be thrown whenever the
                         // user input an invalid value. We should log the
                         // exception.
-                        Object valid = serializeWithSchema(serializer, new SerializeData(file, key, new BukkitConfig(configuration)), positions);
+                        Object valid = serializeWithSchema(serializer, new SerializeData(file, key, configuration));
                         filledMap.set(key, valid);
 
                         // Only update the startsWithDeny if this is the "main serializer"
@@ -283,7 +289,7 @@ public class FileReader {
             }
 
             // We don't want to store these
-            if (configuration.isConfigurationSection(key))
+            if (configuration.get(key) instanceof Map)
                 continue;
 
             Object object = configuration.get(key);
@@ -299,13 +305,13 @@ public class FileReader {
      * diagnostics are logged; hard errors are still produced by {@code serialize} itself, preserving
      * the existing catch-and-log flow.
      */
-    private Object serializeWithSchema(Serializer<?> serializer, SerializeData data, YamlPositions positions) throws SerializerException {
+    private Object serializeWithSchema(Serializer<?> serializer, SerializeData data) throws SerializerException {
         ConfigSchema schema = serializer.schema();
         if (schema != null) {
             List<Diagnostic> diagnostics = new ArrayList<>();
             SchemaValidator.validate(schema, data, diagnostics);
             for (Diagnostic diagnostic : diagnostics)
-                DiagnosticRenderer.log(debug, positions.enrich(diagnostic));
+                DiagnosticRenderer.log(debug, data.getConfig().enrich(diagnostic));
         }
         return serializer.serialize(data);
     }
@@ -321,7 +327,7 @@ public class FileReader {
 
         for (ValidatorData validatorData : validatorDatas) {
 
-            SerializeData data = new SerializeData(validatorData.file, validatorData.path, new BukkitConfig(validatorData.configurationSection));
+            SerializeData data = new SerializeData(validatorData.file, validatorData.path, validatorData.config);
 
             if (!validatorData.validator.shouldValidate(data)) {
                 debug.fine("Skipping " + validatorData.path + " due to skip");
@@ -346,9 +352,9 @@ public class FileReader {
      *
      * @param validator Which validator to use.
      * @param file Which file the config is from.
-     * @param configurationSection The configuration section in question.
+     * @param config The config the section belongs to.
      * @param path The string path to the configuration section.
      */
-    public record ValidatorData(IValidator validator, File file, ConfigurationSection configurationSection, String path) {
+    public record ValidatorData(IValidator validator, File file, ConfigLike config, String path) {
     }
 }

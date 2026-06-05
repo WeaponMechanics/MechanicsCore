@@ -1,5 +1,7 @@
 package me.deecaad.core.file;
 
+import me.deecaad.core.diagnostic.Diagnostic;
+
 import java.io.File;
 import java.util.Collection;
 import java.util.List;
@@ -8,6 +10,14 @@ import java.util.Map;
 public interface ConfigLike {
 
     boolean contains(String key);
+
+    /**
+     * Fills a path-only {@link Diagnostic} with a real source position, if this backend tracks one.
+     * The default is a no-op (backends without source positions return the diagnostic unchanged).
+     */
+    default Diagnostic enrich(Diagnostic diagnostic) {
+        return diagnostic;
+    }
 
     /**
      * Enumerates the child keys under the given path. Used to diff present config keys against a

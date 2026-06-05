@@ -4,18 +4,17 @@ import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticKind;
 import me.deecaad.core.diagnostic.Severity;
 import me.deecaad.core.diagnostic.SourceRef;
-import me.deecaad.core.file.BukkitConfig;
 import me.deecaad.core.file.IValidator;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.file.YamlPositions;
-import org.bukkit.configuration.file.YamlConfiguration;
+import me.deecaad.core.file.SnakeYamlConfig;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.io.StringReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -42,32 +41,45 @@ public final class ConfigVerifier {
     }
 
     public @NotNull VerificationResult verify(@NotNull File yamlFile) {
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(yamlFile);
-        return locate(YamlPositions.ofFile(yamlFile), collect(config, yamlFile), yamlFile.getName());
+        try {
+            return verify(SnakeYamlConfig.ofFile(yamlFile), new File(yamlFile.getName()), yamlFile.getName());
+        } catch (IOException | InvalidConfigurationException ex) {
+            return parseError(new File(yamlFile.getName()), yamlFile.getName(), ex);
+        }
     }
 
     public @NotNull VerificationResult verify(@NotNull String yaml, @NotNull String displayName) {
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(new StringReader(yaml));
-        return locate(YamlPositions.ofText(yaml), collect(config, new File(displayName)), displayName);
+        File file = new File(displayName);
+        try {
+            return verify(SnakeYamlConfig.ofText(yaml), file, displayName);
+        } catch (InvalidConfigurationException ex) {
+            return parseError(file, displayName, ex);
+        }
     }
 
-    private static VerificationResult locate(YamlPositions positions, List<Diagnostic> raw, String displayName) {
-        List<Diagnostic> located = new ArrayList<>(raw.size());
-        for (Diagnostic diagnostic : raw)
-            located.add(positions.enrich(diagnostic));
+    private VerificationResult verify(SnakeYamlConfig config, File file, String displayName) {
+        List<Diagnostic> located = new ArrayList<>();
+        for (Diagnostic diagnostic : collect(config, file))
+            located.add(config.enrich(diagnostic));
         return new VerificationResult(displayName, located);
     }
 
+    private static VerificationResult parseError(File file, String displayName, Exception ex) {
+        Diagnostic diagnostic = Diagnostic.at(Severity.ERROR, DiagnosticKind.OTHER,
+            SourceRef.ofConfig(file, ""), "Failed to parse YAML: " + ex.getMessage(), null);
+        return new VerificationResult(displayName, List.of(diagnostic));
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private List<Diagnostic> collect(YamlConfiguration config, File file) {
+    private List<Diagnostic> collect(SnakeYamlConfig config, File file) {
         List<Diagnostic> diagnostics = new ArrayList<>();
 
-        for (String key : config.getKeys(false)) {
+        for (String key : config.getKeys(null, false)) {
             Serializer<?> serializer = serializers.get(key.toLowerCase(Locale.ROOT));
             if (serializer == null)
                 continue;
 
-            SerializeData data = new SerializeData(file, key, new BukkitConfig(config));
+            SerializeData data = new SerializeData(file, key, config);
             ConfigSchema schema = serializer.schema();
 
             if (schema != null) {

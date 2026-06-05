@@ -1,14 +1,11 @@
 package me.deecaad.core.mechanics.defaultmechanics;
 
-import me.deecaad.core.file.BukkitConfig;
 import me.deecaad.core.file.SerializeData;
-import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.SnakeYamlConfig;
 import me.deecaad.core.file.verify.ConfigSchema;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.io.StringReader;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -37,10 +34,10 @@ class MechanicSchemaDriftTest {
         return schema.keys().stream().map(k -> norm(k.name())).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private static Set<String> recordReads(Mechanic mechanic, String body) throws SerializerException {
+    private static Set<String> recordReads(Mechanic mechanic, String body) throws Exception {
         String yaml = "Mechanic:\n" + body.replaceAll("(?m)^", "  ");
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(new StringReader(yaml));
-        SerializeData data = new SerializeData(new File("mechanic.yml"), "Mechanic", new BukkitConfig(config));
+        SnakeYamlConfig config = SnakeYamlConfig.ofText(yaml);
+        SerializeData data = new SerializeData(new File("mechanic.yml"), "Mechanic", config);
 
         SerializeData.startRecording();
         try {
@@ -52,7 +49,7 @@ class MechanicSchemaDriftTest {
     }
 
     @Test
-    void damageMechanic_schemaMatchesSerializeReads() throws SerializerException {
+    void damageMechanic_schemaMatchesSerializeReads() throws Exception {
         DamageMechanic mechanic = new DamageMechanic();
         Set<String> read = recordReads(mechanic, """
             Damage: 5.0
@@ -68,7 +65,7 @@ class MechanicSchemaDriftTest {
     }
 
     @Test
-    void sculkBloomMechanic_schemaIncludesBlockParentArgs() throws SerializerException {
+    void sculkBloomMechanic_schemaIncludesBlockParentArgs() throws Exception {
         SculkBloomMechanic mechanic = new SculkBloomMechanic();
         Set<String> read = recordReads(mechanic, """
             Charge: 5

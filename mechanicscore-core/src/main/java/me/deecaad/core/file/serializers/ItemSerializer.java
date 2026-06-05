@@ -33,7 +33,6 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.BlockType;
 import org.bukkit.block.data.Levelled;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.damage.DamageType;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
@@ -621,7 +620,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
         // characters and ItemStacks. In 1.13 and higher, recipes
         // use Characters and RecipeChoices.
         final Map<Character, Object> ingredients = new HashMap<>();
-        data.of("Recipe.Ingredients").assertExists().assertType(ConfigurationSection.class);
+        data.of("Recipe.Ingredients").assertExists().assertType(Map.class);
         for (char c : ingredientChars) {
 
             // Spaces (' ') in spigot are ignored and treated as air for recipes

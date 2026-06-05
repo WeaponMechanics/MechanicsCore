@@ -1,8 +1,6 @@
 package me.deecaad.core.file;
 
 import me.deecaad.core.MechanicsLogger;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -11,13 +9,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Holds the raw (un-serialized) config sections declared in {@code templates/} folders for one reader
+ * Holds the raw (un-serialized) value trees declared in {@code templates/} folders for one reader
  * scope. {@link TemplateExpander} resolves {@code Path_To} references against this registry before
  * serialization, so templates never need to be serialized themselves.
  */
 public final class ConfigTemplates {
 
-    private final Map<String, ConfigurationSection> templates = new HashMap<>();
+    private final Map<String, Map<String, Object>> templates = new HashMap<>();
     private final MechanicsLogger debug;
 
     public ConfigTemplates(@NotNull MechanicsLogger debug) {
@@ -28,11 +26,13 @@ public final class ConfigTemplates {
      * Registers every top-level section in a {@code templates/} file by its section name. On a
      * duplicate name the first registration wins and an error is logged.
      */
-    public void registerFile(@NotNull File file, @NotNull YamlConfiguration yaml) {
-        for (String name : yaml.getKeys(false)) {
-            if (!yaml.isConfigurationSection(name))
+    @SuppressWarnings("unchecked")
+    public void registerFile(@NotNull File file, @NotNull Map<String, Object> root) {
+        for (Map.Entry<String, Object> entry : root.entrySet()) {
+            if (!(entry.getValue() instanceof Map<?, ?> section))
                 continue;
 
+            String name = entry.getKey();
             if (templates.containsKey(name)) {
                 debug.severe("Duplicate config template '" + name + "'",
                     "Found a second template with this name in " + file.getName() + ".",
@@ -40,7 +40,7 @@ public final class ConfigTemplates {
                 continue;
             }
 
-            templates.put(name, TemplateExpander.deepCopy(yaml.getConfigurationSection(name)));
+            templates.put(name, (Map<String, Object>) TemplateExpander.deepCopy(section));
         }
     }
 
@@ -48,9 +48,10 @@ public final class ConfigTemplates {
      * Returns a fresh deep copy of the named template, or null if no such template exists. A copy is
      * returned so callers may freely mutate (expand/merge) without corrupting the registry.
      */
-    public @Nullable ConfigurationSection get(@NotNull String name) {
-        ConfigurationSection template = templates.get(name);
-        return template == null ? null : TemplateExpander.deepCopy(template);
+    @SuppressWarnings("unchecked")
+    public @Nullable Map<String, Object> get(@NotNull String name) {
+        Map<String, Object> template = templates.get(name);
+        return template == null ? null : (Map<String, Object>) TemplateExpander.deepCopy(template);
     }
 
     public @NotNull java.util.Set<String> names() {

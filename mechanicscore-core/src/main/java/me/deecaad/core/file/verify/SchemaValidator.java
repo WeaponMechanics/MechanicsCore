@@ -4,13 +4,13 @@ import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticKind;
 import me.deecaad.core.diagnostic.Severity;
 import me.deecaad.core.diagnostic.SourceRef;
-import me.deecaad.core.file.BukkitConfig;
 import me.deecaad.core.file.InlineSerializer;
 import me.deecaad.core.file.MapConfigLike;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.SimpleSerializer;
+import me.deecaad.core.file.SnakeYamlConfig;
 import me.deecaad.core.file.TemplateExpander;
 import me.deecaad.core.utils.StringUtil;
 import org.jetbrains.annotations.NotNull;
@@ -26,7 +26,7 @@ import java.util.Set;
  * The shared engine that validates a raw config section against a declared {@link ConfigSchema},
  * appending any {@link Diagnostic}s found. It validates only (presence, type, range, enum, unknown
  * keys, nested recursion); construction always goes through {@link Serializer#serialize}. The same
- * engine runs over file sections ({@code BukkitConfig}) and inline mechanic args ({@code MapConfigLike}).
+ * engine runs over file sections ({@code SnakeYamlConfig}) and inline mechanic args ({@code MapConfigLike}).
  */
 public final class SchemaValidator {
 
@@ -46,7 +46,7 @@ public final class SchemaValidator {
         // Path_To template reference (file configs only): the section's real content comes from the
         // referenced template, resolved before serialization. The template's keys are not present
         // here, so required-key checks are relaxed; the override keys present are still validated.
-        boolean isReference = data.getConfig() instanceof BukkitConfig && data.has(TemplateExpander.REFERENCE_KEY);
+        boolean isReference = data.getConfig() instanceof SnakeYamlConfig && data.has(TemplateExpander.REFERENCE_KEY);
 
         // Inline scalar form: the value is a bare string, not a section. Section-key validation does
         // not apply (the serializer handles the scalar in serialize()).

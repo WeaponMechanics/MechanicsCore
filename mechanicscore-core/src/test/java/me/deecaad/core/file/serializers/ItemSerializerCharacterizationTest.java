@@ -1,8 +1,7 @@
 package me.deecaad.core.file.serializers;
 
-import me.deecaad.core.file.BukkitConfig;
 import me.deecaad.core.file.SerializeData;
-import org.bukkit.configuration.file.YamlConfiguration;
+import me.deecaad.core.file.SnakeYamlConfig;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
@@ -13,7 +12,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.io.StringReader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -37,8 +35,8 @@ class ItemSerializerCharacterizationTest {
     }
 
     private ItemStack serialize(String yaml) throws Exception {
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(new StringReader(yaml));
-        SerializeData data = new SerializeData(new File("item.yml"), "Item", new BukkitConfig(config));
+        SnakeYamlConfig config = SnakeYamlConfig.ofText(yaml);
+        SerializeData data = new SerializeData(new File("item.yml"), "Item", config);
         return new ItemSerializer().serialize(data);
     }
 

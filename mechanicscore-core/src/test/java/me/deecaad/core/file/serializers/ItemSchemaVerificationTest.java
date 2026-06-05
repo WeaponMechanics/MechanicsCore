@@ -3,17 +3,15 @@ package me.deecaad.core.file.serializers;
 import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticKind;
 import me.deecaad.core.diagnostic.Severity;
-import me.deecaad.core.file.BukkitConfig;
 import me.deecaad.core.file.SerializeData;
+import me.deecaad.core.file.SnakeYamlConfig;
 import me.deecaad.core.file.verify.SchemaValidator;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,8 +37,13 @@ class ItemSchemaVerificationTest {
     }
 
     private List<Diagnostic> validate(String yaml) {
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(new StringReader(yaml));
-        SerializeData data = new SerializeData(new File("item.yml"), "Item", new BukkitConfig(config));
+        SnakeYamlConfig config;
+        try {
+            config = SnakeYamlConfig.ofText(yaml);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+        SerializeData data = new SerializeData(new File("item.yml"), "Item", config);
         List<Diagnostic> issues = new ArrayList<>();
         SchemaValidator.validate(new ItemSerializer().schema(), data, issues);
         return issues;

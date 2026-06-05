@@ -5,9 +5,6 @@ import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticKind;
 import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.verify.SchemaValidator;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.InvalidConfigurationException;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
@@ -22,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,114 +41,143 @@ class TemplateExpansionTest {
         MockBukkit.unmock();
     }
 
-    private YamlConfiguration yaml(String text) {
-        YamlConfiguration config = new YamlConfiguration();
-        try {
-            config.loadFromString(text);
-        } catch (InvalidConfigurationException ex) {
-            throw new RuntimeException(ex);
-        }
-        return config;
+    private static Map<String, Object> tree(String text) throws Exception {
+        return SnakeYamlConfig.ofText(text).root();
     }
 
-    private ConfigTemplates templates(String text) {
+    private ConfigTemplates templates(String text) throws Exception {
         ConfigTemplates templates = new ConfigTemplates(debug);
-        templates.registerFile(file, yaml(text));
+        templates.registerFile(file, tree(text));
         return templates;
     }
 
-    private ConfigurationSection expand(ConfigTemplates templates, String rootText, String path) {
-        YamlConfiguration root = yaml(rootText);
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> expand(ConfigTemplates templates, String rootText, String path) throws Exception {
+        Map<String, Object> root = tree(rootText);
         TemplateExpander.expand(root, templates, file, debug);
-        return root.getConfigurationSection(path);
+
+        Map<String, Object> current = root;
+        for (String part : path.split("\\."))
+            current = (Map<String, Object>) current.get(part);
+        return current;
+    }
+
+    private static Object get(Map<String, Object> map, String dotted) {
+        Object current = map;
+        for (String part : dotted.split("\\.")) {
+            if (!(current instanceof Map<?, ?> section))
+                return null;
+            current = section.get(part);
+        }
+        return current;
+    }
+
+    private static int asInt(Map<String, Object> map, String dotted) {
+        return ((Number) get(map, dotted)).intValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> asStringList(Map<String, Object> map, String dotted) {
+        return (List<String>) get(map, dotted);
+    }
+
+    private static boolean has(Map<String, Object> map, String dotted) {
+        Object current = map;
+        String[] parts = dotted.split("\\.");
+        for (int i = 0; i < parts.length - 1; i++) {
+            Object next = ((Map<?, ?>) current).get(parts[i]);
+            if (!(next instanceof Map<?, ?>))
+                return false;
+            current = next;
+        }
+        return ((Map<?, ?>) current).containsKey(parts[parts.length - 1]);
     }
 
     @Test
-    void reference_resolvesTemplate() {
+    void reference_resolvesTemplate() throws Exception {
         ConfigTemplates templates = templates("standard:\n  A: 1\n  B: 2\n");
-        ConfigurationSection block = expand(templates, "Weapon:\n  Block:\n    Path_To: standard\n", "Weapon.Block");
+        Map<String, Object> block = expand(templates, "Weapon:\n  Block:\n    Path_To: standard\n", "Weapon.Block");
 
-        assertEquals(1, block.getInt("A"));
-        assertEquals(2, block.getInt("B"));
-        assertFalse(block.contains("Path_To"));
+        assertEquals(1, asInt(block, "A"));
+        assertEquals(2, asInt(block, "B"));
+        assertFalse(has(block, "Path_To"));
     }
 
     @Test
-    void localKeyOverridesTemplate() {
+    void localKeyOverridesTemplate() throws Exception {
         ConfigTemplates templates = templates("standard:\n  Radius: 5\n  Power: 9\n");
-        ConfigurationSection e = expand(templates, "W:\n  E:\n    Path_To: standard\n    Radius: 10\n", "W.E");
+        Map<String, Object> e = expand(templates, "W:\n  E:\n    Path_To: standard\n    Radius: 10\n", "W.E");
 
-        assertEquals(10, e.getInt("Radius"));
-        assertEquals(9, e.getInt("Power"));
+        assertEquals(10, asInt(e, "Radius"));
+        assertEquals(9, asInt(e, "Power"));
     }
 
     @Test
-    void nestedMapsMergeRecursively() {
+    void nestedMapsMergeRecursively() throws Exception {
         ConfigTemplates templates = templates("standard:\n  A:\n    B: 1\n    C: 2\n");
-        ConfigurationSection x = expand(templates, "W:\n  X:\n    Path_To: standard\n    A:\n      C: 99\n", "W.X");
+        Map<String, Object> x = expand(templates, "W:\n  X:\n    Path_To: standard\n    A:\n      C: 99\n", "W.X");
 
-        assertEquals(1, x.getInt("A.B"));
-        assertEquals(99, x.getInt("A.C"));
+        assertEquals(1, asInt(x, "A.B"));
+        assertEquals(99, asInt(x, "A.C"));
     }
 
     @Test
-    void listsAreReplacedNotAppended() {
+    void listsAreReplacedNotAppended() throws Exception {
         ConfigTemplates templates = templates("standard:\n  L:\n  - x\n");
-        ConfigurationSection x = expand(templates, "W:\n  X:\n    Path_To: standard\n    L:\n    - y\n", "W.X");
+        Map<String, Object> x = expand(templates, "W:\n  X:\n    Path_To: standard\n    L:\n    - y\n", "W.X");
 
-        assertEquals(List.of("y"), x.getStringList("L"));
+        assertEquals(List.of("y"), asStringList(x, "L"));
     }
 
     @Test
-    void chainedTemplatesResolve() {
+    void chainedTemplatesResolve() throws Exception {
         ConfigTemplates templates = templates("t1:\n  Base: 1\nt2:\n  Path_To: t1\n  Extra: 2\n");
-        ConfigurationSection x = expand(templates, "W:\n  X:\n    Path_To: t2\n", "W.X");
+        Map<String, Object> x = expand(templates, "W:\n  X:\n    Path_To: t2\n", "W.X");
 
-        assertEquals(1, x.getInt("Base"));
-        assertEquals(2, x.getInt("Extra"));
-        assertFalse(x.contains("Path_To"));
+        assertEquals(1, asInt(x, "Base"));
+        assertEquals(2, asInt(x, "Extra"));
+        assertFalse(has(x, "Path_To"));
     }
 
     @Test
     void cycleIsDetectedWithoutOverflow() {
-        ConfigTemplates templates = templates("t1:\n  Path_To: t2\nt2:\n  Path_To: t1\n");
-
         assertTimeoutPreemptively(java.time.Duration.ofSeconds(5), () -> {
-            ConfigurationSection x = expand(templates, "W:\n  X:\n    Path_To: t1\n", "W.X");
-            assertFalse(x.contains("Path_To"));
+            ConfigTemplates templates = templates("t1:\n  Path_To: t2\nt2:\n  Path_To: t1\n");
+            Map<String, Object> x = expand(templates, "W:\n  X:\n    Path_To: t1\n", "W.X");
+            assertFalse(has(x, "Path_To"));
         });
         Mockito.verify(debug, Mockito.atLeastOnce()).severe(Mockito.any(String[].class));
     }
 
     @Test
-    void missingTemplateReportsAndDropsReference() {
+    void missingTemplateReportsAndDropsReference() throws Exception {
         ConfigTemplates templates = templates("standard:\n  A: 1\n");
-        ConfigurationSection x = expand(templates, "W:\n  X:\n    Path_To: nonexistent\n    Local: 7\n", "W.X");
+        Map<String, Object> x = expand(templates, "W:\n  X:\n    Path_To: nonexistent\n    Local: 7\n", "W.X");
 
-        assertFalse(x.contains("Path_To"));
-        assertEquals(7, x.getInt("Local"));
-        assertFalse(x.contains("A"));
+        assertFalse(has(x, "Path_To"));
+        assertEquals(7, asInt(x, "Local"));
+        assertFalse(has(x, "A"));
         Mockito.verify(debug, Mockito.atLeastOnce()).severe(Mockito.any(String[].class));
     }
 
     @Test
-    void duplicateTemplateNameKeepsFirst() {
+    void duplicateTemplateNameKeepsFirst() throws Exception {
         ConfigTemplates templates = new ConfigTemplates(debug);
-        templates.registerFile(file, yaml("standard:\n  Value: 1\n"));
-        templates.registerFile(file, yaml("standard:\n  Value: 2\n"));
+        templates.registerFile(file, tree("standard:\n  Value: 1\n"));
+        templates.registerFile(file, tree("standard:\n  Value: 2\n"));
 
-        ConfigurationSection x = expand(templates, "W:\n  X:\n    Path_To: standard\n", "W.X");
-        assertEquals(1, x.getInt("Value"));
+        Map<String, Object> x = expand(templates, "W:\n  X:\n    Path_To: standard\n", "W.X");
+        assertEquals(1, asInt(x, "Value"));
     }
 
     @Test
-    void noTemplatesIsNoOp() {
+    void noTemplatesIsNoOp() throws Exception {
         ConfigTemplates templates = new ConfigTemplates(debug);
-        YamlConfiguration root = yaml("W:\n  X:\n    A: 1\n    B: 2\n");
+        Map<String, Object> root = tree("W:\n  X:\n    A: 1\n    B: 2\n");
         TemplateExpander.expand(root, templates, file, debug);
 
-        assertEquals(1, root.getInt("W.X.A"));
-        assertEquals(2, root.getInt("W.X.B"));
+        assertEquals(1, asInt(root, "W.X.A"));
+        assertEquals(2, asInt(root, "W.X.B"));
     }
 
     @Test
@@ -169,29 +196,29 @@ class TemplateExpansionTest {
         assertFalse(result.contains("shared_block"), "template should NOT be instantiated as an entry");
     }
 
-    private List<Diagnostic> validateSection(String rootText, String sectionKey) {
-        YamlConfiguration cfg = yaml(rootText);
-        SerializeData data = new SerializeData(file, sectionKey, new BukkitConfig(cfg));
+    private List<Diagnostic> validateSection(String rootText, String sectionKey) throws Exception {
+        SnakeYamlConfig cfg = SnakeYamlConfig.ofText(rootText);
+        SerializeData data = new SerializeData(file, sectionKey, cfg);
         List<Diagnostic> out = new ArrayList<>();
         SchemaValidator.validate(new BoomSerializer().schema(), data, out);
         return out;
     }
 
     @Test
-    void referenceSkipsRequiredButValidatesOverrides() {
+    void referenceSkipsRequiredButValidatesOverrides() throws Exception {
         List<Diagnostic> diags = validateSection("Boom:\n  Path_To: standard\n  Radius: 5\n", "Boom");
         assertTrue(diags.isEmpty(), diags::toString);
     }
 
     @Test
-    void referenceFlagsUnknownOverrideKey() {
+    void referenceFlagsUnknownOverrideKey() throws Exception {
         List<Diagnostic> diags = validateSection("Boom:\n  Path_To: standard\n  Bogus: 5\n", "Boom");
         assertEquals(1, diags.size(), diags::toString);
         assertEquals(DiagnosticKind.UNKNOWN_KEY, diags.get(0).kind());
     }
 
     @Test
-    void nonReferenceStillEnforcesRequired() {
+    void nonReferenceStillEnforcesRequired() throws Exception {
         List<Diagnostic> diags = validateSection("Boom:\n  Radius: 5\n", "Boom");
         assertTrue(diags.stream().anyMatch(d -> d.kind() == DiagnosticKind.MISSING_REQUIRED), diags::toString);
     }
