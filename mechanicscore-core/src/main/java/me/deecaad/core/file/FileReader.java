@@ -18,8 +18,6 @@ import java.util.stream.Collectors;
 public class FileReader {
 
     private final MechanicsLogger debug;
-    private final List<PathToSerializer> pathToSerializers;
-    private final List<NestedPathToSerializer> nestedPathToSerializers;
     private final Map<String, Serializer<?>> serializers;
     private final List<ValidatorData> validatorDatas;
     private final Map<String, IValidator> validators;
@@ -28,8 +26,6 @@ public class FileReader {
         this.debug = debug;
         this.serializers = new HashMap<>();
         this.validators = new HashMap<>();
-        this.pathToSerializers = new ArrayList<>();
-        this.nestedPathToSerializers = new ArrayList<>();
         this.validatorDatas = new ArrayList<>();
         addSerializers(serializers);
         addValidators(validators);
@@ -136,7 +132,7 @@ public class FileReader {
 
         // Only run this once
         // That's why fillAllFilesLoop method is required
-        usePathToSerializersAndValidators(filledMap);
+        useValidators(filledMap);
 
         return filledMap;
     }
@@ -182,15 +178,26 @@ public class FileReader {
      * @return the map with file's configurations
      */
     public @NotNull Configuration fillOneFile(File file) {
+        return fillOneFile(YamlConfiguration.loadConfiguration(file), file);
+    }
+
+    /**
+     * Fills one already-loaded config into a map and returns its configuration. The {@code file} is
+     * used only for diagnostics. Callers that pre-process the raw config (e.g. template expansion)
+     * use this overload so the same parsed config drives serialization.
+     *
+     * @param configuration the loaded config
+     * @param file the source file (for diagnostics)
+     * @return the map with file's configurations
+     */
+    public @NotNull Configuration fillOneFile(YamlConfiguration configuration, File file) {
         Configuration filledMap = new FastConfiguration();
 
         // If a serializer is found, it's path is saved here. Any
         // NON SERIALIZER variable within a serializer is then "skipped"
         // Meaning booleans, numbers, etc. are skipped
         String startsWithDeny = null;
-        Serializer<?> savedSerializer = null;
 
-        YamlConfiguration configuration = YamlConfiguration.loadConfiguration(file);
         YamlPositions positions = YamlPositions.ofFile(file);
         for (String key : configuration.getKeys(true)) {
 
@@ -198,7 +205,6 @@ public class FileReader {
             // Booleans, numbers, etc. can then be saved again
             if (startsWithDeny != null && !key.startsWith(startsWithDeny)) {
                 startsWithDeny = null;
-                savedSerializer = null;
             }
 
             String[] keySplit = key.split("\\.");
@@ -225,7 +231,7 @@ public class FileReader {
                     }
                 }
 
-                // Check if this key is a serializer, and that it isn't the header and handle pathTo
+                // Check if this key is a serializer, and that it isn't the header
                 Serializer<?> serializer = this.serializers.get(lastKey);
                 if (serializer != null) {
 
@@ -242,50 +248,37 @@ public class FileReader {
                         continue;
                     }
 
-                    String pathTo = serializer.useLater(configuration, key);
-                    if (serializer.canUsePathTo() && pathTo != null) {
-                        pathToSerializers.add(new PathToSerializer(serializer, key, pathTo));
-                    } else {
-                        try {
+                    try {
 
-                            // SerializerException can be thrown whenever the
-                            // user input an invalid value. We should log the
-                            // exception.
-                            Object valid = serializeWithSchema(serializer, new SerializeData(file, key, new BukkitConfig(configuration)), positions);
-                            filledMap.set(key, valid);
+                        // SerializerException can be thrown whenever the
+                        // user input an invalid value. We should log the
+                        // exception.
+                        Object valid = serializeWithSchema(serializer, new SerializeData(file, key, new BukkitConfig(configuration)), positions);
+                        filledMap.set(key, valid);
 
-                            // Only update the startsWithDeny if this is the "main serializer"
-                            // If this serialization happened within serializer (meaning this is child serializer),
-                            // startsWithDeny is not null
-                            if (startsWithDeny == null) {
-                                startsWithDeny = key;
-                                savedSerializer = serializer;
-                            }
-
-                        } catch (PathToSerializerException ex) {
-                            nestedPathToSerializers.add(new NestedPathToSerializer(serializer, key, ex));
-                            if (startsWithDeny == null) {
-                                startsWithDeny = key;
-                                savedSerializer = serializer;
-                            }
-                        } catch (SerializerException ex) {
-                            ex.log(debug);
-                            if (startsWithDeny == null) {
-                                startsWithDeny = key;
-                                savedSerializer = serializer;
-                            }
-                        } catch (Exception ex) {
-
-                            // Any Exception other than SerializerException
-                            // should be fixed by the dev of the serializer.
-                            throw new InternalError("Unhandled caught exception from serializer " + serializer + "!", ex);
+                        // Only update the startsWithDeny if this is the "main serializer"
+                        // If this serialization happened within serializer (meaning this is child serializer),
+                        // startsWithDeny is not null
+                        if (startsWithDeny == null) {
+                            startsWithDeny = key;
                         }
+
+                    } catch (SerializerException ex) {
+                        ex.log(debug);
+                        if (startsWithDeny == null) {
+                            startsWithDeny = key;
+                        }
+                    } catch (Exception ex) {
+
+                        // Any Exception other than SerializerException
+                        // should be fixed by the dev of the serializer.
+                        throw new InternalError("Unhandled caught exception from serializer " + serializer + "!", ex);
                     }
                     continue;
                 }
             }
 
-            if (startsWithDeny != null && key.startsWith(startsWithDeny) && (savedSerializer == null || !savedSerializer.letPassThrough(key))) {
+            if (startsWithDeny != null && key.startsWith(startsWithDeny)) {
                 continue;
             }
 
@@ -318,35 +311,17 @@ public class FileReader {
     }
 
     /**
-     * Uses all path to serializers and validators. This should be used AFTER normal serialization.
+     * Runs all validators. This should be used AFTER normal serialization (validators inspect the
+     * fully serialized config).
      *
      * @param filledMap the filled mappings
-     * @return the map with used path to serializers and validators
+     * @return the map after running validators
      */
-    public Configuration usePathToSerializersAndValidators(Configuration filledMap) {
+    public Configuration useValidators(Configuration filledMap) {
 
-        // Handle nested-path-to serializers
-        for (NestedPathToSerializer nestedPathTo : nestedPathToSerializers) {
-            try {
-                SerializeData data = new SerializeData(nestedPathTo.ex.getSerializeData().getFile(), nestedPathTo.path, nestedPathTo.ex.getSerializeData().getConfig());
-                data.setPathToConfig(filledMap);
-                Object serialized = data.of().serialize(nestedPathTo.serializer);
-                filledMap.set(nestedPathTo.path, serialized);
-            } catch (SerializerException ex) {
-                ex.log(debug);
-            }
-        }
-
-        // Handle path-to serializers
-        for (PathToSerializer pathToSerializer : pathToSerializers) {
-            pathToSerializer.serializer.tryPathTo(filledMap, pathToSerializer.pathWhereToStore, pathToSerializer.pathTo);
-        }
-
-        // Handle validators
         for (ValidatorData validatorData : validatorDatas) {
 
             SerializeData data = new SerializeData(validatorData.file, validatorData.path, new BukkitConfig(validatorData.configurationSection));
-            data.setPathToConfig(filledMap);
 
             if (!validatorData.validator.shouldValidate(data)) {
                 debug.fine("Skipping " + validatorData.path + " due to skip");
@@ -362,30 +337,6 @@ public class FileReader {
             }
         }
         return filledMap;
-    }
-
-    /**
-     * Stores temporary data to help with the 'Path To' feature of serializers, specifically when used
-     * nested in {@link SerializeData}.
-     *
-     * @param serializer Type of the serialized object.
-     * @param path The "base-key" location of the outer serialized object.
-     * @param ex The failure which contains copy-from and paste-to locations.
-     */
-    public record NestedPathToSerializer(Serializer<?> serializer, String path, PathToSerializerException ex) {
-    }
-
-    /**
-     * Stores temporary data to help with the 'Path To' feature of serializers. This is saved, so we can
-     * do a "second loop" of serialization which can re-use values that have already been serialized.
-     * This is useful for REALLY long configuration sections, so they don't need to be copy-pasted
-     * between multiple files (just put it once!)
-     *
-     * @param serializer Type of the serialized object.
-     * @param pathWhereToStore Where in config should we store the value.
-     * @param pathTo Where should we pull the values from.
-     */
-    public record PathToSerializer(Serializer<?> serializer, String pathWhereToStore, String pathTo) {
     }
 
     /**

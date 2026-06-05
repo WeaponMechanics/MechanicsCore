@@ -4,12 +4,14 @@ import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticKind;
 import me.deecaad.core.diagnostic.Severity;
 import me.deecaad.core.diagnostic.SourceRef;
+import me.deecaad.core.file.BukkitConfig;
 import me.deecaad.core.file.InlineSerializer;
 import me.deecaad.core.file.MapConfigLike;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.SimpleSerializer;
+import me.deecaad.core.file.TemplateExpander;
 import me.deecaad.core.utils.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,6 +31,7 @@ import java.util.Set;
 public final class SchemaValidator {
 
     private static final String UNIQUE_IDENTIFIER_NORM = normalize(InlineSerializer.UNIQUE_IDENTIFIER);
+    private static final String REFERENCE_KEY_NORM = normalize(TemplateExpander.REFERENCE_KEY);
 
     private SchemaValidator() {
     }
@@ -40,8 +43,13 @@ public final class SchemaValidator {
 
         String base = data.getKey() == null ? "" : data.getKey();
 
-        // Inline / path-to scalar form: the value is a bare string, not a section. Section-key
-        // validation does not apply (the serializer handles the scalar in serialize()).
+        // Path_To template reference (file configs only): the section's real content comes from the
+        // referenced template, resolved before serialization. The template's keys are not present
+        // here, so required-key checks are relaxed; the override keys present are still validated.
+        boolean isReference = data.getConfig() instanceof BukkitConfig && data.has(TemplateExpander.REFERENCE_KEY);
+
+        // Inline scalar form: the value is a bare string, not a section. Section-key validation does
+        // not apply (the serializer handles the scalar in serialize()).
         if (data.getKey() != null) {
             try {
                 if (data.of().is(String.class))
@@ -67,7 +75,7 @@ public final class SchemaValidator {
             }
 
             if (!present) {
-                if (spec.required())
+                if (spec.required() && !isReference)
                     out.add(Diagnostic.at(Severity.ERROR, DiagnosticKind.MISSING_REQUIRED,
                         SourceRef.ofConfig(data.getFile(), path),
                         "missing required key '" + spec.name() + "'", null));
@@ -94,7 +102,7 @@ public final class SchemaValidator {
             Collection<String> presentKeys = data.getConfig().getKeys(base.isEmpty() ? null : base, false);
             for (String key : presentKeys) {
                 String norm = normalize(key);
-                if (norm.equals(UNIQUE_IDENTIFIER_NORM) || declaredNorm.contains(norm))
+                if (norm.equals(UNIQUE_IDENTIFIER_NORM) || norm.equals(REFERENCE_KEY_NORM) || declaredNorm.contains(norm))
                     continue;
 
                 String path = base.isEmpty() ? key : base + "." + key;

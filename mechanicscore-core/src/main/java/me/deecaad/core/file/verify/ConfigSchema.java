@@ -14,7 +14,7 @@ import java.util.List;
  * declared statically (independent of control flow), which is what makes unknown-key detection
  * exact and JSON Schema export complete.
  *
- * <p>Modifier methods ({@code required}, {@code range}, {@code condition}, {@code pathTo}) apply to
+ * <p>Modifier methods ({@code required}, {@code range}, {@code condition}) apply to
  * the most recently added key, allowing fluent one-liners:
  * <pre>
  * ConfigSchema.builder()
@@ -162,11 +162,6 @@ public record ConfigSchema(@NotNull List<KeySpec> keys, boolean allowUnknown) {
             return condition(Condition.activeWhen(siblingKey, expected));
         }
 
-        public Builder pathTo() {
-            last().pathTo = true;
-            return this;
-        }
-
         public Builder allowUnknown() {
             this.allowUnknown = true;
             return this;
@@ -201,7 +196,6 @@ public record ConfigSchema(@NotNull List<KeySpec> keys, boolean allowUnknown) {
             private MutableRegistry<? extends Keyed> registry;
             private List<SimpleSerializer<?>> listArgs;
             private int requiredArgs;
-            private boolean pathTo;
 
             private MutableSpec(String name, KeyType type) {
                 this.name = name;
@@ -209,7 +203,7 @@ public record ConfigSchema(@NotNull List<KeySpec> keys, boolean allowUnknown) {
             }
 
             private KeySpec toSpec() {
-                return new KeySpec(name, type, required, condition, range, enumType, nested, registryClass, registry, listArgs, requiredArgs, pathTo);
+                return new KeySpec(name, type, required, condition, range, enumType, nested, registryClass, registry, listArgs, requiredArgs);
             }
         }
     }

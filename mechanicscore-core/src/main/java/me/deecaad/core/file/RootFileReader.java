@@ -8,6 +8,7 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.Listener;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -122,22 +123,42 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
             // "accumulate" all the configs into 1 fat config
             Configuration accumulate = new FastConfiguration();
             FileReader fileReader = new FileReader(debugger, serializers, validators);
+            ConfigTemplates templates = new ConfigTemplates(debugger);
+            Path root = FileUtil.PathReference.of(rootFolder.toURI()).path();
 
-            FileUtil.PathReference pathReference = FileUtil.PathReference.of(rootFolder.toURI());
-            Files.walkFileTree(pathReference.path(), new SimpleFileVisitor<>() {
+            // Walk 1: register every template in templates/ folders. These are reusable config
+            // fragments referenced via 'Path_To'; they are NOT instantiated as live entries.
+            Files.walkFileTree(root, new SimpleFileVisitor<>() {
                 @Override
-                public @NotNull FileVisitResult visitFile(@NotNull Path file, @NotNull BasicFileAttributes attrs) throws IOException {
-                    // Only read yaml
-                    String fileName = file.getFileName().toString().toLowerCase();
-                    if (!fileName.endsWith(".yml") && !fileName.endsWith(".yaml"))
+                public @NotNull FileVisitResult visitFile(@NotNull Path file, @NotNull BasicFileAttributes attrs) {
+                    if (isYaml(file) && isUnderTemplates(root, file)) {
+                        YamlConfiguration yaml = load(file);
+                        if (yaml != null)
+                            templates.registerFile(file.toFile(), yaml);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+
+            // Walk 2: expand template references then serialize every entry file (skipping templates/).
+            Files.walkFileTree(root, new SimpleFileVisitor<>() {
+                @Override
+                public @NotNull FileVisitResult visitFile(@NotNull Path file, @NotNull BasicFileAttributes attrs) {
+                    if (!isYaml(file) || isUnderTemplates(root, file))
                         return FileVisitResult.CONTINUE;
 
-                    // By using the FileReader here, we can use all normal serializers
-                    // and validators. This lets other plugins save their own data to
-                    // the final config.
-                    Configuration baseConfig = fileReader.fillOneFile(file.toFile());
+                    YamlConfiguration config = load(file);
+                    if (config == null)
+                        return FileVisitResult.CONTINUE;
+
+                    // Inline 'Path_To' references on the raw config before any serialization, so the
+                    // expanded config is equivalent to hand-typed inline config.
+                    TemplateExpander.expand(config, templates, file.toFile(), debugger);
+
+                    // By using the FileReader here, we can use all normal serializers and validators.
+                    // This lets other plugins save their own data to the final config.
                     try {
-                        accumulate.copyFrom(baseConfig);
+                        accumulate.copyFrom(fileReader.fillOneFile(config, file.toFile()));
                     } catch (DuplicateKeyException ex) {
                         debugger.severe("Found duplicate keys in configuration!",
                                 "This occurs when you have 2 lines in configuration with the same name... Usually due to copy-pasting directories",
@@ -148,17 +169,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                         return FileVisitResult.CONTINUE;
                     }
 
-                    // Parse config a second time so we can run our own deserialization
-                    YamlConfiguration config;
-                    try (InputStream stream = Files.newInputStream(file)) {
-                        config = new YamlConfiguration();
-                        config.load(new InputStreamReader(stream, Charsets.UTF_8));
-                    } catch (InvalidConfigurationException ex) {
-                        debugger.warning("Failed to load " + file + "!", ex);
-                        return FileVisitResult.CONTINUE;
-                    }
-
-                    // Go through each key from root, and deserialize
+                    // Go through each key from root, and deserialize as the root type
                     for (String key : config.getKeys(false)) {
                         try {
                             SerializeData data = new SerializeData(file.toFile(), key, new BukkitConfig(config));
@@ -172,9 +183,33 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                 }
             });
 
-            return fileReader.usePathToSerializersAndValidators(accumulate);
+            return fileReader.useValidators(accumulate);
         } catch (Throwable ex) {
             throw new RuntimeException(ex);
+        }
+    }
+
+    private static boolean isYaml(@NotNull Path file) {
+        String name = file.getFileName().toString().toLowerCase();
+        return name.endsWith(".yml") || name.endsWith(".yaml");
+    }
+
+    private static boolean isUnderTemplates(@NotNull Path root, @NotNull Path file) {
+        Path relative = root.relativize(file);
+        for (int i = 0; i < relative.getNameCount() - 1; i++)
+            if (relative.getName(i).toString().equalsIgnoreCase("templates"))
+                return true;
+        return false;
+    }
+
+    private @Nullable YamlConfiguration load(@NotNull Path file) {
+        try (InputStream stream = Files.newInputStream(file)) {
+            YamlConfiguration config = new YamlConfiguration();
+            config.load(new InputStreamReader(stream, Charsets.UTF_8));
+            return config;
+        } catch (IOException | InvalidConfigurationException ex) {
+            debugger.warning("Failed to load " + file + "!", ex);
+            return null;
         }
     }
 }

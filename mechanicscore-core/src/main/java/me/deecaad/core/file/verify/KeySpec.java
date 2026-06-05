@@ -30,8 +30,7 @@ public record KeySpec(
     @Nullable Class<? extends Keyed> registryClass,
     @Nullable MutableRegistry<? extends Keyed> registry,
     @Nullable List<SimpleSerializer<?>> listArgs,
-    int requiredArgs,
-    boolean pathTo) {
+    int requiredArgs) {
 
     /**
      * @return The valid enum constant names, or an empty list when this is not an enum key.

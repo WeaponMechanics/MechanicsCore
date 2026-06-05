@@ -178,7 +178,7 @@ open class MechanicsPlugin(
 
             val configReader = FileReader(debugger, serializers, validators)
             configuration = configReader.fillOneFile(File(dataFolder, "config.yml"))
-            configReader.usePathToSerializersAndValidators(configuration)
+            configReader.useValidators(configuration)
             val tempConfig = configuration.getObject("Logger_Config", MechanicsLogger.LoggerConfig::class.java)
             if (tempConfig == null) {
                 debugger.severe("Missing required section 'Logger_Config' somehow...")
