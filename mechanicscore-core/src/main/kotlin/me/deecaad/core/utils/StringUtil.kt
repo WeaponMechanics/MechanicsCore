@@ -394,21 +394,19 @@ object StringUtil {
     }
 
     /**
-     * Returns the option from `possibilities` that is most similar to `input`.
+     * Returns the option from `possibilities` most similar to `input`, or null when nothing is close
+     * enough (the best match is further than `maxDistance`) or `possibilities` is empty. A bad guess is
+     * worse than none, so callers pass a threshold to drop unrelated suggestions.
      *
-     * This method uses a primitive character table to compare the similarity
-     * of the strings. The string with the smallest difference is returned.
-     *
-     * @param input The input string to compare.
-     * @param possibilities The list of possibilities to compare to.
-     * @return The most similar string from `possibilities`.
-     * @throws IllegalArgumentException if `possibilities` is empty.
+     * Similarity uses a primitive character table; the smallest difference wins.
      */
     @JvmStatic
+    @JvmOverloads
     fun didYouMean(
         input: String,
         possibilities: Iterable<String>,
-    ): String {
+        maxDistance: Int = Int.MAX_VALUE,
+    ): String? {
         var closest: String? = null
         var closestDistance = Int.MAX_VALUE
         val table = toCharTable(input)
@@ -427,7 +425,7 @@ object StringUtil {
             }
         }
 
-        return closest ?: throw IllegalArgumentException("You passed 0 possibilities to the didYouMean function.")
+        return if (closestDistance <= maxDistance) closest else null
     }
 
     /**

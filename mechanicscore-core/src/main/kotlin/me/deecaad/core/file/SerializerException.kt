@@ -76,7 +76,7 @@ open class SerializerException(
             actual: String,
             options: Iterable<String>,
         ) {
-            val expected = StringUtil.didYouMean(actual, options)
+            val expected = StringUtil.didYouMean(actual, options, actual.length + 2) ?: return
             messages.add("Did you mean to use '$expected' instead of '$actual'?")
         }
 

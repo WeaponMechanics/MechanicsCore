@@ -7,6 +7,7 @@ import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.SnakeYamlConfig;
 import me.deecaad.core.diagnostic.Diagnostic;
+import me.deecaad.core.diagnostic.DiagnosticKind;
 import me.deecaad.core.diagnostic.DiagnosticRenderer;
 import me.deecaad.core.diagnostic.DiagnosticReporter;
 import me.deecaad.core.diagnostic.SourceRef;
@@ -73,8 +74,16 @@ public class MechanicSerializer implements Serializer<Program> {
             for (Diagnostic diagnostic : reporter.all())
                 DiagnosticRenderer.log(debug, reanchor(diagnostic, origins, syc));
         }
-        if (reporter.hasErrors())
-            throw data.exception(null, "Found " + reporter.errorCount() + " error(s) in this Mechanics list (see above).");
+        if (reporter.hasErrors()) {
+            // The detailed errors already rendered above with their own locations, so this aggregate is a
+            // message-only summary: no file/path means the renderer skips the location line and caret.
+            int errors = reporter.errorCount();
+            String key = data.getKey();
+            String section = key == null ? "this Mechanics list" : key.substring(key.lastIndexOf('.') + 1);
+            throw new SerializerException(
+                new ArrayList<>(List.of("Found " + errors + " error" + (errors == 1 ? "" : "s") + " in " + section + " (see above)")),
+                DiagnosticKind.OTHER, null, null, -1);
+        }
 
         return program;
     }

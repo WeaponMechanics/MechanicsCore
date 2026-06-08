@@ -104,8 +104,8 @@ public final class SchemaValidator {
                     continue;
 
                 String path = base.isEmpty() ? key : base + "." + key;
-                String hint = declaredNames.isEmpty() ? null
-                    : "did you mean '" + StringUtil.didYouMean(key, declaredNames) + "'?";
+                String suggestion = declaredNames.isEmpty() ? null : StringUtil.didYouMean(key, declaredNames, key.length() + 2);
+                String hint = suggestion == null ? null : "did you mean '" + suggestion + "'?";
                 out.add(Diagnostic.at(Severity.WARNING, DiagnosticKind.UNKNOWN_KEY,
                     SourceRef.ofConfig(data.getFile(), path), "unknown key '" + key + "'", hint));
             }

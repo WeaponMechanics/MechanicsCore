@@ -70,7 +70,7 @@ public final class ExprLower {
     }
 
     private static String suggest(@NotNull String actual, @NotNull Iterable<String> options) {
-        String best = StringUtil.didYouMean(actual, options);
+        String best = StringUtil.didYouMean(actual, options, actual.length() + 2);
         return best == null ? null : "Did you mean '" + best + "'?";
     }
 }
