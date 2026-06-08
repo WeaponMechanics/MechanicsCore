@@ -1,63 +1,65 @@
 package me.deecaad.core.file
 
-import me.deecaad.core.MechanicsLogger
+import me.deecaad.core.diagnostic.Diagnostic
+import me.deecaad.core.diagnostic.DiagnosticKind
+import me.deecaad.core.diagnostic.Severity
+import me.deecaad.core.diagnostic.SourceRef
+import me.deecaad.core.diagnostic.Span
 import me.deecaad.core.utils.EnumUtil
 import me.deecaad.core.utils.StringUtil
 import java.io.File
-import java.util.logging.Level
 import kotlin.math.abs
 
 /**
  * An exception that is thrown when a mistake is found in the config file.
  * These mistakes are typically caused by the user, and not the plugin itself.
  *
- * Serializer exceptions are designed to be caught by the plugin during the
- * deserialization process, and then logged to the console. This way, users
- * see very "pretty" error messages instead of ugly stack traces. This makes
- * it more possible for people to fix their own errors.
+ * Serializer exceptions carry a structured source ([file], [path], [listIndex]) and are converted to
+ * a [Diagnostic] via [toDiagnostic], then rendered through the one shared
+ * [me.deecaad.core.diagnostic.DiagnosticRenderer]. This way, users see "pretty" caret error messages
+ * instead of ugly stack traces.
  *
- * @param location A human-readable location of the mistake (file location + path, generally)
  * @param messages A list of messages that describe the mistake in more detail
  */
 open class SerializerException(
-    val location: String,
     val messages: MutableList<String> = mutableListOf(),
+    val kind: DiagnosticKind = DiagnosticKind.OTHER,
+    val file: File? = null,
+    val path: String? = null,
+    val listIndex: Int = -1,
 ) : Exception() {
-    @JvmOverloads
-    fun log(
-        debug: MechanicsLogger,
-        level: Level = Level.SEVERE,
-    ) {
-        val fullError = mutableListOf<String>()
-        fullError.add("A mistake was found in your config!")
-        fullError.addAll(messages)
-        fullError.add(location)
-        fullError.add("") // An empty line to separate the error from the rest of the log
 
-        debug.log(level, *fullError.toTypedArray())
+    /**
+     * Converts this exception into a path-only [Diagnostic] carrying its [kind] directly (no message
+     * string-matching). The caller fills the precise span via [ConfigLike.enrich], then renders it
+     * through the one shared [me.deecaad.core.diagnostic.DiagnosticRenderer], so serializer errors and
+     * schema/mechanic diagnostics share a single error system.
+     */
+    fun toDiagnostic(): Diagnostic {
+        val message = if (messages.isEmpty()) "invalid value" else messages.joinToString("; ")
+        val source = SourceRef(file, path ?: "", listIndex, "")
+        return Diagnostic(Severity.ERROR, kind, message, source, Span.NONE, listOf(), null)
     }
 
     class Builder {
-        private var location: String? = null
         private val messages: MutableList<String> = mutableListOf()
+        private var file: File? = null
+        private var path: String? = null
+        private var index: Int = -1
 
-        @JvmOverloads
-        fun location(
-            file: File,
-            path: String,
-            index: Int? = null,
-        ): Builder {
-            this.location =
-                when {
-                    index != null -> "Located in file '$file' at '$path' (The ${StringUtil.ordinal(index)} list item)"
-                    else -> "Located in file '$file' at '$path'"
-                }
+        /**
+         * Sets the structured source (file, path, list index) so the resulting exception can become a
+         * precise [Diagnostic] via [toDiagnostic].
+         */
+        fun located(location: ErrorLocation): Builder {
+            this.file = location.file
+            this.path = location.path
+            this.index = location.index
             return this
         }
 
-        fun locationRaw(location: String): Builder {
-            this.location = location
-            return this
+        private fun finish(kind: DiagnosticKind): SerializerException {
+            return SerializerException(messages, kind, file, path, index)
         }
 
         fun example(exampleValue: String): Builder {
@@ -126,14 +128,10 @@ open class SerializerException(
             min: Int?,
             max: Int?,
         ): SerializerException {
-            if (location == null) {
-                throw IllegalStateException("Location must be set before calling buildInvalidRange")
-            }
-
             messages.add("Invalid range! Expected a value between ${min ?: "-∞"} and ${max ?: "∞"}")
             messages.add("Found value: $actual")
 
-            return SerializerException(location!!, messages)
+            return finish(DiagnosticKind.OUT_OF_RANGE)
         }
 
         fun buildInvalidRange(
@@ -141,14 +139,10 @@ open class SerializerException(
             min: Double?,
             max: Double?,
         ): SerializerException {
-            if (location == null) {
-                throw IllegalStateException("Location must be set before calling buildInvalidRange")
-            }
-
             messages.add("Invalid range! Expected a value between ${min ?: "-∞"} and ${max ?: "∞"}")
             messages.add("Found value: $actual")
 
-            return SerializerException(location!!, messages)
+            return finish(DiagnosticKind.OUT_OF_RANGE)
         }
 
         fun buildInvalidRegistryOption(
@@ -169,48 +163,32 @@ open class SerializerException(
             input: String,
             options: Iterable<String>,
         ): SerializerException {
-            if (location == null) {
-                throw IllegalStateException("Location must be set before calling buildInvalidOption")
-            }
-
             messages.add("Unknown value '$input'")
             didYouMean(input, options)
             possibleValues(input, options, 5)
 
-            return SerializerException(location!!, messages)
+            return finish(DiagnosticKind.INVALID_VALUE)
         }
 
         fun buildMissingRequiredKey(missingKey: String): SerializerException {
-            if (location == null) {
-                throw IllegalStateException("Location must be set before calling buildMissingRequiredKey")
-            }
-
             messages.add("Missing required key '$missingKey'")
             messages.add("Make sure you spell it correctly (case sensitive)")
 
-            return SerializerException(location!!, messages)
+            return finish(DiagnosticKind.MISSING_REQUIRED)
         }
 
         fun buildInvalidType(
             expectedTyped: String,
             actualValue: Any,
         ): SerializerException {
-            if (location == null) {
-                throw IllegalStateException("Location must be set before calling buildInvalidType")
-            }
-
             messages.add("Invalid type! Expected a $expectedTyped")
             messages.add("Found value: $actualValue")
 
-            return SerializerException(location!!, messages)
+            return finish(DiagnosticKind.INVALID_TYPE)
         }
 
         fun build(): SerializerException {
-            if (location == null) {
-                throw IllegalStateException("Location must be set before calling build")
-            }
-
-            return SerializerException(location!!, messages)
+            return finish(DiagnosticKind.OTHER)
         }
     }
 

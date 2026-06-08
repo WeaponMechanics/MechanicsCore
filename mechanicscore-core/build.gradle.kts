@@ -36,6 +36,9 @@ dependencies {
     testImplementation(libs.junitParams)
     testImplementation(libs.mockito)
     testImplementation(libs.mockBukkit)
+    // CommandAPI is compileOnly in production (provided by the runtime), but the NMS compatibility
+    // classes reference it, so headless serialization tests need it on the test classpath.
+    testRuntimeOnly(libs.commandApi)
     testRuntimeOnly(libs.junitEngine)
     testRuntimeOnly(libs.junitPlatformLauncher)
 }

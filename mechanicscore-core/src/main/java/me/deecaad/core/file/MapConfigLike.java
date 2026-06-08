@@ -1,7 +1,5 @@
 package me.deecaad.core.file;
 
-import me.deecaad.core.utils.SerializerUtil;
-import me.deecaad.core.utils.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -74,18 +72,6 @@ public class MapConfigLike implements ConfigLike {
     @Override
     public Collection<String> getKeys(String path, boolean deep) {
         return List.copyOf(config.keySet());
-    }
-
-    @Override
-    public String getLocation(File localFile, String localPath) {
-        Holder holder = config.get(normalizeString(localPath));
-        if (holder == null)
-            return SerializerUtil.foundAt(file, path);
-
-        String indent = "    ";
-        return SerializerUtil.foundAt(file, path) + "\n"
-            + indent + fullLine + "\n"
-            + StringUtil.repeat(" ", indent.length() + holder.index()) + "^";
     }
 
     public @NotNull String normalizeString(@NotNull String str) {

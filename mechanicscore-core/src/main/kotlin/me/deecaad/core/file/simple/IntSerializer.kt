@@ -1,6 +1,7 @@
 package me.deecaad.core.file.simple
 
 import me.deecaad.core.file.SerializerException
+import me.deecaad.core.file.ErrorLocation
 import me.deecaad.core.file.SimpleSerializer
 
 class IntSerializer
@@ -13,17 +14,17 @@ class IntSerializer
 
         override fun deserialize(
             data: String,
-            errorLocation: String,
+            errorLocation: ErrorLocation,
         ): Int {
             val value =
                 data.toIntOrNull()
                     ?: throw SerializerException.Builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .buildInvalidType("integer", data)
 
             if ((min != null && value < min) || (max != null && value > max)) {
                 throw SerializerException.Builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .buildInvalidRange(value, min, max)
             }
 

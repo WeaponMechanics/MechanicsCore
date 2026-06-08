@@ -3,6 +3,7 @@ package me.deecaad.core.file;
 import me.deecaad.core.MechanicsLogger;
 import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticRenderer;
+import me.deecaad.core.diagnostic.Severity;
 import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.verify.SchemaValidator;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -260,7 +261,11 @@ public class FileReader {
                         // user input an invalid value. We should log the
                         // exception.
                         Object valid = serializeWithSchema(serializer, new SerializeData(file, key, configuration));
-                        filledMap.set(key, valid);
+
+                        // GATED means the schema already reported a hard error and skipped construction.
+                        // Treat the key as failed (do not store), without logging a second time.
+                        if (valid != GATED)
+                            filledMap.set(key, valid);
 
                         // Only update the startsWithDeny if this is the "main serializer"
                         // If this serialization happened within serializer (meaning this is child serializer),
@@ -270,7 +275,7 @@ public class FileReader {
                         }
 
                     } catch (SerializerException ex) {
-                        ex.log(debug);
+                        DiagnosticRenderer.log(debug, configuration.enrich(ex.toDiagnostic()));
                         if (startsWithDeny == null) {
                             startsWithDeny = key;
                         }
@@ -300,18 +305,30 @@ public class FileReader {
     }
 
     /**
+     * Sentinel returned by {@link #serializeWithSchema} when the schema gate already reported a hard
+     * error and construction was skipped. The caller treats the key as failed without re-logging.
+     */
+    static final Object GATED = new Object();
+
+    /**
      * Serializes through {@link Serializer#serialize(SerializeData)} (the constructor). When the
-     * serializer declares a {@link Serializer#schema()}, the schema is validated first and any
-     * diagnostics are logged; hard errors are still produced by {@code serialize} itself, preserving
-     * the existing catch-and-log flow.
+     * serializer declares a {@link Serializer#schema()}, the schema is validated first and its
+     * diagnostics are logged. The schema is the gate: if it found a hard error the object cannot be
+     * built, so this returns {@link #GATED} instead of calling {@code serialize}, which would just
+     * re-report the same problem. Unknown keys are warnings, so they never gate.
      */
     private Object serializeWithSchema(Serializer<?> serializer, SerializeData data) throws SerializerException {
         ConfigSchema schema = serializer.schema();
         if (schema != null) {
             List<Diagnostic> diagnostics = new ArrayList<>();
             SchemaValidator.validate(schema, data, diagnostics);
-            for (Diagnostic diagnostic : diagnostics)
+            boolean blocked = false;
+            for (Diagnostic diagnostic : diagnostics) {
                 DiagnosticRenderer.log(debug, data.getConfig().enrich(diagnostic));
+                blocked |= diagnostic.severity() == Severity.ERROR;
+            }
+            if (blocked)
+                return GATED;
         }
         return serializer.serialize(data);
     }
@@ -337,7 +354,7 @@ public class FileReader {
             try {
                 validatorData.validator.validate(filledMap, data);
             } catch (SerializerException ex) {
-                ex.log(debug);
+                DiagnosticRenderer.log(debug, validatorData.config.enrich(ex.toDiagnostic()));
             } catch (Exception ex) {
                 throw new InternalError("Unhandled caught exception from validator " + validatorData.validator + "!", ex);
             }

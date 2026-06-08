@@ -1,6 +1,7 @@
 package me.deecaad.core.file.simple
 
 import me.deecaad.core.file.SerializerException
+import me.deecaad.core.file.ErrorLocation
 import me.deecaad.core.file.SimpleSerializer
 import org.bukkit.Bukkit
 import org.bukkit.Fluid
@@ -36,7 +37,7 @@ class RegistryValueSerializer<T : Keyed>
 
         override fun deserialize(
             data: String,
-            errorLocation: String,
+            errorLocation: ErrorLocation,
         ): List<T> {
             var data = data.trim().lowercase()
 
@@ -47,7 +48,7 @@ class RegistryValueSerializer<T : Keyed>
 
                 if (!isAllowWildcard) {
                     throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .addMessage("Wildcards are not allowed here... Remove the wildcard symbol '$'")
                         .addMessage("For value: $data")
                         .build()
@@ -62,7 +63,7 @@ class RegistryValueSerializer<T : Keyed>
 
                 if (!isAllowWildcard) {
                     throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .addMessage("Tags are not allowed here... Remove the tag symbol '#'")
                         .addMessage("For value: $data")
                         .build()
@@ -76,12 +77,12 @@ class RegistryValueSerializer<T : Keyed>
 
         private fun parseOne(
             data: String,
-            errorLocation: String,
+            errorLocation: ErrorLocation,
         ): T {
             val key =
                 NamespacedKey.fromString(data)
                     ?: throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .addMessage("We expect a plain string, like 'dirt' or a namespaced key, like 'minecraft:dirt'.")
                         .buildInvalidType("registry key", data)
 
@@ -94,14 +95,14 @@ class RegistryValueSerializer<T : Keyed>
                     return filteredMatches.first()
                 } else if (filteredMatches.size >= 2) {
                     throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .addMessage("Ambiguous key '$key'.")
                         .addMessage("Found two values with the same key... Please use the full namespaced key.")
                         .example(filteredMatches.map { it.key.toString() }.first())
                         .buildInvalidRegistryOption(data, registry)
                 } else {
                     throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .buildInvalidRegistryOption(data, registry)
                 }
             }
@@ -111,12 +112,12 @@ class RegistryValueSerializer<T : Keyed>
 
         private fun parseWildcard(
             data: String,
-            errorLocation: String,
+            errorLocation: ErrorLocation,
         ): List<T> {
             val values = registry.filter { it.key.key.contains(data.lowercase()) }
             if (values.isEmpty()) {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .addMessage("Wildcard '$$data' did not match any values.")
                     .addMessage("No values found that contain '$data' in their key.")
                     .buildInvalidRegistryOption(data, registry)
@@ -126,12 +127,12 @@ class RegistryValueSerializer<T : Keyed>
 
         private fun parseTag(
             data: String,
-            errorLocation: String,
+            errorLocation: ErrorLocation,
         ): List<T> {
             val key =
                 NamespacedKey.fromString(data)
                     ?: throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .addMessage("When using a tag, we expect a plain string, like '#wool' or a namespaced key, like '#minecraft:wool'.")
                         .buildInvalidType("registry key", data)
 
@@ -142,7 +143,7 @@ class RegistryValueSerializer<T : Keyed>
                     val tags = Bukkit.getTags(Tag.REGISTRY_ITEMS, Material::class.java)
                     val mapped = tags.map { it.key.toString() }
                     throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .buildInvalidOption(data, mapped)
                 }
                 return tag.values.map { it.asItemType()!! }.toList() as List<T>
@@ -155,7 +156,7 @@ class RegistryValueSerializer<T : Keyed>
                     val tags = Bukkit.getTags(Tag.REGISTRY_BLOCKS, Material::class.java)
                     val mapped = tags.map { it.key.toString() }
                     throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .buildInvalidOption(data, mapped)
                 }
                 return tag.values.map { it.asBlockType()!! }.toList() as List<T>
@@ -163,7 +164,7 @@ class RegistryValueSerializer<T : Keyed>
 
             if (tagRegistry == null) {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .addMessage("Tags are not supported for $typeName")
                     .build()
             }
@@ -173,7 +174,7 @@ class RegistryValueSerializer<T : Keyed>
                 val tags = Bukkit.getTags(tagRegistry, clazz)
                 val mapped = tags.map { it.key.toString() }
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .buildInvalidOption(data, mapped)
             }
 

@@ -4,6 +4,7 @@ import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticKind;
 import me.deecaad.core.diagnostic.Severity;
 import me.deecaad.core.diagnostic.SourceRef;
+import me.deecaad.core.compatibility.HeadlessOperationException;
 import me.deecaad.core.file.IValidator;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.Serializer;
@@ -82,26 +83,31 @@ public final class ConfigVerifier {
             SerializeData data = new SerializeData(file, key, config);
             ConfigSchema schema = serializer.schema();
 
+            // Schema covers key shape (unknown / inert / missing-required keys), no construction.
+            boolean schemaBlocked = false;
             if (schema != null) {
-                // Schema-backed: validate only. We never construct, so NMS-dependent serializers
-                // (e.g. items) can be verified headlessly.
-                SchemaValidator.validate(schema, data, diagnostics);
-            } else {
-                // Legacy serializer with no schema: the only way to validate is to run it.
-                try {
-                    data.of().serialize((Serializer) serializer);
-                } catch (SerializerException ex) {
-                    diagnostics.add(Diagnostic.at(Severity.ERROR, DiagnosticKind.OTHER,
-                        SourceRef.ofConfig(file, key), joinOr(ex, "invalid value"), null));
-                }
+                List<Diagnostic> schemaDiagnostics = new ArrayList<>();
+                SchemaValidator.validate(schema, data, schemaDiagnostics);
+                diagnostics.addAll(schemaDiagnostics);
+                schemaBlocked = schemaDiagnostics.stream().anyMatch(d -> d.severity() == Severity.ERROR);
+            }
+
+            // serialize() is the source of truth for value validation (type, range, enum, ...). It runs
+            // headless under MockBukkit; a SerializerException carries its own DiagnosticKind, and a
+            // HeadlessOperationException means the feature needs a live server to verify. Skipped when
+            // the schema already found a hard error (missing required), so it is not reported twice.
+            if (schemaBlocked)
+                continue;
+            try {
+                data.of().serialize((Serializer) serializer);
+            } catch (SerializerException ex) {
+                diagnostics.add(ex.toDiagnostic());
+            } catch (HeadlessOperationException ex) {
+                diagnostics.add(Diagnostic.at(Severity.INFO, DiagnosticKind.OTHER,
+                    SourceRef.ofConfig(file, key), "'" + key + "' was not verified: " + ex.getMessage(), null));
             }
         }
 
         return diagnostics;
-    }
-
-    private static String joinOr(SerializerException ex, String fallback) {
-        String message = String.join("; ", ex.getMessages());
-        return message.isEmpty() ? fallback : message;
     }
 }

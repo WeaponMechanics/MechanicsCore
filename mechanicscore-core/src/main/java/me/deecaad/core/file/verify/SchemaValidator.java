@@ -9,7 +9,6 @@ import me.deecaad.core.file.MapConfigLike;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.file.SimpleSerializer;
 import me.deecaad.core.file.SnakeYamlConfig;
 import me.deecaad.core.file.TemplateExpander;
 import me.deecaad.core.utils.StringUtil;
@@ -19,14 +18,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 /**
- * The shared engine that validates a raw config section against a declared {@link ConfigSchema},
- * appending any {@link Diagnostic}s found. It validates only (presence, type, range, enum, unknown
- * keys, nested recursion); construction always goes through {@link Serializer#serialize}. The same
- * engine runs over file sections ({@code SnakeYamlConfig}) and inline mechanic args ({@code MapConfigLike}).
+ * Diffs a raw config section against a declared {@link ConfigSchema} for <em>key shape</em>: unknown
+ * (misspelled/hallucinated) keys, inert keys, and missing required keys, recursing into nested
+ * sections to do the same there. Leaf-value validation (type, range, enum, ...) is intentionally left
+ * to {@link Serializer#serialize}, so each value problem is reported exactly once and through one
+ * error system ({@link SerializerException#toDiagnostic}); the caller gates on a hard schema error
+ * (missing required) so the serializer does not re-report it. The schema's declared types still drive
+ * the JSON {@link SchemaExporter}; only the runtime value re-validation moved out. The same engine
+ * runs over file sections ({@code SnakeYamlConfig}) and inline mechanic args ({@code MapConfigLike}).
  */
 public final class SchemaValidator {
 
@@ -44,12 +46,11 @@ public final class SchemaValidator {
         String base = data.getKey() == null ? "" : data.getKey();
 
         // Path_To template reference (file configs only): the section's real content comes from the
-        // referenced template, resolved before serialization. The template's keys are not present
-        // here, so required-key checks are relaxed; the override keys present are still validated.
+        // referenced template, resolved before serialization, so required-key checks are relaxed here.
         boolean isReference = data.getConfig() instanceof SnakeYamlConfig && data.has(TemplateExpander.REFERENCE_KEY);
 
-        // Inline scalar form: the value is a bare string, not a section. Section-key validation does
-        // not apply (the serializer handles the scalar in serialize()).
+        // Inline scalar form: the value is a bare string, not a section. Section-key checks do not
+        // apply (the serializer handles the scalar in serialize()).
         if (data.getKey() != null) {
             try {
                 if (data.of().is(String.class))
@@ -59,14 +60,15 @@ public final class SchemaValidator {
             }
         }
 
-        // Validate each declared key.
+        // Flag missing required keys and inert keys, and recurse into present nested sections so
+        // unknown keys inside them are flagged too. Leaf-value validation (type, range, ...) is left
+        // to the serializer; required-key presence is cheap and carries its own kind, so it stays here
+        // (and the caller gates on it to avoid the serializer re-reporting it).
         for (KeySpec spec : schema.keys()) {
             String path = base.isEmpty() ? spec.name() : base + "." + spec.name();
-            boolean present = data.has(spec.name());
-            boolean active = isActive(data, spec.condition());
 
-            if (!active) {
-                if (present)
+            if (!isActive(data, spec.condition())) {
+                if (data.has(spec.name()))
                     out.add(Diagnostic.at(Severity.INFO, DiagnosticKind.INACTIVE_KEY,
                         SourceRef.ofConfig(data.getFile(), path),
                         "'" + spec.name() + "' has no effect (" + spec.condition().siblingKey()
@@ -74,7 +76,7 @@ public final class SchemaValidator {
                 continue;
             }
 
-            if (!present) {
+            if (!data.has(spec.name())) {
                 if (spec.required() && !isReference)
                     out.add(Diagnostic.at(Severity.ERROR, DiagnosticKind.MISSING_REQUIRED,
                         SourceRef.ofConfig(data.getFile(), path),
@@ -82,11 +84,7 @@ public final class SchemaValidator {
                 continue;
             }
 
-            try {
-                coerce(spec, data, path, out);
-            } catch (SerializerException ex) {
-                out.add(toDiagnostic(ex, data, path));
-            }
+            recurse(spec, data, out);
         }
 
         // Flag unknown (hallucinated) keys. Normalize both sides the same way MapConfigLike does
@@ -106,129 +104,60 @@ public final class SchemaValidator {
                     continue;
 
                 String path = base.isEmpty() ? key : base + "." + key;
-                String hint = declaredNames.isEmpty() ? null : StringUtil.didYouMean(key, declaredNames);
+                String hint = declaredNames.isEmpty() ? null
+                    : "did you mean '" + StringUtil.didYouMean(key, declaredNames) + "'?";
                 out.add(Diagnostic.at(Severity.WARNING, DiagnosticKind.UNKNOWN_KEY,
                     SourceRef.ofConfig(data.getFile(), path), "unknown key '" + key + "'", hint));
             }
         }
     }
 
+    /**
+     * Descends into the nested section(s) of a present declared key, for unknown-key detection only.
+     * Leaf keys do nothing here. Construction and value errors are surfaced later by
+     * {@link Serializer#serialize}, so this never reports them (that would double-report).
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void coerce(
-        KeySpec spec,
-        SerializeData data,
-        String path,
-        List<Diagnostic> out) throws SerializerException {
-
-        SerializeData.ConfigAccessor acc = data.of(spec.name());
+    private static void recurse(KeySpec spec, SerializeData data, List<Diagnostic> out) {
         switch (spec.type()) {
-            case INT -> {
-                applyRange(acc, spec);
-                acc.getInt();
+            case NESTED -> {
+                Class<? extends Serializer<?>> nestedClass = spec.nested();
+                if (nestedClass == null)
+                    return;
+                Serializer<?> nested;
+                try {
+                    nested = nestedClass.getDeclaredConstructor().newInstance();
+                } catch (ReflectiveOperationException ex) {
+                    return;
+                }
+                ConfigSchema nestedSchema = nested.schema();
+                if (nestedSchema != null)
+                    validate(nestedSchema, data.move(spec.name()), out);
             }
-            case DOUBLE -> {
-                applyRange(acc, spec);
-                acc.getDouble();
+            case REGISTRY_SERIALIZER -> recurseRegistry(spec, data, out, true);
+            case REGISTRY_SERIALIZER_LIST -> recurseRegistry(spec, data, out, false);
+            default -> {
+                // Leaf key: the serializer validates its value.
             }
-            case BOOL -> acc.getBool();
-            case STRING -> acc.get(String.class);
-            case COLOR -> acc.getAdventure();
-            case MATERIAL -> acc.getMaterial();
-            case ENTITY -> acc.getEntityType();
-            case SOUND -> acc.getSound();
-            case ENUM -> acc.getEnum((Class) spec.enumType());
-            case NESTED -> coerceNested(spec, data, path, out);
-            case REGISTRY -> {
-                Class clazz = spec.registryClass();
-                if (clazz != null)
-                    acc.getBukkitRegistry(clazz);
-            }
-            case REGISTRY_SERIALIZER -> coerceRegistrySerializer(spec, data, out, true);
-            case REGISTRY_SERIALIZER_LIST -> coerceRegistrySerializer(spec, data, out, false);
-            case LIST -> coerceList(spec, data);
         }
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void coerceList(KeySpec spec, SerializeData data) throws SerializerException {
-        List<SimpleSerializer<?>> args = spec.listArgs();
-
-        // Raw list (no element parsing): only assert it is a list.
-        if (args == null || args.isEmpty()) {
-            data.of(spec.name()).get(List.class);
-            return;
-        }
-
-        SerializeData.ConfigListAccessor list = data.ofList(spec.name());
-        for (int i = 0; i < args.size(); i++) {
-            list.addArgument((SimpleSerializer) args.get(i));
-            if (i + 1 == spec.requiredArgs())
-                list.requireAllPreviousArgs();
-        }
-        if (spec.required())
-            list.assertExists();
-
-        list.assertList();
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void coerceRegistrySerializer(KeySpec spec, SerializeData data, List<Diagnostic> out, boolean single)
-        throws SerializerException {
-
+    private static void recurseRegistry(KeySpec spec, SerializeData data, List<Diagnostic> out, boolean single) {
         if (spec.registry() == null)
             return;
 
         // forEachRegistryEntry resolves the chosen serializer(s) and yields each child SerializeData
-        // without constructing. We recurse the schema (catching hallucinated nested keys), or fall
-        // back to serialize() for not-yet-migrated nested serializers.
-        data.of(spec.name()).forEachRegistryEntry(spec.registry(), single, (serializer, child) -> {
-            ConfigSchema nestedSchema = serializer.schema();
-            if (nestedSchema != null) {
-                validate(nestedSchema, child, out);
-            } else {
-                try {
-                    ((Serializer) serializer).serialize(child);
-                } catch (SerializerException ex) {
-                    out.add(toDiagnostic(ex, child, child.getKey() == null ? spec.name() : child.getKey()));
-                }
-            }
-        });
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void coerceNested(
-        KeySpec spec,
-        SerializeData data,
-        String path,
-        List<Diagnostic> out) throws SerializerException {
-
-        Class<? extends Serializer<?>> nestedClass = spec.nested();
-        if (nestedClass == null)
-            return;
-
-        Serializer<?> nested;
+        // without constructing. We recurse a declared nested schema for hallucinated keys; a nested
+        // serializer without a schema is left entirely to serialize().
         try {
-            nested = nestedClass.getDeclaredConstructor().newInstance();
-        } catch (ReflectiveOperationException ex) {
-            out.add(Diagnostic.at(Severity.ERROR, DiagnosticKind.OTHER,
-                SourceRef.ofConfig(data.getFile(), path),
-                "could not instantiate nested serializer " + nestedClass.getSimpleName(), null));
-            return;
+            data.of(spec.name()).forEachRegistryEntry(spec.registry(), single, (serializer, child) -> {
+                ConfigSchema nestedSchema = serializer.schema();
+                if (nestedSchema != null)
+                    validate(nestedSchema, child, out);
+            });
+        } catch (SerializerException ignored) {
+            // Resolving the registry entry failed (e.g. unknown type). serialize() reports it.
         }
-
-        ConfigSchema nestedSchema = nested.schema();
-        if (nestedSchema != null) {
-            validate(nestedSchema, data.move(spec.name()), out);
-        } else {
-            data.of(spec.name()).serialize((Serializer) nested);
-        }
-    }
-
-    private static void applyRange(SerializeData.ConfigAccessor acc, KeySpec spec) throws SerializerException {
-        Range range = spec.range();
-        if (range == null || (range.min() == null && range.max() == null))
-            return;
-        acc.assertRange(range.min(), range.max());
     }
 
     private static boolean isActive(SerializeData data, Condition condition) {
@@ -247,24 +176,6 @@ public final class SchemaValidator {
         } catch (SerializerException ex) {
             return false;
         }
-    }
-
-    private static Diagnostic toDiagnostic(SerializerException ex, SerializeData data, String path) {
-        String message = String.join("; ", ex.getMessages());
-        if (message.isEmpty())
-            message = "invalid value";
-        return Diagnostic.at(Severity.ERROR, classify(message), SourceRef.ofConfig(data.getFile(), path), message, null);
-    }
-
-    private static DiagnosticKind classify(String message) {
-        String lower = message.toLowerCase(Locale.ROOT);
-        if (lower.contains("missing required"))
-            return DiagnosticKind.MISSING_REQUIRED;
-        if (lower.contains("range") || lower.contains("between") || lower.contains("must be"))
-            return DiagnosticKind.OUT_OF_RANGE;
-        if (lower.contains("expected") || lower.contains("type"))
-            return DiagnosticKind.INVALID_TYPE;
-        return DiagnosticKind.INVALID_VALUE;
     }
 
     static @NotNull String normalize(@NotNull String str) {

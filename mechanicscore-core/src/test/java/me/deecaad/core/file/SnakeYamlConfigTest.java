@@ -24,6 +24,22 @@ class SnakeYamlConfigTest {
     }
 
     @Test
+    void listItemPositions_pointAtEachMechanicValue() throws Exception {
+        SnakeYamlConfig config = config(
+            "ChainLightning:\n  Mechanics:\n    - 'Damage{Damage=5} @target'\n    - 'Bad{} @target'\n");
+
+        List<int[]> positions = config.listItemPositions("ChainLightning.Mechanics");
+        assertEquals(2, positions.size());
+
+        // Item 0 is on line index 2, its quoted value starts after "    - '" (column 7).
+        assertEquals(2, positions.get(0)[0]);
+        assertEquals(3, positions.get(1)[0]);
+        // The recorded column lands on the first char of the mechanic content.
+        String raw = config.sourceLine(positions.get(0)[0]);
+        assertEquals('D', raw.charAt(positions.get(0)[1]), raw);
+    }
+
+    @Test
     void dottedPathRead_caseSensitive() throws Exception {
         SnakeYamlConfig config = config("Weapon:\n  Shoot:\n    Damage: 5\n");
 
@@ -44,28 +60,16 @@ class SnakeYamlConfigTest {
     }
 
     @Test
-    void getLocation_rendersSourceLineAndCaret() throws Exception {
-        SnakeYamlConfig config = config("Weapon:\n  Damage: oops\n");
-
-        String location = config.getLocation(file, "Weapon.Damage");
-        String[] lines = location.split("\n");
-
-        // header + source line + caret line
-        assertEquals(3, lines.length, location);
-        assertTrue(lines[1].contains("Damage: oops"), location);
-        assertTrue(lines[2].trim().chars().allMatch(c -> c == '^'), location);
-        // the caret should sit under the value 'oops', not at column 0
-        assertTrue(lines[2].indexOf('^') > lines[1].indexOf("oops") - 2, location);
-    }
-
-    @Test
-    void getLocation_missingKeyFallsBackToParentSection() throws Exception {
+    void enrich_missingKeyFallsBackToParentSection() throws Exception {
         SnakeYamlConfig config = config("Weapon:\n  Shoot:\n    Damage: 5\n");
 
-        // 'Recoil' does not exist; we still want a caret pointing at the parent section line.
-        String location = config.getLocation(file, "Weapon.Shoot.Recoil");
-        assertTrue(location.contains("Shoot"), location);
-        assertTrue(location.contains("^"), location);
+        // 'Recoil' does not exist; we still want a span pointing at the parent section line.
+        Diagnostic raw = Diagnostic.at(Severity.ERROR, DiagnosticKind.MISSING_REQUIRED,
+            SourceRef.ofConfig(file, "Weapon.Shoot.Recoil"), "Missing required key", null);
+        Diagnostic enriched = config.enrich(raw);
+
+        assertTrue(enriched.primary().line() >= 0, "fell back to a real line");
+        assertTrue(enriched.source().rawLine().contains("Shoot"), enriched.source().rawLine());
     }
 
     @Test

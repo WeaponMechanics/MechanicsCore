@@ -73,18 +73,18 @@ public class FireworkMechanic extends Mechanic {
             Object colorData = data.of("Color").assertExists().get(Object.class).get();
             if (colorData instanceof List<?> temp) {
                 for (MapConfigLike.Holder holder : (List<MapConfigLike.Holder>) temp)
-                    colors.add(colorSerializer.deserialize(holder.value().toString(), data.of("Color").getLocation()));
+                    colors.add(colorSerializer.deserialize(holder.value().toString(), data.of("Color").errorLocation()));
             } else {
-                Color color = colorSerializer.deserialize(colorData.toString(), data.of("Color").getLocation());
+                Color color = colorSerializer.deserialize(colorData.toString(), data.of("Color").errorLocation());
                 colors = List.of(color);
             }
 
             Object fadeData = data.of("Fade_Color").assertExists().get(Object.class).get();
             if (fadeData instanceof List<?> temp) {
                 for (MapConfigLike.Holder holder : (List<MapConfigLike.Holder>) temp)
-                    fadeColors.add(colorSerializer.deserialize(holder.value().toString(), data.of("Fade_Color").getLocation()));
+                    fadeColors.add(colorSerializer.deserialize(holder.value().toString(), data.of("Fade_Color").errorLocation()));
             } else {
-                Color color = colorSerializer.deserialize(fadeData.toString(), data.of("Fade_Color").getLocation());
+                Color color = colorSerializer.deserialize(fadeData.toString(), data.of("Fade_Color").errorLocation());
                 fadeColors = List.of(color);
             }
 

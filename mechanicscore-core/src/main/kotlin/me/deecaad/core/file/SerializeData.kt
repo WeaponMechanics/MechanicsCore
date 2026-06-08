@@ -6,12 +6,12 @@ import com.cryptomorin.xseries.XEntityType
 import com.cryptomorin.xseries.XMaterial
 import com.cryptomorin.xseries.XSound
 import com.cryptomorin.xseries.particles.XParticle
+import me.deecaad.core.diagnostic.DiagnosticKind
 import me.deecaad.core.file.SerializerException.Companion.builder
 import me.deecaad.core.file.simple.DoubleSerializer
 import me.deecaad.core.file.simple.EnumValueSerializer
 import me.deecaad.core.file.simple.RegistryValueSerializer
 import me.deecaad.core.utils.RegistryUtil
-import me.deecaad.core.utils.SerializerUtil.foundAt
 import me.deecaad.core.utils.StringUtil.colorAdventure
 import me.deecaad.core.utils.StringUtil.split
 import me.deecaad.core.utils.matchAny
@@ -28,6 +28,7 @@ import java.io.File
 import java.util.Optional
 import java.util.OptionalDouble
 import java.util.OptionalInt
+import java.util.logging.Logger
 import kotlin.collections.ArrayList
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -47,19 +48,35 @@ class SerializeData {
     val key: String?
     val config: ConfigLike
 
-    constructor(file: File, key: String?, config: ConfigLike) {
+    /**
+     * Logger for non-fatal warnings raised while serializing (e.g. a skipped bad tag). Serializers
+     * use this instead of reaching the [me.deecaad.core.MechanicsCore] singleton, so serialization
+     * runs headless (no live plugin). Defaults to a plain JUL logger; the plugin passes its own.
+     */
+    val logger: Logger
+
+    @JvmOverloads
+    constructor(file: File, key: String?, config: ConfigLike, logger: Logger = DEFAULT_LOGGER) {
         this.file = file
         this.key = key
         this.config = config
+        this.logger = logger
     }
 
     constructor(other: SerializeData, relative: String) {
         this.file = other.file
         this.key = other.getPath(relative)
         this.config = other.config
+        this.logger = other.logger
     }
 
     companion object {
+        /**
+         * Fallback logger when no plugin logger is supplied (tests, headless verification).
+         */
+        @JvmStatic
+        val DEFAULT_LOGGER: Logger = Logger.getLogger("MechanicsCore")
+
         /**
          * Test-only drift guard: when recording is on, every key read through [of]/[ofList]/[has] is
          * collected, so a test can assert a serializer reads exactly the keys its schema declares.
@@ -195,7 +212,8 @@ class SerializeData {
         var key = this.key
         if (!relative.isNullOrEmpty()) key = getPath(relative)
 
-        return SerializerException(foundAt(file, key!!), mutableListOf(*messages))
+        return SerializerException(mutableListOf(*messages),
+            DiagnosticKind.OTHER, file, key, -1)
     }
 
     /**
@@ -217,7 +235,8 @@ class SerializeData {
         var key = this.key
         if (!relative.isNullOrEmpty()) key = getPath(relative)
 
-        return SerializerException(foundAt(file, key!!, index + 1), mutableListOf(*messages))
+        return SerializerException(mutableListOf(*messages),
+            DiagnosticKind.OTHER, file, key, index)
     }
 
     /**
@@ -250,7 +269,7 @@ class SerializeData {
         fun assertExists(): ConfigListAccessor {
             if (!has(relative)) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildMissingRequiredKey(relative!!)
             }
 
@@ -280,7 +299,7 @@ class SerializeData {
 
             if (value !is List<*>) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidType("list of $expectedInputFormat", value)
             }
 
@@ -340,7 +359,7 @@ class SerializeData {
 
                     val component = split[j]
                     val argument = arguments[j]
-                    val parsedValue = argument.deserialize(component, getLocation(i))
+                    val parsedValue = argument.deserialize(component, errorLocation(i))
                     parsedData.add(Optional.of(parsedValue))
                 }
 
@@ -355,22 +374,11 @@ class SerializeData {
             return listOfParsedData.toList() // immutable list
         }
 
-        val location: String
-            get() {
-                return if (relative.isNullOrEmpty()) {
-                    config.getLocation(file, key)
-                } else {
-                    config.getLocation(file, getPath(relative))
-                }
-            }
+        private fun errorLocation(): ErrorLocation =
+            ErrorLocation(file, if (relative.isNullOrEmpty()) key else getPath(relative), -1)
 
-        fun getLocation(index: Int): String {
-            return if (relative.isNullOrEmpty()) {
-                foundAt(file, key!!, index + 1)
-            } else {
-                foundAt(file, getPath(relative)!!, index + 1)
-            }
-        }
+        private fun errorLocation(index: Int): ErrorLocation =
+            ErrorLocation(file, if (relative.isNullOrEmpty()) key else getPath(relative), index)
     }
 
     /**
@@ -393,7 +401,7 @@ class SerializeData {
         fun assertExists(): ConfigAccessor {
             if (!has(relative)) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildMissingRequiredKey(relative)
             }
             this.exists = true
@@ -432,7 +440,7 @@ class SerializeData {
                 val actual: Class<*> = value.javaClass
                 if (!type.isAssignableFrom(actual)) {
                     throw builder()
-                        .locationRaw(location)
+                        .located(errorLocation())
                         .buildInvalidType(type.simpleName, value)
                 }
             }
@@ -459,14 +467,14 @@ class SerializeData {
 
             // If the value is a string, attempt to parse it as a number
             if (value is String) {
-                value = DoubleSerializer().deserialize(value, location)
+                value = DoubleSerializer().deserialize(value, errorLocation())
             }
 
             try {
                 return Optional.of(value as Number)
             } catch (ex: ClassCastException) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidType("number", value)
             }
         }
@@ -490,7 +498,7 @@ class SerializeData {
             val numValue = num.get().toDouble()
             if (floor(numValue).compareTo(ceil(numValue)) != 0) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .addMessage("Expected an integer WITHOUT any decimal (floating point) value")
                     .buildInvalidType("integer", num)
             }
@@ -537,7 +545,7 @@ class SerializeData {
             }
 
             throw builder()
-                .locationRaw(location)
+                .located(errorLocation())
                 .buildInvalidType("boolean", value)
         }
 
@@ -568,7 +576,7 @@ class SerializeData {
                 val num = value.get().toInt()
                 if (min != null && num < min || max != null && num > max) {
                     throw builder()
-                        .locationRaw(location)
+                        .located(errorLocation())
                         .buildInvalidRange(num, min, max)
                 }
             }
@@ -601,7 +609,7 @@ class SerializeData {
                 val num = value.get().toDouble()
                 if (min != null && num < min || max != null && num > max) {
                     throw builder()
-                        .locationRaw(location)
+                        .located(errorLocation())
                         .buildInvalidRange(num, min, max)
                 }
             }
@@ -609,10 +617,7 @@ class SerializeData {
             return this
         }
 
-        val location: String
-            get() {
-                return config.getLocation(file, getPath(relative))
-            }
+        fun errorLocation(): ErrorLocation = ErrorLocation(file, getPath(relative), -1)
 
         /**
          * Gets the data stored at this relative key. Note that this method (basically) requires a previous
@@ -652,7 +657,7 @@ class SerializeData {
                 return Optional.empty()
             }
 
-            val firstEnumFound = EnumValueSerializer(clazz, false).deserialize(input, location).first()
+            val firstEnumFound = EnumValueSerializer(clazz, false).deserialize(input, errorLocation()).first()
             return Optional.of(firstEnumFound)
         }
 
@@ -678,7 +683,7 @@ class SerializeData {
             val xmat = XMaterial.matchXMaterial(input)
             if (xmat.isEmpty) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidEnumOption(input, Material::class.java)
             }
 
@@ -742,7 +747,7 @@ class SerializeData {
             val entityType = XEntityType.of(input)
             if (entityType.isEmpty) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidEnumOption(input, EntityType::class.java)
             }
 
@@ -778,7 +783,7 @@ class SerializeData {
             val xsound = XSound.of(input)
             if (xsound.isEmpty) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidOption(input, XSound.REGISTRY.map { it.name() })
             }
 
@@ -815,7 +820,7 @@ class SerializeData {
             val particle = XParticle.of(input)
             if (particle.isEmpty) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidEnumOption(input, Particle::class.java)
             }
 
@@ -853,7 +858,7 @@ class SerializeData {
             val firstItemFound =
                 RegistryValueSerializer(clazz, false, registry).deserialize(
                     input.trim().lowercase(),
-                    location,
+                    errorLocation(),
                 ).first()
 
             return Optional.of(firstItemFound)
@@ -874,7 +879,7 @@ class SerializeData {
             val split = input.split(":".toRegex()).toTypedArray()
             if (split.size != 2) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .addMessage("Expected a namespaced key in the format 'namespace:key'")
                     .example("minecraft:stone")
                     .buildInvalidType("namespaced key", input)
@@ -1003,7 +1008,7 @@ class SerializeData {
 
                 val key = nested.of(InlineSerializer.UNIQUE_IDENTIFIER).assertExists().get(String::class.java).get()
                 val base = registry.matchAny(key)
-                    ?: throw builder().locationRaw(location).buildInvalidRegistryOption(key, registry)
+                    ?: throw builder().located(errorLocation()).buildInvalidRegistryOption(key, registry)
                 action.accept(base as Serializer<*>, nested)
             } else {
                 val list = config.getList(getPath(relative)) as List<MapConfigLike.Holder?>
@@ -1017,7 +1022,7 @@ class SerializeData {
                     val id = (map[InlineSerializer.UNIQUE_IDENTIFIER] as? MapConfigLike.Holder)?.value?.toString()
                         ?: throw listException(relative, i, "Could not identify any valid type")
                     val serializer = registry.matchAny(id)
-                        ?: throw builder().locationRaw(location).buildInvalidRegistryOption(id, registry)
+                        ?: throw builder().located(errorLocation()).buildInvalidRegistryOption(id, registry)
                     val temp: ConfigLike =
                         MapConfigLike(map as Map<String, MapConfigLike.Holder>).setDebugInfo(
                             config.file,

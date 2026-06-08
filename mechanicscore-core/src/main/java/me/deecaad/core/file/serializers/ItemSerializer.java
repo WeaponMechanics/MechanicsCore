@@ -151,7 +151,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
         // inline serializer. Skip the fancy shit.
         if (data.getKey() == null) {
             ItemStack itemStack = serializeWithoutRecipe(data);
-            applyTags(itemStack, tags);
+            applyTags(itemStack, tags, data);
             itemStack = serializeRecipe(data, itemStack);
             return itemStack;
         }
@@ -159,17 +159,17 @@ public class ItemSerializer implements Serializer<ItemStack> {
         // One liner items make life easier with less indentation
         ItemStack inline = attemptInline(data);
         if (inline != null) {
-            applyTags(inline, tags);
+            applyTags(inline, tags, data);
             return inline;
         }
 
         ItemStack itemStack = serializeWithoutRecipe(data);
-        applyTags(itemStack, tags);
+        applyTags(itemStack, tags, data);
         itemStack = serializeRecipe(data, itemStack);
         return itemStack;
     }
 
-    public void applyTags(@NotNull ItemStack item, @NotNull Map<String, Object> tags) {
+    public void applyTags(@NotNull ItemStack item, @NotNull Map<String, Object> tags, @NotNull SerializeData data) {
         if (tags.isEmpty())
             return;
 
@@ -181,7 +181,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
 
             String[] split = rawKey.split(":");
             if (split.length != 2) {
-                MechanicsCore.getInstance().getLogger().warning("Invalid tag key '" + rawKey + "' (expected 'plugin:tag'), skipping"
+                data.getLogger().warning("Invalid tag key '" + rawKey + "' (expected 'plugin:tag'), skipping"
                 );
                 continue;
             }
@@ -196,7 +196,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
                 case int[] arr -> nbt.setArray(item, plugin, tag, arr);
                 case String[] arr -> nbt.setStringArray(item, plugin, tag, arr);
                 case null, default -> {
-                    MechanicsCore.getInstance().getLogger().warning("Unrecognized type for key '" + rawKey + "': " + value
+                    data.getLogger().warning("Unrecognized type for key '" + rawKey + "': " + value
                     );
                     String type = (value == null) ? "null" : value.getClass().getName();
                     throw new IllegalArgumentException("Unrecognized type " + type + " for key '" + rawKey + "' when setting custom tags"
@@ -582,7 +582,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
         String[] shapeArr = shape.stream().map(Object::toString).toArray(String[]::new);
         if (shape.isEmpty() || shape.size() > 3) {
             throw SerializerException.builder()
-                .locationRaw(data.of("Recipe.Shape").getLocation())
+                .located(data.of("Recipe.Shape").errorLocation())
                 .addMessage("Expected a list of either 1, 2, or 3 strings to make the recipe")
                 .buildInvalidRange(shape.size(), 1, 3);
         }
@@ -597,7 +597,7 @@ public class ItemSerializer implements Serializer<ItemStack> {
 
             if (str.isEmpty() || str.length() > 3) {
                 throw SerializerException.builder()
-                    .locationRaw(data.of("Recipe.Shape").getLocation())
+                    .located(data.of("Recipe.Shape").errorLocation())
                     .addMessage("Each string in the shape must be between 1 and 3 characters long")
                     .buildInvalidRange(str.length(), 1, 3);
             }

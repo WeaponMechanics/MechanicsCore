@@ -4,8 +4,6 @@ import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticKind;
 import me.deecaad.core.diagnostic.SourceRef;
 import me.deecaad.core.diagnostic.Span;
-import me.deecaad.core.utils.SerializerUtil;
-import me.deecaad.core.utils.StringUtil;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -17,6 +15,7 @@ import org.yaml.snakeyaml.nodes.MappingNode;
 import org.yaml.snakeyaml.nodes.Node;
 import org.yaml.snakeyaml.nodes.NodeTuple;
 import org.yaml.snakeyaml.nodes.ScalarNode;
+import org.yaml.snakeyaml.nodes.SequenceNode;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,26 +31,68 @@ import java.util.Map;
  * A {@link ConfigLike} backed directly by SnakeYAML. The value tree is a plain nested
  * {@code Map<String, Object>} (sections are maps, lists are lists, scalars are typed), and a parallel
  * index maps each config path to its source line/column recovered from the SnakeYAML marks. This lets
- * {@link #getLocation} render a "located at ... ^^^" caret snippet and {@link #enrich} upgrade a
- * path-only {@link Diagnostic}, so config-file errors point at the exact line just like inline-mechanic
- * errors do. Bukkit's {@code YamlConfiguration} discards those marks, which is why we read YAML here
- * instead.
+ * {@link #enrich} upgrade a path-only {@link Diagnostic} with a real {@link Span} and raw source line,
+ * so config-file errors point at the exact line just like inline-mechanic errors do. Bukkit's
+ * {@code YamlConfiguration} discards those marks, which is why we read YAML here instead.
  *
  * <p>Key matching is case-sensitive and dotted-path.
  */
 public final class SnakeYamlConfig implements ConfigLike {
 
     private static final Object MISSING = new Object();
-    private static final String INDENT = "    ";
 
     private final @NotNull Map<String, Object> root;
     private final @NotNull String[] lines;
     private final @NotNull Map<String, Entry> positions;
+    private final @NotNull Map<String, List<int[]>> listPositions;
 
-    private SnakeYamlConfig(@NotNull Map<String, Object> root, @NotNull String[] lines, @NotNull Map<String, Entry> positions) {
+    private SnakeYamlConfig(@NotNull Map<String, Object> root, @NotNull String[] lines,
+                           @NotNull Map<String, Entry> positions, @NotNull Map<String, List<int[]>> listPositions) {
         this.root = root;
         this.lines = lines;
         this.positions = positions;
+        this.listPositions = listPositions;
+    }
+
+    /**
+     * The source position of each item in the list at {@code path}, as {@code {line, column}} (both
+     * 0-based) pointing at the item's value. Used to re-anchor inline-mechanic diagnostics, which the
+     * parser produces relative to the mechanic string, back onto the real YAML line. Empty when the
+     * path is not a list this backend indexed.
+     */
+    public @NotNull List<int[]> listItemPositions(@Nullable String path) {
+        List<int[]> raw = listPositions.getOrDefault(norm(path), List.of());
+        List<int[]> adjusted = new ArrayList<>(raw.size());
+        for (int[] pos : raw) {
+            int line = pos[0];
+            int column = pos[1];
+            // SnakeYAML marks a quoted scalar at its opening quote; step past it to the content.
+            if (line >= 0 && line < lines.length && column < lines[line].length()) {
+                char c = lines[line].charAt(column);
+                if (c == '\'' || c == '"')
+                    column++;
+            }
+            adjusted.add(new int[]{line, column});
+        }
+        return adjusted;
+    }
+
+    /**
+     * The raw source line at the given 0-based line index, or empty when out of range.
+     */
+    public @NotNull String sourceLine(int line) {
+        return line >= 0 && line < lines.length ? lines[line] : "";
+    }
+
+    /**
+     * Up to two source lines immediately preceding {@code line} (oldest-first), shown as context
+     * above an error.
+     */
+    public @NotNull List<String> contextBefore(int line) {
+        List<String> out = new ArrayList<>();
+        for (int i = Math.max(0, line - 2); i < line; i++)
+            out.add(lines[i]);
+        return out;
     }
 
     public static @NotNull SnakeYamlConfig ofFile(@NotNull File file) throws IOException, InvalidConfigurationException {
@@ -65,11 +106,12 @@ public final class SnakeYamlConfig implements ConfigLike {
             Map<String, Object> root = loaded instanceof Map<?, ?> map ? (Map<String, Object>) map : new LinkedHashMap<>();
 
             Map<String, Entry> positions = new LinkedHashMap<>();
+            Map<String, List<int[]>> listPositions = new LinkedHashMap<>();
             Node node = new Yaml(new LoaderOptions()).compose(new StringReader(yaml));
             if (node instanceof MappingNode mapping)
-                index(mapping, "", positions);
+                index(mapping, "", positions, listPositions);
 
-            return new SnakeYamlConfig(root, yaml.split("\\R", -1), positions);
+            return new SnakeYamlConfig(root, yaml.split("\\R", -1), positions, listPositions);
         } catch (Exception ex) {
             throw new InvalidConfigurationException(ex);
         }
@@ -144,25 +186,6 @@ public final class SnakeYamlConfig implements ConfigLike {
         }
     }
 
-    @Override
-    public String getLocation(File localFile, String localPath) {
-        String header = SerializerUtil.foundAt(localFile, localPath);
-        Entry entry = lookup(localPath);
-        if (entry == null)
-            return header;
-
-        boolean useValue = entry.valueLine() >= 0;
-        int line = useValue ? entry.valueLine() : entry.keyLine();
-        int col = useValue ? entry.valueCol() : entry.keyCol();
-        int len = useValue ? entry.valueLen() : entry.keyLen();
-        if (line < 0 || line >= lines.length)
-            return header;
-
-        return header + "\n"
-            + INDENT + lines[line] + "\n"
-            + StringUtil.repeat(" ", INDENT.length() + col) + StringUtil.repeat("^", Math.max(1, len));
-    }
-
     /**
      * Fills a path-only {@link Diagnostic} with a real {@link Span} and raw source line from the YAML
      * position of its config path. Diagnostics that already carry a position, or whose path is not in
@@ -187,7 +210,7 @@ public final class SnakeYamlConfig implements ConfigLike {
         String raw = line < lines.length ? lines[line] : "";
         Span span = Span.of(line, col, col + Math.max(1, len));
         SourceRef source = new SourceRef(diagnostic.source().file(), diagnostic.source().configPath(),
-            diagnostic.source().listIndex(), raw);
+            diagnostic.source().listIndex(), raw, contextBefore(line));
         return new Diagnostic(diagnostic.severity(), diagnostic.kind(), diagnostic.message(),
             source, span, diagnostic.secondary(), diagnostic.hint());
     }
@@ -203,7 +226,8 @@ public final class SnakeYamlConfig implements ConfigLike {
         return dot < 0 ? null : positions.get(norm.substring(0, dot));
     }
 
-    private static void index(@NotNull MappingNode mapping, @NotNull String prefix, @NotNull Map<String, Entry> out) {
+    private static void index(@NotNull MappingNode mapping, @NotNull String prefix,
+                              @NotNull Map<String, Entry> out, @NotNull Map<String, List<int[]>> listOut) {
         for (NodeTuple tuple : mapping.getValue()) {
             if (!(tuple.getKeyNode() instanceof ScalarNode keyNode))
                 continue;
@@ -222,8 +246,16 @@ public final class SnakeYamlConfig implements ConfigLike {
                 valueMark == null ? 0 : valueMark.getColumn(),
                 valueLen));
 
-            if (valueNode instanceof MappingNode child)
-                index(child, path, out);
+            if (valueNode instanceof MappingNode child) {
+                index(child, path, out, listOut);
+            } else if (valueNode instanceof SequenceNode sequence) {
+                List<int[]> items = new ArrayList<>(sequence.getValue().size());
+                for (Node item : sequence.getValue()) {
+                    Mark mark = item.getStartMark();
+                    items.add(new int[]{mark == null ? -1 : mark.getLine(), mark == null ? 0 : mark.getColumn()});
+                }
+                listOut.put(path, items);
+            }
         }
     }
 

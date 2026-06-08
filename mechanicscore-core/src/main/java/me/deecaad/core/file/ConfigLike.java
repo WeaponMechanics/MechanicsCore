@@ -2,7 +2,6 @@ package me.deecaad.core.file;
 
 import me.deecaad.core.diagnostic.Diagnostic;
 
-import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +47,4 @@ public interface ConfigLike {
     }
 
     List<?> getList(String key);
-
-    String getLocation(File localFile, String localPath);
 }

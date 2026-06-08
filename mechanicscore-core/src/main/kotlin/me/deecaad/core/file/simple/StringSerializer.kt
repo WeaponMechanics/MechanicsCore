@@ -1,5 +1,6 @@
 package me.deecaad.core.file.simple
 
+import me.deecaad.core.file.ErrorLocation
 import me.deecaad.core.file.SimpleSerializer
 
 class StringSerializer : SimpleSerializer<String> {
@@ -7,7 +8,7 @@ class StringSerializer : SimpleSerializer<String> {
 
     override fun deserialize(
         data: String,
-        errorLocation: String,
+        errorLocation: ErrorLocation,
     ): String {
         return data
     }

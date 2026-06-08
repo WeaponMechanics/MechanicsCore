@@ -190,9 +190,15 @@ class ConfigVerifierTest {
         List<String> out = DiagnosticRenderer.render(unknown);
 
         String source = out.stream().filter(l -> l.contains("Red:")).findFirst().orElseThrow();
-        String caret = out.stream().filter(l -> l.matches(" *\\^+")).findFirst().orElseThrow();
+        String caret = out.stream().filter(l -> l.contains("^")).findFirst().orElseThrow();
         assertEquals(source.indexOf("Red"), caret.indexOf('^'), "caret column must line up under the key");
         assertEquals(3, caret.chars().filter(c -> c == '^').count(), "caret width matches 'Red'");
+        assertTrue(caret.contains("did you mean"), "hint is inline after the caret: " + caret);
+
+        // Two context lines are shown above the error, with aligned line-number gutters.
+        assertTrue(out.stream().anyMatch(l -> l.contains("1 | Square:")), out.toString());
+        assertTrue(out.stream().anyMatch(l -> l.contains("2 |   Length: 5")), out.toString());
+        assertTrue(out.stream().anyMatch(l -> l.contains("3 |   Red: 0.5")), out.toString());
     }
 
     // --- test serializers ---
@@ -214,7 +220,9 @@ class ConfigVerifierTest {
 
         @Override
         public @NotNull Vec2 serialize(@NotNull SerializeData data) throws SerializerException {
-            throw new UnsupportedOperationException();
+            double x = data.of("X").assertExists().getDouble().orElse(0.0);
+            double y = data.of("Y").assertExists().getDouble().orElse(0.0);
+            return new Vec2(x, y);
         }
     }
 
@@ -239,7 +247,12 @@ class ConfigVerifierTest {
 
         @Override
         public @NotNull Square serialize(@NotNull SerializeData data) throws SerializerException {
-            throw new UnsupportedOperationException();
+            Vec2 offset = data.of("Offset").serialize(Vec2Serializer.class).orElse(new Vec2(0, 0));
+            int length = data.of("Length").assertExists().assertRange(0, (Integer) null).getInt().getAsInt();
+            double r = data.of("R").assertRange(0.0, 1.0).getDouble().orElse(0.0);
+            double g = data.of("G").assertRange(0.0, 1.0).getDouble().orElse(0.0);
+            double b = data.of("B").assertRange(0.0, 1.0).getDouble().orElse(0.0);
+            return new Square(offset, length, r, g, b);
         }
     }
 }

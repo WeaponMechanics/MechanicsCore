@@ -61,7 +61,7 @@ public class SerializerListTest {
             }
         } catch (SerializerException e) {
             e.getMessages().forEach(System.err::println);
-            System.err.println(e.getLocation());
+            System.err.println(e.getPath());
             throw e;
         }
     }

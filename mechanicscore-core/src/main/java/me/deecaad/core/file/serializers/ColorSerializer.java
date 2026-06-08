@@ -1,6 +1,7 @@
 package me.deecaad.core.file.serializers;
 
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.ErrorLocation;
 import me.deecaad.core.file.SimpleSerializer;
 import me.deecaad.core.utils.EnumUtil;
 import me.deecaad.core.utils.StringUtil;
@@ -36,7 +37,7 @@ public class ColorSerializer implements SimpleSerializer<Color> {
     }
 
     @Override
-    public @NotNull Color deserialize(@NotNull String data, @NotNull String errorLocation) throws SerializerException {
+    public @NotNull Color deserialize(@NotNull String data, @NotNull ErrorLocation errorLocation) throws SerializerException {
 
         // Follows the format, '0xRRGGBB' and translates each character as a
         // hex character. While '0xRR' is technically a valid hex code for red,
@@ -47,7 +48,7 @@ public class ColorSerializer implements SimpleSerializer<Color> {
                 return parseHex(hex);
             }
             throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .example("0xFF00BB")
                     .addMessage("Hex strings should have 6 or 8 digits")
                     .addMessage("Found value: " + data)
@@ -63,7 +64,7 @@ public class ColorSerializer implements SimpleSerializer<Color> {
                 return parseHex(hex);
             }
             throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .example("#FF00BB")
                     .addMessage("Hex strings should have 6 or 8 digits")
                     .addMessage("Found value: " + data)
@@ -90,15 +91,15 @@ public class ColorSerializer implements SimpleSerializer<Color> {
 
             if (r < 0 || r > 255) {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .buildInvalidRange(r, 0, 255);
             } else if (g < 0 || g > 255) {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .buildInvalidRange(g, 0, 255);
             } else if (b < 0 || b > 255) {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .buildInvalidRange(b, 0, 255);
             }
 
@@ -117,7 +118,7 @@ public class ColorSerializer implements SimpleSerializer<Color> {
             // provide a lot of information to help the user.
             else {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .addMessage("Choose one of these formats: #RRGGBB / #AARRGGBB, 0xRRGGBB / 0xAARRGGBB, R-G-B, RED, RRGGBB")
                     .buildInvalidEnumOption(data, ColorType.class);
             }

@@ -2,6 +2,7 @@ package me.deecaad.core.file;
 
 import me.deecaad.core.MechanicsLogger;
 import me.deecaad.core.MechanicsPlugin;
+import me.deecaad.core.diagnostic.DiagnosticRenderer;
 import me.deecaad.core.utils.FileUtil;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.event.Listener;
@@ -172,7 +173,7 @@ public class RootFileReader<R, T extends Serializer<R>> implements Listener {
                             R obj = data.of().assertExists().serialize(serializerClass).get();
                             accumulate.set(key, obj);
                         } catch (SerializerException ex) {
-                            ex.log(debugger);
+                            DiagnosticRenderer.log(debugger, config.enrich(ex.toDiagnostic()));
                         }
                     }
                     return FileVisitResult.CONTINUE;

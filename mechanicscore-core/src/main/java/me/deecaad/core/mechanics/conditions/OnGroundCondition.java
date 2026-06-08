@@ -86,7 +86,7 @@ public class OnGroundCondition extends Condition {
 
         for (MapConfigLike.Holder holder : materials) {
             String token = String.valueOf(holder.value());
-            parsed.addAll(serializer.deserialize(token, data.of("blocks").getLocation()));
+            parsed.addAll(serializer.deserialize(token, data.of("blocks").errorLocation()));
         }
 
         if (parsed.isEmpty()) {

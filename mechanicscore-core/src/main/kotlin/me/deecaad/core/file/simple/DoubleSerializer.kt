@@ -1,6 +1,7 @@
 package me.deecaad.core.file.simple
 
 import me.deecaad.core.file.SerializerException
+import me.deecaad.core.file.ErrorLocation
 import me.deecaad.core.file.SimpleSerializer
 
 class DoubleSerializer
@@ -13,13 +14,13 @@ class DoubleSerializer
 
         override fun deserialize(
             data: String,
-            errorLocation: String,
+            errorLocation: ErrorLocation,
         ): Double {
             val value = parseSmartPercentage(data, errorLocation)
 
             if ((min != null && value < min) || (max != null && value > max)) {
                 throw SerializerException.Builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .buildInvalidRange(value, min, max)
             }
 
@@ -29,7 +30,7 @@ class DoubleSerializer
         @Throws(SerializerException::class)
         private fun parseSmartPercentage(
             input: String,
-            errorLocation: String,
+            errorLocation: ErrorLocation,
         ): Double {
             var s = input.trim()
             var negative = false
@@ -55,7 +56,7 @@ class DoubleSerializer
             val numericValue =
                 s.toDoubleOrNull()
                     ?: throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .apply { if (isPercentage) example("100%") }
                         .buildInvalidType("double", input)
 

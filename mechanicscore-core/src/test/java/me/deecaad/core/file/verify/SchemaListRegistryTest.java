@@ -136,7 +136,14 @@ class SchemaListRegistryTest {
 
         @Override
         public @NotNull Gear serialize(@NotNull SerializeData data) throws SerializerException {
-            throw new UnsupportedOperationException();
+            SerializeData.ConfigListAccessor list = data.ofList("Enchantments");
+            list.addArgument(new RegistryValueSerializer<>(Enchantment.class, true));
+            list.requireAllPreviousArgs();
+            list.addArgument(new IntSerializer(1));
+            List<List<Optional<Object>>> enchantments = list.assertList();
+
+            Enchantment catalyst = data.of("Catalyst").getBukkitRegistry(Enchantment.class).orElse(null);
+            return new Gear(enchantments, catalyst);
         }
     }
 }

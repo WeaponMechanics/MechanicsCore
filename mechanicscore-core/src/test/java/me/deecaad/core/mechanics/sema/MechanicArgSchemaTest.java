@@ -124,7 +124,7 @@ class MechanicArgSchemaTest {
         assertNotNull(unknown, () -> "Volumee should be flagged: " + reporter.all());
         assertEquals(Severity.WARNING, unknown.severity());
         assertTrue(unknown.message().toLowerCase().contains("volumee"), unknown.message());
-        assertEquals("Volume", unknown.hint());
+        assertEquals("did you mean 'Volume'?", unknown.hint());
         assertTrue(unknown.primary().line() >= 0, "diagnostic should be re-anchored to a source span");
     }
 

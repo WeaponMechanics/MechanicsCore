@@ -20,7 +20,7 @@ public class ChanceSerializer implements SimpleSerializer<Double> {
     }
 
     @Override
-    public @NotNull Double deserialize(@NotNull String value, @NotNull String errorLocation) throws SerializerException {
+    public @NotNull Double deserialize(@NotNull String value, @NotNull ErrorLocation errorLocation) throws SerializerException {
         double chance;
 
         // Handle percentages. This is the officially supported method of
@@ -37,7 +37,7 @@ public class ChanceSerializer implements SimpleSerializer<Double> {
                 chance = Double.parseDouble(str.substring(0, str.length() - 1)) / 100.0;
             } else {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .addMessage("Expected a percentage")
                     .example("50%")
                     .buildInvalidType("Chance", value);
@@ -50,7 +50,7 @@ public class ChanceSerializer implements SimpleSerializer<Double> {
                 chance = Double.parseDouble(value);
             } catch (NumberFormatException e) {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .addMessage("Expected a number or percentage")
                     .example("50%")
                     .buildInvalidType("Chance", value);
@@ -59,7 +59,7 @@ public class ChanceSerializer implements SimpleSerializer<Double> {
 
         if (chance < 0.0 || chance > 1.0) {
             throw SerializerException.builder()
-                .locationRaw(errorLocation)
+                .located(errorLocation)
                 .addMessage("When using percentages, make sure to stay between 0% and 100%")
                 .buildInvalidRange(chance, 0.0, 1.0);
         }

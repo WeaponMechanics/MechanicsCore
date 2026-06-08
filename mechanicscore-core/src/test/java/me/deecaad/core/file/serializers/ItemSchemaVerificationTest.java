@@ -4,6 +4,7 @@ import me.deecaad.core.diagnostic.Diagnostic;
 import me.deecaad.core.diagnostic.DiagnosticKind;
 import me.deecaad.core.diagnostic.Severity;
 import me.deecaad.core.file.SerializeData;
+import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.SnakeYamlConfig;
 import me.deecaad.core.file.verify.SchemaValidator;
 import org.mockbukkit.mockbukkit.MockBukkit;
@@ -45,7 +46,17 @@ class ItemSchemaVerificationTest {
         }
         SerializeData data = new SerializeData(new File("item.yml"), "Item", config);
         List<Diagnostic> issues = new ArrayList<>();
+        // Mirror ConfigVerifier: schema for key shape, serialize() for value validation, gating
+        // serialize() when the schema already found a hard error (missing required).
         SchemaValidator.validate(new ItemSerializer().schema(), data, issues);
+        boolean schemaBlocked = issues.stream().anyMatch(i -> i.severity() == Severity.ERROR);
+        if (!schemaBlocked) {
+            try {
+                new ItemSerializer().serialize(data);
+            } catch (SerializerException ex) {
+                issues.add(ex.toDiagnostic());
+            }
+        }
         return issues;
     }
 
@@ -84,7 +95,7 @@ class ItemSchemaVerificationTest {
         Diagnostic unknown = firstOf(issues, DiagnosticKind.UNKNOWN_KEY);
         assertNotNull(unknown, issues.toString());
         assertEquals("Item.Namee", unknown.source().configPath());
-        assertEquals("Name", unknown.hint());
+        assertEquals("did you mean 'Name'?", unknown.hint());
     }
 
     @Test
