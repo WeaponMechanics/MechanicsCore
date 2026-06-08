@@ -59,15 +59,24 @@ public final class SemanticAnalyzer {
 
     public @NotNull Program analyze(@NotNull ProgramNode program, @NotNull File file, @NotNull DiagnosticReporter reporter) {
         Set<String> blockNames = program.blocks().keySet();
+        Set<String> baseContexts = new LinkedHashSet<>();
+        baseContexts.add(CastScope.SOURCE);
+        baseContexts.add(CastScope.TARGET);
+        baseContexts.addAll(symbols.providedContexts());
         Map<String, MechanicBlock> blocks = new LinkedHashMap<>();
 
         for (Map.Entry<String, BlockNode> entry : program.blocks().entrySet()) {
             BlockNode block = entry.getValue();
+            // Flow-sensitive within the block: a '@x = Targeter{}' bind makes 'x' available to later
+            // lines, so use-before-bind is caught. Cross-block context passing is not tracked.
+            Set<String> contexts = new LinkedHashSet<>(baseContexts);
             List<Statement> statements = new ArrayList<>();
             for (StmtNode node : block.statements()) {
-                Statement statement = resolveStatement(node, blockNames, file, reporter);
+                Statement statement = resolveStatement(node, blockNames, contexts, file, reporter);
                 if (statement != null)
                     statements.add(statement);
+                if (node instanceof StmtNode.Bind bind)
+                    contexts.add(bind.contextName());
             }
             blocks.put(entry.getKey(), new MechanicBlock(block.name(), statements));
         }
@@ -76,29 +85,31 @@ public final class SemanticAnalyzer {
     }
 
     private @Nullable Statement resolveStatement(@NotNull StmtNode node, @NotNull Set<String> blockNames,
-                                                 @NotNull File file, @NotNull DiagnosticReporter reporter) {
+                                                 @NotNull Set<String> contexts, @NotNull File file,
+                                                 @NotNull DiagnosticReporter reporter) {
         return switch (node) {
             case StmtNode.Assign assign -> new Statement.Assignment(assign.var(),
                 ExprLower.lower(assign.value(), reporter));
             case StmtNode.Bind bind -> {
-                Targeter targeter = resolveTargeter(bind.targeter(), file, reporter);
+                Targeter targeter = resolveTargeter(bind.targeter(), contexts, file, reporter);
                 yield targeter == null ? null : new Statement.Binding(bind.contextName(), targeter);
             }
-            case StmtNode.Invoke invoke -> resolveInvoke(invoke, blockNames, file, reporter);
+            case StmtNode.Invoke invoke -> resolveInvoke(invoke, blockNames, contexts, file, reporter);
             case StmtNode.Error ignored -> null;
         };
     }
 
     private @Nullable Statement resolveInvoke(@NotNull StmtNode.Invoke invoke, @NotNull Set<String> blockNames,
-                                              @NotNull File file, @NotNull DiagnosticReporter reporter) {
+                                              @NotNull Set<String> contexts, @NotNull File file,
+                                              @NotNull DiagnosticReporter reporter) {
         InlineCallNode call = invoke.call();
         String name = call.name();
-        Subject subject = toSubject(invoke.subject(), file, reporter);
-        List<Condition> conds = resolveConditions(invoke.conditions(), file, reporter);
+        Subject subject = toSubject(invoke.subject(), contexts, file, reporter);
+        List<Condition> conds = resolveConditions(invoke.conditions(), contexts, file, reporter);
 
         Mechanic mechanicProto = symbols.mechanic(name);
         if (mechanicProto != null) {
-            Mechanic mechanic = serializeOrNull(mechanicProto, call, file, reporter);
+            Mechanic mechanic = serializeOrNull(mechanicProto, call, contexts, file, reporter);
             return mechanic == null ? null : new Statement.BuiltinInvocation(mechanic, subject, conds);
         }
 
@@ -116,28 +127,32 @@ public final class SemanticAnalyzer {
         return null;
     }
 
-    private @NotNull Subject toSubject(@Nullable SubjectNode node, @NotNull File file,
-                                       @NotNull DiagnosticReporter reporter) {
+    private @NotNull Subject toSubject(@Nullable SubjectNode node, @NotNull Set<String> contexts,
+                                       @NotNull File file, @NotNull DiagnosticReporter reporter) {
         if (node == null)
             return new Subject.Reference(CastScope.TARGET);
-        if (node instanceof SubjectNode.Ref ref)
+        if (node instanceof SubjectNode.Ref ref) {
+            if (!contexts.contains(ref.contextName()))
+                reporter.error(ref.loc(), "Unknown context '@" + ref.contextName() + "'", suggest(ref.contextName(), contexts));
             return new Subject.Reference(ref.contextName());
+        }
         SubjectNode.Inline inline = (SubjectNode.Inline) node;
-        Targeter targeter = resolveTargeter(inline.targeter(), file, reporter);
+        Targeter targeter = resolveTargeter(inline.targeter(), contexts, file, reporter);
         return targeter == null ? new Subject.Reference(CastScope.TARGET) : new Subject.Inline(targeter);
     }
 
-    private @Nullable Targeter resolveTargeter(@NotNull InlineCallNode call, @NotNull File file, @NotNull DiagnosticReporter reporter) {
+    private @Nullable Targeter resolveTargeter(@NotNull InlineCallNode call, @NotNull Set<String> contexts,
+                                               @NotNull File file, @NotNull DiagnosticReporter reporter) {
         Targeter proto = symbols.targeter(call.name());
         if (proto == null) {
             reporter.error(call.nameLoc(), "Unknown targeter '" + call.name() + "'", suggest(call.name(), symbols.targeterNames()));
             return null;
         }
-        return serializeOrNull(proto, call, file, reporter);
+        return serializeOrNull(proto, call, contexts, file, reporter);
     }
 
-    private @NotNull List<Condition> resolveConditions(@NotNull List<InlineCallNode> nodes, @NotNull File file,
-                                                       @NotNull DiagnosticReporter reporter) {
+    private @NotNull List<Condition> resolveConditions(@NotNull List<InlineCallNode> nodes, @NotNull Set<String> contexts,
+                                                       @NotNull File file, @NotNull DiagnosticReporter reporter) {
         List<Condition> result = new ArrayList<>(nodes.size());
         for (InlineCallNode node : nodes) {
             Condition proto = symbols.condition(node.name());
@@ -145,7 +160,7 @@ public final class SemanticAnalyzer {
                 reporter.error(node.nameLoc(), "Unknown condition '" + node.name() + "'", suggest(node.name(), symbols.conditionNames()));
                 continue;
             }
-            Condition condition = serializeOrNull(proto, node, file, reporter);
+            Condition condition = serializeOrNull(proto, node, contexts, file, reporter);
             if (condition != null)
                 result.add(condition);
         }
@@ -160,7 +175,8 @@ public final class SemanticAnalyzer {
     }
 
     private <T extends Serializer<T>> @Nullable T serializeOrNull(@NotNull T proto, @NotNull InlineCallNode call,
-                                                                  @NotNull File file, @NotNull DiagnosticReporter reporter) {
+                                                                  @NotNull Set<String> contexts, @NotNull File file,
+                                                                  @NotNull DiagnosticReporter reporter) {
         MapConfigLike config = new MapConfigLike(call.args())
             .setDebugInfo(file, call.loc().source().configPath(), call.loc().source().rawLine());
         SerializeData data = new SerializeData(file, null, config);
@@ -171,7 +187,7 @@ public final class SemanticAnalyzer {
         ConfigSchema schema = proto.schema();
         if (schema != null) {
             List<Diagnostic> diagnostics = new ArrayList<>();
-            SchemaValidator.validate(schema, data, diagnostics);
+            SchemaValidator.validate(schema, data, contexts, diagnostics);
             boolean blocking = false;
             for (Diagnostic diagnostic : diagnostics) {
                 reporter.report(reanchor(diagnostic, call));

@@ -22,6 +22,27 @@ import java.util.Set;
  */
 public final class GlobalSymbolSource implements SymbolSource {
 
+    private final @NotNull Set<String> providedContexts;
+
+    public GlobalSymbolSource() {
+        this(Set.of());
+    }
+
+    /**
+     * @param providedContexts Context names the cast environment seeds beyond {@code source}/
+     *                         {@code target} (e.g. an explosion's {@code AllEntitiesHitByExplosion}).
+     *                         Must match the names seeded into the {@link me.deecaad.core.mechanics.scope.CastScope}
+     *                         at cast time, or a reference compiles yet resolves empty at runtime.
+     */
+    public GlobalSymbolSource(@NotNull Set<String> providedContexts) {
+        this.providedContexts = Set.copyOf(providedContexts);
+    }
+
+    @Override
+    public @NotNull Set<String> providedContexts() {
+        return providedContexts;
+    }
+
     @Override
     public @Nullable Mechanic mechanic(@NotNull String name) {
         return RegistryUtil.matchAny(Mechanics.REGISTRY, name);

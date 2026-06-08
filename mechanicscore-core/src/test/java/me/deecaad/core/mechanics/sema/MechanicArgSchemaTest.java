@@ -55,7 +55,7 @@ class MechanicArgSchemaTest {
         @Override public NamespacedKey getKey() { return new NamespacedKey("test", "faketargeter"); }
 
         @Override protected ConfigSchema.Builder schemaBuilder() {
-            return ConfigSchema.builder().doubleKey("Range").required();
+            return ConfigSchema.builder().doubleKey("Range").required().contextKey("From");
         }
 
         @Override public Targeter serialize(SerializeData data) throws SerializerException {
@@ -140,5 +140,21 @@ class MechanicArgSchemaTest {
     void unknownRegistryId_isError() {
         DiagnosticReporter reporter = analyze("Fake{Volume=5, Listeners=notreal{}} @target");
         assertTrue(reporter.hasErrors(), () -> "unknown targeter id should error: " + reporter.all());
+    }
+
+    @Test
+    void contextKey_validReference_noDiagnostics() {
+        DiagnosticReporter reporter = analyze("Fake{Volume=5, Listeners=faketargeter{Range=5, From=source}} @target");
+        assertTrue(reporter.isEmpty(), () -> "From=source should be accepted: " + reporter.all());
+    }
+
+    @Test
+    void contextKey_unknownReference_isErrorWithHint() {
+        DiagnosticReporter reporter = analyze("Fake{Volume=5, Listeners=faketargeter{Range=5, From=sourcee}} @target");
+        Diagnostic bad = firstOf(reporter, DiagnosticKind.INVALID_VALUE);
+        assertNotNull(bad, () -> "unknown context should be flagged: " + reporter.all());
+        assertEquals(Severity.ERROR, bad.severity());
+        assertTrue(bad.message().contains("sourcee"), bad.message());
+        assertEquals("did you mean 'source'?", bad.hint());
     }
 }

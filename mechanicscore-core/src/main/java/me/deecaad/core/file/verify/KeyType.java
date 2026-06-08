@@ -9,6 +9,7 @@ public enum KeyType {
     DOUBLE,
     BOOL,
     STRING,
+    CONTEXT,
     COLOR,
     MATERIAL,
     ENTITY,

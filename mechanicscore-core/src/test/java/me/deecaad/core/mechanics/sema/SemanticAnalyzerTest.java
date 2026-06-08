@@ -88,6 +88,11 @@ class SemanticAnalyzerTest {
         public @NotNull Set<String> conditionNames() {
             return Set.of();
         }
+
+        @Override
+        public @NotNull Set<String> providedContexts() {
+            return Set.of("enemies");
+        }
     }
 
     private static SemanticAnalyzer analyzer() {
@@ -155,10 +160,44 @@ class SemanticAnalyzerTest {
         DiagnosticReporter reporter = new DiagnosticReporter();
         analyzer().analyze(program(reporter,
             "$dmg = $external * 2",       // $external set by a caller/trigger -> no warning
-            "Fake{Amount=5} @enemies"     // @enemies bound elsewhere -> no warning
+            "Fake{Amount=5} @enemies"     // @enemies declared via providedContexts() -> no warning
         ), new File("test.yml"), reporter);
 
         assertTrue(reporter.isEmpty(), () -> "reads of caller-provided state must not warn: " + reporter.all());
+    }
+
+    @Test
+    void unknownSubjectContextIsError() {
+        DiagnosticReporter reporter = new DiagnosticReporter();
+        analyzer().analyze(program(reporter, "Fake{Amount=5} @nope"), new File("test.yml"), reporter);
+
+        assertEquals(1, errors(reporter));
+        assertTrue(reporter.all().stream().anyMatch(d ->
+            d.message().contains("Unknown context") && d.message().contains("nope")));
+    }
+
+    @Test
+    void builtinSourceAndTargetContextsAreInScope() {
+        DiagnosticReporter reporter = new DiagnosticReporter();
+        analyzer().analyze(program(reporter,
+            "Fake{Amount=5} @source",
+            "Fake{Amount=5} @target"
+        ), new File("test.yml"), reporter);
+
+        assertEquals(0, errors(reporter), () -> reporter.all().toString());
+    }
+
+    @Test
+    void boundContextIsInScopeForLaterLines() {
+        DiagnosticReporter reporter = new DiagnosticReporter();
+        analyzer().analyze(program(reporter,
+            "@ring = Nearby{}",         // unknown targeter -> 1 error, but still registers @ring
+            "Fake{Amount=5} @ring"      // @ring now in scope -> no 'unknown context' error
+        ), new File("test.yml"), reporter);
+
+        assertEquals(1, errors(reporter), () -> reporter.all().toString());
+        assertTrue(reporter.all().stream().anyMatch(d -> d.message().contains("targeter")));
+        assertFalse(reporter.all().stream().anyMatch(d -> d.message().contains("Unknown context")));
     }
 
     @Test

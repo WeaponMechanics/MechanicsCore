@@ -132,7 +132,7 @@ public abstract class Targeter implements InlineSerializer<Targeter> {
         return ConfigSchema.builder()
             .nested("Offset", VectorSerializer.class)
             .boolKey("Eye")
-            .stringKey("From");
+            .contextKey("From");
     }
 
     @Override

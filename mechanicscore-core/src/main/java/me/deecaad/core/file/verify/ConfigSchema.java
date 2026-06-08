@@ -63,6 +63,15 @@ public record ConfigSchema(@NotNull List<KeySpec> keys, boolean allowUnknown) {
             return add(name, KeyType.STRING);
         }
 
+        /**
+         * Declares a key whose value names a cast context (e.g. {@code From}/{@code To}). Sema checks
+         * it against the contexts in scope at the reference, with did-you-mean; outside the mechanics
+         * compiler (plain file configs) it behaves like a string.
+         */
+        public Builder contextKey(String name) {
+            return add(name, KeyType.CONTEXT);
+        }
+
         public Builder colorKey(String name) {
             return add(name, KeyType.COLOR);
         }

@@ -73,7 +73,7 @@ public class PushMechanic extends Mechanic {
 
     @Override
     protected @NotNull ConfigSchema.Builder schemaBuilder() {
-        return super.schemaBuilder().doubleKey("Speed").required().doubleKey("Vertical_Multiplier").stringKey("From");
+        return super.schemaBuilder().doubleKey("Speed").required().doubleKey("Vertical_Multiplier").contextKey("From");
     }
 
     @NotNull @Override

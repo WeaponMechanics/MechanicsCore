@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Compiles a list of statement strings into an optimized {@link Program}. Drives
@@ -28,7 +29,36 @@ import java.util.List;
  */
 public class MechanicSerializer implements Serializer<Program> {
 
+    private final @NotNull Set<String> providedContexts;
+
     public MechanicSerializer() {
+        this(Set.of());
+    }
+
+    /**
+     * @param providedContexts Context names the host seeds into the {@link me.deecaad.core.mechanics.scope.CastScope}
+     *                         before running this list, beyond {@code source}/{@code target}. Sema checks
+     *                         {@code @context} references against them, so the host must seed the same names
+     *                         at cast time. A host with extra contexts constructs this directly and serializes
+     *                         {@code data.move("Mechanics")} (the reflective {@code serialize(Class)} path uses
+     *                         the no-arg form).
+     */
+    public MechanicSerializer(@NotNull Set<String> providedContexts) {
+        this.providedContexts = Set.copyOf(providedContexts);
+    }
+
+    /**
+     * Sugar for a host serializer nesting a {@code Mechanics:} list that seeds extra contexts at cast
+     * time. Compiles {@code data.move("Mechanics")} declaring the given context names (beyond
+     * {@code source}/{@code target}), so {@code @context} references in the list are checked. The host
+     * must seed the same names into the {@link me.deecaad.core.mechanics.scope.CastScope} when it runs.
+     *
+     * <pre>
+     * Program mechanics = MechanicSerializer.compile(data, "Entities", "Blocks", "Up");
+     * </pre>
+     */
+    public static @NotNull Program compile(@NotNull SerializeData data, @NotNull String... providedContexts) throws SerializerException {
+        return new MechanicSerializer(Set.of(providedContexts)).serialize(data.move("Mechanics"));
     }
 
     @Override
@@ -60,7 +90,7 @@ public class MechanicSerializer implements Serializer<Program> {
             lines.add(obj.toString());
         }
 
-        Program program = MechanicCompiler.compile(entryName, entryName, lines, data.getFile(), new GlobalSymbolSource(), reporter);
+        Program program = MechanicCompiler.compile(entryName, entryName, lines, data.getFile(), new GlobalSymbolSource(providedContexts), reporter);
 
         // Re-anchor each diagnostic from "relative to the mechanic string" onto the real YAML line, so
         // it renders against the actual source (with its '- ' and quotes) and a real line number.

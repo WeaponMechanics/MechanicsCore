@@ -77,7 +77,7 @@ public class InConeCondition extends Condition {
 
     @Override
     protected @NotNull ConfigSchema.Builder schemaBuilder() {
-        return super.schemaBuilder().doubleKey("Angle").range(0.0, 180.0).nested("Direction", VectorSerializer.class).stringKey("Apex");
+        return super.schemaBuilder().doubleKey("Angle").range(0.0, 180.0).nested("Direction", VectorSerializer.class).contextKey("Apex");
     }
 
     @Override

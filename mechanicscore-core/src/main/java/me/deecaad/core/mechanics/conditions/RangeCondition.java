@@ -72,7 +72,7 @@ public class RangeCondition extends Condition {
 
     @Override
     protected @NotNull ConfigSchema.Builder schemaBuilder() {
-        return super.schemaBuilder().stringKey("From").stringKey("To").doubleKey("Min").range(0.0, null).doubleKey("Max").range(0.0, null);
+        return super.schemaBuilder().contextKey("From").contextKey("To").doubleKey("Min").range(0.0, null).doubleKey("Max").range(0.0, null);
     }
 
     @NotNull @Override

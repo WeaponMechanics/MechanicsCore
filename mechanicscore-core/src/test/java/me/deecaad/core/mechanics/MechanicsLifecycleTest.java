@@ -182,8 +182,8 @@ class MechanicsLifecycleTest {
     void deadCheckDropsTheStatementBeforeItCanRun() {
         Symbols symbols = new Symbols();
         Program program = compile(symbols,
-            "damage{} @hit ?check{If=0}",   // statically false -> eliminated
             "@hit = self{}",
+            "damage{} @hit ?check{If=0}",   // statically false -> eliminated
             "particle{} @hit"
         );
 

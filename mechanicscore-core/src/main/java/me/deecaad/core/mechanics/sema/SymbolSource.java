@@ -35,4 +35,16 @@ public interface SymbolSource {
     default @NotNull Set<String> blockNames() {
         return Set.of();
     }
+
+    /**
+     * Names of contexts the cast environment seeds before running, beyond the
+     * universal {@code source}/{@code target} builtins (e.g. an explosion trigger
+     * provides {@code AllEntitiesHitByExplosion}). Sema checks {@code @context}
+     * references against this set plus any contexts bound earlier in the block, so
+     * a typo'd or never-provided context is an error instead of silently empty.
+     * Defaults to none.
+     */
+    default @NotNull Set<String> providedContexts() {
+        return Set.of();
+    }
 }

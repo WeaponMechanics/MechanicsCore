@@ -13,6 +13,7 @@ import me.deecaad.core.file.SnakeYamlConfig;
 import me.deecaad.core.file.TemplateExpander;
 import me.deecaad.core.utils.StringUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,6 +42,18 @@ public final class SchemaValidator {
     public static void validate(
         @NotNull ConfigSchema schema,
         @NotNull SerializeData data,
+        @NotNull List<Diagnostic> out) {
+        validate(schema, data, null, out);
+    }
+
+    /**
+     * @param contexts The cast contexts in scope, used to check {@code CONTEXT} keys (From/To/...).
+     *                 {@code null} outside the mechanics compiler, where such keys are plain strings.
+     */
+    public static void validate(
+        @NotNull ConfigSchema schema,
+        @NotNull SerializeData data,
+        @Nullable Set<String> contexts,
         @NotNull List<Diagnostic> out) {
 
         String base = data.getKey() == null ? "" : data.getKey();
@@ -84,7 +97,12 @@ public final class SchemaValidator {
                 continue;
             }
 
-            recurse(spec, data, out);
+            if (spec.type() == KeyType.CONTEXT) {
+                checkContext(data, contexts, spec.name(), path, out);
+                continue;
+            }
+
+            recurse(spec, data, contexts, out);
         }
 
         // Flag unknown (hallucinated) keys. Normalize both sides the same way MapConfigLike does
@@ -118,7 +136,7 @@ public final class SchemaValidator {
      * {@link Serializer#serialize}, so this never reports them (that would double-report).
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void recurse(KeySpec spec, SerializeData data, List<Diagnostic> out) {
+    private static void recurse(KeySpec spec, SerializeData data, @Nullable Set<String> contexts, List<Diagnostic> out) {
         switch (spec.type()) {
             case NESTED -> {
                 Class<? extends Serializer<?>> nestedClass = spec.nested();
@@ -132,17 +150,17 @@ public final class SchemaValidator {
                 }
                 ConfigSchema nestedSchema = nested.schema();
                 if (nestedSchema != null)
-                    validate(nestedSchema, data.move(spec.name()), out);
+                    validate(nestedSchema, data.move(spec.name()), contexts, out);
             }
-            case REGISTRY_SERIALIZER -> recurseRegistry(spec, data, out, true);
-            case REGISTRY_SERIALIZER_LIST -> recurseRegistry(spec, data, out, false);
+            case REGISTRY_SERIALIZER -> recurseRegistry(spec, data, contexts, out, true);
+            case REGISTRY_SERIALIZER_LIST -> recurseRegistry(spec, data, contexts, out, false);
             default -> {
                 // Leaf key: the serializer validates its value.
             }
         }
     }
 
-    private static void recurseRegistry(KeySpec spec, SerializeData data, List<Diagnostic> out, boolean single) {
+    private static void recurseRegistry(KeySpec spec, SerializeData data, @Nullable Set<String> contexts, List<Diagnostic> out, boolean single) {
         if (spec.registry() == null)
             return;
 
@@ -153,11 +171,32 @@ public final class SchemaValidator {
             data.of(spec.name()).forEachRegistryEntry(spec.registry(), single, (serializer, child) -> {
                 ConfigSchema nestedSchema = serializer.schema();
                 if (nestedSchema != null)
-                    validate(nestedSchema, child, out);
+                    validate(nestedSchema, child, contexts, out);
             });
         } catch (SerializerException ignored) {
             // Resolving the registry entry failed (e.g. unknown type). serialize() reports it.
         }
+    }
+
+    /**
+     * Checks a {@code CONTEXT} key's value against the contexts in scope. A no-op when {@code contexts}
+     * is null (outside the mechanics compiler), where the value is just a string the serializer reads.
+     */
+    private static void checkContext(SerializeData data, @Nullable Set<String> contexts, String name, String path, List<Diagnostic> out) {
+        if (contexts == null)
+            return;
+        String value;
+        try {
+            value = data.of(name).get(String.class).orElse(null);
+        } catch (RuntimeException ex) {
+            return;
+        }
+        if (value == null || contexts.contains(value))
+            return;
+        String suggestion = StringUtil.didYouMean(value, contexts, value.length() + 2);
+        String hint = suggestion == null ? null : "did you mean '" + suggestion + "'?";
+        out.add(Diagnostic.at(Severity.ERROR, DiagnosticKind.INVALID_VALUE,
+            SourceRef.ofConfig(data.getFile(), path), "unknown context '" + value + "'", hint));
     }
 
     private static boolean isActive(SerializeData data, Condition condition) {
