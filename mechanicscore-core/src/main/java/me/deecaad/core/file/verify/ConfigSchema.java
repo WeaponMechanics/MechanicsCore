@@ -72,6 +72,16 @@ public record ConfigSchema(@NotNull List<KeySpec> keys, boolean allowUnknown) {
             return add(name, KeyType.CONTEXT);
         }
 
+        /**
+         * Declares a key whose value is a mechanics expression (e.g. {@code ?Check{If=...}}). The
+         * compiler parses and lowers it through the AST pipeline (precise spans, function/property
+         * checks) and injects the result via {@link me.deecaad.core.mechanics.expression.ExpressionConsumer};
+         * outside the compiler it behaves like a string.
+         */
+        public Builder exprKey(String name) {
+            return add(name, KeyType.EXPRESSION);
+        }
+
         public Builder colorKey(String name) {
             return add(name, KeyType.COLOR);
         }

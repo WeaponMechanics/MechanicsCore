@@ -4,7 +4,7 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.conditions.CheckCondition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
-import me.deecaad.core.mechanics.expression.ExpressionParser;
+import me.deecaad.core.mechanics.TestExpressions;
 import me.deecaad.core.mechanics.scope.CastBudget;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
@@ -58,13 +58,13 @@ class MechanicExecutorTest {
 
         // recurse: count; $jumps = $jumps - 1; recurse @source ?Check{If=$jumps > 0}
         Statement count = new Statement.BuiltinInvocation(counter, new Subject.Reference(CastScope.SOURCE), List.of());
-        Statement decrement = new Statement.Assignment("jumps", ExpressionParser.parse("$jumps - 1"));
+        Statement decrement = new Statement.Assignment("jumps", TestExpressions.compile("$jumps - 1"));
         Statement recurse = new Statement.BlockInvocation("recurse", new Subject.Reference(CastScope.SOURCE),
-            List.of(new CheckCondition(ExpressionParser.parse("$jumps > 0"))));
+            List.of(new CheckCondition(TestExpressions.compile("$jumps > 0"))));
         MechanicBlock recurseBlock = new MechanicBlock("recurse", List.of(count, decrement, recurse));
 
         // Main: $jumps = 3; recurse @source
-        Statement init = new Statement.Assignment("jumps", ExpressionParser.parse("3"));
+        Statement init = new Statement.Assignment("jumps", TestExpressions.compile("3"));
         Statement firstCall = new Statement.BlockInvocation("recurse", new Subject.Reference(CastScope.SOURCE), List.of());
         MechanicBlock main = new MechanicBlock("Main", List.of(init, firstCall));
 
@@ -78,11 +78,11 @@ class MechanicExecutorTest {
     @Test
     void blockWritesShareUpToTheCaller() {
         // compute: $result = $input * 2   (a "return value" via the shared scope)
-        Statement compute = new Statement.Assignment("result", ExpressionParser.parse("$input * 2"));
+        Statement compute = new Statement.Assignment("result", TestExpressions.compile("$input * 2"));
         MechanicBlock computeBlock = new MechanicBlock("compute", List.of(compute));
 
         // Main: $input = 5; compute @source
-        Statement init = new Statement.Assignment("input", ExpressionParser.parse("5"));
+        Statement init = new Statement.Assignment("input", TestExpressions.compile("5"));
         Statement call = new Statement.BlockInvocation("compute", new Subject.Reference(CastScope.SOURCE), List.of());
         MechanicBlock main = new MechanicBlock("Main", List.of(init, call));
 

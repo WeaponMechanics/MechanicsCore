@@ -10,6 +10,7 @@ public enum KeyType {
     BOOL,
     STRING,
     CONTEXT,
+    EXPRESSION,
     COLOR,
     MATERIAL,
     ENTITY,

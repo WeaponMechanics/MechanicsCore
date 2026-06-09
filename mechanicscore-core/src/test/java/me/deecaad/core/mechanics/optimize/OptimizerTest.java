@@ -6,7 +6,7 @@ import me.deecaad.core.mechanics.conditions.CheckCondition;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
 import me.deecaad.core.mechanics.expression.Expression;
-import me.deecaad.core.mechanics.expression.ExpressionParser;
+import me.deecaad.core.mechanics.TestExpressions;
 import me.deecaad.core.mechanics.program.MechanicBlock;
 import me.deecaad.core.mechanics.program.Program;
 import me.deecaad.core.mechanics.program.Statement;
@@ -62,14 +62,14 @@ class OptimizerTest {
 
     @Test
     void constantFoldingCollapsesPureExpressions() {
-        Expression folded = ConstantFolder.fold(ExpressionParser.parse("8 * (1 + 2)"));
+        Expression folded = ConstantFolder.fold(TestExpressions.compile("8 * (1 + 2)"));
         assertEquals(24.0, assertInstanceOf(Expression.NumberLiteral.class, folded).value());
     }
 
     @Test
     void constantFoldingSkipsRandomAndVariables() {
-        assertInstanceOf(Expression.FunctionCall.class, ConstantFolder.fold(ExpressionParser.parse("random(1, 2)")));
-        assertInstanceOf(Expression.Binary.class, ConstantFolder.fold(ExpressionParser.parse("$x + 1")));
+        assertInstanceOf(Expression.FunctionCall.class, ConstantFolder.fold(TestExpressions.compile("random(1, 2)")));
+        assertInstanceOf(Expression.Binary.class, ConstantFolder.fold(TestExpressions.compile("$x + 1")));
     }
 
     @Test
@@ -78,7 +78,7 @@ class OptimizerTest {
             new TestMechanic(TargetKind.LIVING_ENTITY, false, 0.0), new Subject.Reference("target"), List.of());
         Statement falseCheck = new Statement.BuiltinInvocation(
             new TestMechanic(TargetKind.LIVING_ENTITY, false, 1.0), new Subject.Reference("target"),
-            List.of(new CheckCondition(ExpressionParser.parse("0"))));
+            List.of(new CheckCondition(TestExpressions.compile("0"))));
         Statement kept = new Statement.BuiltinInvocation(
             new TestMechanic(TargetKind.LIVING_ENTITY, false, 1.0), new Subject.Reference("target"), List.of());
 
@@ -90,7 +90,7 @@ class OptimizerTest {
     void deadCodeEliminationDropsAlwaysTrueCheckFromGuards() {
         Statement stmt = new Statement.BuiltinInvocation(
             new TestMechanic(TargetKind.LIVING_ENTITY, false, 1.0), new Subject.Reference("target"),
-            List.of(new CheckCondition(ExpressionParser.parse("1")), new TestCondition()));
+            List.of(new CheckCondition(TestExpressions.compile("1")), new TestCondition()));
 
         Program result = DeadCodeElimination.apply(program(stmt));
         Statement.BuiltinInvocation bi = assertInstanceOf(Statement.BuiltinInvocation.class, statements(result).get(0));

@@ -71,7 +71,7 @@ public final class SchemaExporter {
             case INT -> writeNumber(sb, "integer", spec.range());
             case DOUBLE -> writeNumber(sb, "number", spec.range());
             case BOOL -> sb.append("{\"type\":\"boolean\"}");
-            case STRING, CONTEXT, COLOR, MATERIAL, ENTITY, SOUND, REGISTRY -> sb.append("{\"type\":\"string\"}");
+            case STRING, CONTEXT, EXPRESSION, COLOR, MATERIAL, ENTITY, SOUND, REGISTRY -> sb.append("{\"type\":\"string\"}");
             case ENUM -> {
                 sb.append("{\"type\":\"string\",\"enum\":[");
                 List<String> options = spec.enumValues();

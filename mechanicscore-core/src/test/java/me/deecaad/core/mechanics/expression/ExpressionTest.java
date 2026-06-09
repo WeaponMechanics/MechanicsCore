@@ -1,5 +1,6 @@
 package me.deecaad.core.mechanics.expression;
 
+import me.deecaad.core.mechanics.TestExpressions;
 import me.deecaad.core.mechanics.scope.CastAbortException;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Context;
@@ -34,7 +35,7 @@ class ExpressionTest {
     }
 
     private static double eval(String expression, CastScope scope) {
-        return ExpressionParser.parse(expression).eval(scope).asNumber();
+        return TestExpressions.compile(expression).eval(scope).asNumber();
     }
 
     @ParameterizedTest
@@ -85,7 +86,7 @@ class ExpressionTest {
 
     @Test
     void stringLiteralEvaluates() {
-        assertEquals("hello", ExpressionParser.parse("'hello'").eval(scope()).asString());
+        assertEquals("hello", TestExpressions.compile("'hello'").eval(scope()).asString());
     }
 
     @Test
@@ -133,6 +134,6 @@ class ExpressionTest {
         "$",
     })
     void rejectsMalformedExpressions(String expression) {
-        assertThrows(ExpressionException.class, () -> ExpressionParser.parse(expression));
+        assertThrows(IllegalArgumentException.class, () -> TestExpressions.compile(expression));
     }
 }

@@ -7,28 +7,33 @@ import me.deecaad.core.mechanics.expression.ExpressionFunctions;
 import me.deecaad.core.mechanics.expression.Properties;
 import me.deecaad.core.utils.StringUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Lowers a parsed {@link ExprNode} into an executable {@link Expression}, while
- * validating functions, properties, and arity (recording diagnostics, never
- * throwing). Variables/contexts are not validated for existence: they may be
- * seeded by a caller or trigger the compiler cannot see, and unset variables
- * default to 0 at runtime.
+ * validating functions, properties, arity, and the context half of property refs
+ * (recording diagnostics, never throwing). The {@code contexts} set is the contexts
+ * in scope; {@code null} skips context checks (standalone/test compilation). Variables
+ * are not validated: they may be seeded by a caller and default to 0 at runtime.
  */
 public final class ExprLower {
 
     private ExprLower() {
     }
 
-    public static @NotNull Expression lower(@NotNull ExprNode node, @NotNull DiagnosticReporter reporter) {
+    public static @NotNull Expression lower(@NotNull ExprNode node, @Nullable Set<String> contexts,
+                                            @NotNull DiagnosticReporter reporter) {
         return switch (node) {
             case ExprNode.NumberLit n -> new Expression.NumberLiteral(n.value());
             case ExprNode.StringLit s -> new Expression.StringLiteral(s.value());
             case ExprNode.VarRef v -> new Expression.VarRef(v.name());
             case ExprNode.PropertyRef p -> {
+                if (contexts != null && !contexts.contains(p.context()))
+                    reporter.error(p.contextLoc(), "Unknown context '@" + p.context() + "'", suggest(p.context(), contexts));
                 if (!Properties.exists(p.path())) {
                     reporter.error(p.loc(), "Unknown property '" + p.path() + "'",
                         suggest(p.path(), Properties.names()));
@@ -37,11 +42,11 @@ public final class ExprLower {
                 yield new Expression.PropertyRef(p.context(), p.path());
             }
             case ExprNode.Unary u -> new Expression.Unary(
-                Expression.Unary.Op.valueOf(u.op().name()), lower(u.operand(), reporter));
+                Expression.Unary.Op.valueOf(u.op().name()), lower(u.operand(), contexts, reporter));
             case ExprNode.Binary b -> {
                 warnStringOperand(b, reporter);
                 yield new Expression.Binary(Expression.Binary.Op.valueOf(b.op().name()),
-                    lower(b.left(), reporter), lower(b.right(), reporter));
+                    lower(b.left(), contexts, reporter), lower(b.right(), contexts, reporter));
             }
             case ExprNode.Call c -> {
                 ExpressionFunctions.Definition def = ExpressionFunctions.get(c.name());
@@ -53,7 +58,7 @@ public final class ExprLower {
                 }
                 List<Expression> args = new ArrayList<>(c.args().size());
                 for (ExprNode arg : c.args())
-                    args.add(lower(arg, reporter));
+                    args.add(lower(arg, contexts, reporter));
                 yield new Expression.FunctionCall(c.name(), args);
             }
             case ExprNode.ErrorExpr e -> new Expression.NumberLiteral(0);

@@ -6,7 +6,6 @@ import me.deecaad.core.mechanics.ast.StmtNode;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
 import me.deecaad.core.diagnostic.DiagnosticReporter;
-import me.deecaad.core.mechanics.expression.ExpressionParser;
 import me.deecaad.core.mechanics.parse.StatementParser;
 import me.deecaad.core.mechanics.program.GlobalBlocks;
 import me.deecaad.core.mechanics.program.MechanicBlock;
@@ -83,11 +82,11 @@ class GlobalMechanicsTest {
     void normalProgramCallsAGlobalBlockAndSharesScope() {
         // Global block "compute": $result = $input * 2
         MechanicBlock compute = new MechanicBlock("compute",
-            List.of(new Statement.Assignment("result", ExpressionParser.parse("$input * 2"))));
+            List.of(new Statement.Assignment("result", TestExpressions.compile("$input * 2"))));
         GlobalBlocks.install(Map.of("compute", compute));
 
         // Main (no local "compute"): $input = 5; compute @source
-        Statement init = new Statement.Assignment("input", ExpressionParser.parse("5"));
+        Statement init = new Statement.Assignment("input", TestExpressions.compile("5"));
         Statement call = new Statement.BlockInvocation("compute", new Subject.Reference(CastScope.SOURCE), List.of());
         MechanicBlock main = new MechanicBlock("Main", List.of(init, call));
 

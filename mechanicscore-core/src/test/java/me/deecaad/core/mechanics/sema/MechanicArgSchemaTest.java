@@ -10,6 +10,7 @@ import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.ast.BlockNode;
 import me.deecaad.core.mechanics.ast.ProgramNode;
 import me.deecaad.core.mechanics.ast.StmtNode;
+import me.deecaad.core.mechanics.conditions.CheckCondition;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
 import me.deecaad.core.mechanics.parse.StatementParser;
@@ -86,10 +87,10 @@ class MechanicArgSchemaTest {
         private final Mechanic fake = new FakeMechanic();
         @Override public @Nullable Mechanic mechanic(@NotNull String name) { return name.equalsIgnoreCase("fake") ? fake : null; }
         @Override public @Nullable Targeter targeter(@NotNull String name) { return null; }
-        @Override public @Nullable Condition condition(@NotNull String name) { return null; }
+        @Override public @Nullable Condition condition(@NotNull String name) { return name.equalsIgnoreCase("check") ? new CheckCondition() : null; }
         @Override public @NotNull Set<String> mechanicNames() { return Set.of("fake"); }
         @Override public @NotNull Set<String> targeterNames() { return Set.of(); }
-        @Override public @NotNull Set<String> conditionNames() { return Set.of(); }
+        @Override public @NotNull Set<String> conditionNames() { return Set.of("check"); }
     }
 
     private static DiagnosticReporter analyze(String line) {
@@ -156,5 +157,33 @@ class MechanicArgSchemaTest {
         assertEquals(Severity.ERROR, bad.severity());
         assertTrue(bad.message().contains("sourcee"), bad.message());
         assertEquals("did you mean 'source'?", bad.hint());
+    }
+
+    @Test
+    void exprKey_conditionExpression_compiledThroughPipelineWithSpan() {
+        // The If= expression now goes through the AST pipeline (not a separate parser), so an unknown
+        // function inside a condition gets the same diagnostic + real span as '$x = foo(1)' would.
+        DiagnosticReporter reporter = analyze("Fake{Volume=5} @target ?check{If=foo(1)}");
+        Diagnostic bad = reporter.all().stream()
+            .filter(d -> d.message().contains("Unknown function") && d.message().contains("foo"))
+            .findFirst().orElse(null);
+        assertNotNull(bad, () -> "condition expression should be checked: " + reporter.all());
+        assertTrue(bad.primary().line() >= 0, "diagnostic should carry a real source span");
+    }
+
+    @Test
+    void exprKey_validConditionExpression_noDiagnostics() {
+        DiagnosticReporter reporter = analyze("Fake{Volume=5} @target ?check{If=$jumps > 0}");
+        assertTrue(reporter.isEmpty(), () -> "valid condition expression should not warn: " + reporter.all());
+    }
+
+    @Test
+    void exprKey_conditionExpression_checksPropertyRefContext() {
+        // Property-ref context checking reaches inside the condition expression, since If= routes
+        // through ExprLower like any '$x = <expr>'.
+        DiagnosticReporter reporter = analyze("Fake{Volume=5} @target ?check{If=ghost.size > 0}");
+        assertTrue(reporter.all().stream().anyMatch(d ->
+                d.message().contains("Unknown context") && d.message().contains("ghost")),
+            () -> reporter.all().toString());
     }
 }

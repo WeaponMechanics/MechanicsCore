@@ -6,10 +6,14 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.Serializer;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.mechanics.ast.BlockNode;
+import me.deecaad.core.mechanics.ast.ExprNode;
 import me.deecaad.core.mechanics.ast.InlineCallNode;
 import me.deecaad.core.mechanics.ast.ProgramNode;
 import me.deecaad.core.mechanics.ast.StmtNode;
 import me.deecaad.core.mechanics.ast.SubjectNode;
+import me.deecaad.core.mechanics.expression.Expression;
+import me.deecaad.core.mechanics.expression.ExpressionConsumer;
+import me.deecaad.core.mechanics.parse.ExpressionParser;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
 import me.deecaad.core.diagnostic.Diagnostic;
@@ -18,6 +22,8 @@ import me.deecaad.core.diagnostic.DiagnosticReporter;
 import me.deecaad.core.diagnostic.Severity;
 import me.deecaad.core.diagnostic.Span;
 import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.file.verify.KeySpec;
+import me.deecaad.core.file.verify.KeyType;
 import me.deecaad.core.file.verify.SchemaValidator;
 import me.deecaad.core.mechanics.parse.InlineScan;
 import me.deecaad.core.mechanics.program.MechanicBlock;
@@ -89,7 +95,7 @@ public final class SemanticAnalyzer {
                                                  @NotNull DiagnosticReporter reporter) {
         return switch (node) {
             case StmtNode.Assign assign -> new Statement.Assignment(assign.var(),
-                ExprLower.lower(assign.value(), reporter));
+                ExprLower.lower(assign.value(), contexts, reporter));
             case StmtNode.Bind bind -> {
                 Targeter targeter = resolveTargeter(bind.targeter(), contexts, file, reporter);
                 yield targeter == null ? null : new Statement.Binding(bind.contextName(), targeter);
@@ -198,13 +204,37 @@ public final class SemanticAnalyzer {
                 return null;
         }
 
+        T result;
         try {
-            return proto.serialize(data);
+            result = proto.serialize(data);
         } catch (SerializerException ex) {
             String message = ex.getMessages().isEmpty() ? "Invalid arguments" : String.join(" | ", ex.getMessages());
             reporter.report(new Diagnostic(Severity.ERROR, DiagnosticKind.OTHER, message, call.loc().source(), call.nameLoc().span(), List.of(), null));
             return null;
         }
+
+        // Expression args (exprKey): the compiler parses and lowers them through the AST pipeline so
+        // they get the same spans/checks as '$x = <expr>', then hands them to the serializer.
+        if (schema != null && result instanceof ExpressionConsumer consumer)
+            consumer.acceptExpressions(compileExpressions(schema, call, contexts, reporter));
+        return result;
+    }
+
+    private @NotNull Map<String, Expression> compileExpressions(@NotNull ConfigSchema schema, @NotNull InlineCallNode call,
+                                                                @NotNull Set<String> contexts, @NotNull DiagnosticReporter reporter) {
+        Map<String, Expression> compiled = new LinkedHashMap<>();
+        for (KeySpec spec : schema.keys()) {
+            if (spec.type() != KeyType.EXPRESSION)
+                continue;
+            MapConfigLike.Holder holder = findHolder(call, spec.name());
+            if (holder == null)
+                continue;
+            int column = InlineScan.argColumn(call, holder);
+            ExprNode node = ExpressionParser.parse(String.valueOf(holder.value()), call.loc().source(),
+                call.nameLoc().span().line(), column, reporter);
+            compiled.put(spec.name(), ExprLower.lower(node, contexts, reporter));
+        }
+        return compiled;
     }
 
     /**

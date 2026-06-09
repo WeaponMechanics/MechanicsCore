@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * Turns an expression string into a list of {@link Token}s for the
- * {@link ExpressionParser}.
+ * {@link me.deecaad.core.mechanics.parse.ExpressionParser}.
  */
 public final class ExpressionLexer {
 

@@ -133,15 +133,15 @@ class SemanticAnalyzerTest {
     }
 
     @Test
-    void unknownPropertyIsErrorUnknownContextIsAllowed() {
+    void unknownPropertyAndUnknownContextAreBothErrors() {
         DiagnosticReporter reporter = new DiagnosticReporter();
         analyzer().analyze(program(reporter, "$a = target.helth", "$b = ghost.size"), new File("test.yml"), reporter);
 
-        // target.helth: unknown property -> ERROR. ghost.size: 'size' is valid and an unknown
-        // context is no longer flagged (it may be seeded by a caller/trigger).
-        assertEquals(1, errors(reporter));
-        assertTrue(reporter.all().stream().anyMatch(d -> d.severity() == Severity.ERROR && d.message().contains("helth")));
-        assertFalse(reporter.all().stream().anyMatch(d -> d.message().contains("ghost")));
+        // target.helth: 'target' is a builtin context but 'helth' is an unknown property -> ERROR.
+        // ghost.size: 'size' is a valid property but 'ghost' is an unknown context -> ERROR.
+        assertEquals(2, errors(reporter), () -> reporter.all().toString());
+        assertTrue(reporter.all().stream().anyMatch(d -> d.message().contains("helth")));
+        assertTrue(reporter.all().stream().anyMatch(d -> d.message().contains("Unknown context") && d.message().contains("ghost")));
     }
 
     @Test

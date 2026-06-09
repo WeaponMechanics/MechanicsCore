@@ -5,19 +5,22 @@ import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.mechanics.expression.Expression;
-import me.deecaad.core.mechanics.expression.ExpressionException;
-import me.deecaad.core.mechanics.expression.ExpressionParser;
+import me.deecaad.core.mechanics.expression.ExpressionConsumer;
 import me.deecaad.core.mechanics.scope.CastScope;
 import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
+
 /**
  * Evaluates an expression and passes when the result is non-zero. The primary
- * branching primitive, e.g. {@code ?Check{If=$jumps > 0}}.
+ * branching primitive, e.g. {@code ?Check{If=$jumps > 0}}. The {@code If} expression is compiled by
+ * the mechanics compiler (via {@link ExpressionConsumer}), so it shares the AST pipeline's spans,
+ * function/property checks, and folding rather than a separate parser.
  */
-public class CheckCondition extends Condition {
+public class CheckCondition extends Condition implements ExpressionConsumer {
 
     private Expression expression;
 
@@ -30,6 +33,11 @@ public class CheckCondition extends Condition {
 
     public Expression getExpression() {
         return expression;
+    }
+
+    @Override
+    public void acceptExpressions(@NotNull Map<String, Expression> compiled) {
+        this.expression = compiled.get("If");
     }
 
     @Override
@@ -49,18 +57,14 @@ public class CheckCondition extends Condition {
 
     @Override
     protected @NotNull ConfigSchema.Builder schemaBuilder() {
-        return super.schemaBuilder().stringKey("If").required();
+        return super.schemaBuilder().exprKey("If").required();
     }
 
     @NotNull @Override
     public Condition serialize(@NotNull SerializeData data) throws SerializerException {
-        String raw = data.of("If").assertExists().get(String.class).get();
-        try {
-            Expression expression = ExpressionParser.parse(raw);
-            return applyParentArgs(data, new CheckCondition(expression));
-        } catch (ExpressionException ex) {
-            throw data.exception("If", "Invalid expression: " + ex.getMessage());
-        }
+        // The 'If' expression is compiled and injected by the compiler (acceptExpressions); here we
+        // only apply the shared parent args.
+        return applyParentArgs(data, new CheckCondition());
     }
 
     @Override
