@@ -23,24 +23,38 @@ import java.util.Set;
 public final class GlobalSymbolSource implements SymbolSource {
 
     private final @NotNull Set<String> providedContexts;
+    private final @NotNull Set<String> providedVariables;
 
     public GlobalSymbolSource() {
-        this(Set.of());
+        this(Set.of(), Set.of());
+    }
+
+    public GlobalSymbolSource(@NotNull Set<String> providedContexts) {
+        this(providedContexts, Set.of());
     }
 
     /**
-     * @param providedContexts Context names the cast environment seeds beyond {@code source}/
-     *                         {@code target} (e.g. an explosion's {@code AllEntitiesHitByExplosion}).
-     *                         Must match the names seeded into the {@link me.deecaad.core.mechanics.scope.CastScope}
-     *                         at cast time, or a reference compiles yet resolves empty at runtime.
+     * @param providedContexts  Context names the cast environment seeds beyond {@code source}/
+     *                          {@code target} (e.g. an explosion's {@code AllEntitiesHitByExplosion}).
+     *                          Must match the names seeded into the {@link me.deecaad.core.mechanics.scope.CastScope}
+     *                          at cast time, or a reference compiles yet resolves empty at runtime.
+     * @param providedVariables {@code $variable} names the cast environment seeds before running (e.g.
+     *                          {@code $damage}). A {@code $ref} that is neither provided here nor
+     *                          assigned in the program is a hard error.
      */
-    public GlobalSymbolSource(@NotNull Set<String> providedContexts) {
+    public GlobalSymbolSource(@NotNull Set<String> providedContexts, @NotNull Set<String> providedVariables) {
         this.providedContexts = Set.copyOf(providedContexts);
+        this.providedVariables = Set.copyOf(providedVariables);
     }
 
     @Override
     public @NotNull Set<String> providedContexts() {
         return providedContexts;
+    }
+
+    @Override
+    public @NotNull Set<String> providedVariables() {
+        return providedVariables;
     }
 
     @Override

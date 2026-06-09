@@ -30,21 +30,29 @@ import java.util.Set;
 public class MechanicSerializer implements Serializer<Program> {
 
     private final @NotNull Set<String> providedContexts;
+    private final @NotNull Set<String> providedVariables;
 
     public MechanicSerializer() {
-        this(Set.of());
+        this(Set.of(), Set.of());
+    }
+
+    public MechanicSerializer(@NotNull Set<String> providedContexts) {
+        this(providedContexts, Set.of());
     }
 
     /**
-     * @param providedContexts Context names the host seeds into the {@link me.deecaad.core.mechanics.scope.CastScope}
-     *                         before running this list, beyond {@code source}/{@code target}. Sema checks
-     *                         {@code @context} references against them, so the host must seed the same names
-     *                         at cast time. A host with extra contexts constructs this directly and serializes
-     *                         {@code data.move("Mechanics")} (the reflective {@code serialize(Class)} path uses
-     *                         the no-arg form).
+     * @param providedContexts  Context names the host seeds into the {@link me.deecaad.core.mechanics.scope.CastScope}
+     *                          before running this list, beyond {@code source}/{@code target}. Sema checks
+     *                          {@code @context} references against them, so the host must seed the same names
+     *                          at cast time. A host with extra contexts constructs this directly and serializes
+     *                          {@code data.move("Mechanics")} (the reflective {@code serialize(Class)} path uses
+     *                          the no-arg form).
+     * @param providedVariables {@code $variable} names the host seeds before running. A {@code $ref} that is
+     *                          neither provided nor assigned in the list is a hard error.
      */
-    public MechanicSerializer(@NotNull Set<String> providedContexts) {
+    public MechanicSerializer(@NotNull Set<String> providedContexts, @NotNull Set<String> providedVariables) {
         this.providedContexts = Set.copyOf(providedContexts);
+        this.providedVariables = Set.copyOf(providedVariables);
     }
 
     /**
@@ -90,7 +98,7 @@ public class MechanicSerializer implements Serializer<Program> {
             lines.add(obj.toString());
         }
 
-        Program program = MechanicCompiler.compile(entryName, entryName, lines, data.getFile(), new GlobalSymbolSource(providedContexts), reporter);
+        Program program = MechanicCompiler.compile(entryName, entryName, lines, data.getFile(), new GlobalSymbolSource(providedContexts, providedVariables), reporter);
 
         // Re-anchor each diagnostic from "relative to the mechanic string" onto the real YAML line, so
         // it renders against the actual source (with its '- ' and quotes) and a real line number.

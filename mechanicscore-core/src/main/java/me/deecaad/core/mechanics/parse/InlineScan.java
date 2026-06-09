@@ -10,6 +10,8 @@ import me.deecaad.core.diagnostic.DiagnosticReporter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,13 +36,21 @@ public final class InlineScan {
         int innerCol = innerColRaw + leading;
 
         Map<String, MapConfigLike.Holder> args;
+        List<InlineSerializer.Duplicate> duplicates = new ArrayList<>();
         try {
-            args = InlineSerializer.inlineFormat(inner);
+            args = InlineSerializer.inlineFormat(inner, duplicates);
         } catch (InlineSerializer.FormatException ex) {
             int col = innerCol + ex.getIndex();
             reporter.error(new Loc(source, Span.of(line, col, col + 1)),
                 ex.getMessage() == null ? "Malformed inline syntax" : ex.getMessage());
             return null;
+        }
+
+        // A later key=value silently overrode an earlier one with the same (normalized) key.
+        for (InlineSerializer.Duplicate dup : duplicates) {
+            int col = innerCol + dup.index();
+            reporter.warning(new Loc(source, Span.of(line, col, col + 1)),
+                "Duplicate key '" + dup.key() + "'; only the last value is used");
         }
 
         MapConfigLike.Holder nameHolder = args.get(InlineSerializer.UNIQUE_IDENTIFIER);

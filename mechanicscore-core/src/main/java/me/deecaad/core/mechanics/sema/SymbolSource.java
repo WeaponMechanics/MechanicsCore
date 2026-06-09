@@ -47,4 +47,14 @@ public interface SymbolSource {
     default @NotNull Set<String> providedContexts() {
         return Set.of();
     }
+
+    /**
+     * Names of {@code $variables} the cast environment seeds before running (e.g. a trigger
+     * provides {@code $damage}). Sema treats a {@code $ref} as valid if it is provided here or
+     * assigned somewhere in the program; anything else is a hard error instead of a silent 0.
+     * Defaults to none.
+     */
+    default @NotNull Set<String> providedVariables() {
+        return Set.of();
+    }
 }

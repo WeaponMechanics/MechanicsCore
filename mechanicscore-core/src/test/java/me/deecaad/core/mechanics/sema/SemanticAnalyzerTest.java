@@ -93,6 +93,11 @@ class SemanticAnalyzerTest {
         public @NotNull Set<String> providedContexts() {
             return Set.of("enemies");
         }
+
+        @Override
+        public @NotNull Set<String> providedVariables() {
+            return Set.of("external");
+        }
     }
 
     private static SemanticAnalyzer analyzer() {
@@ -164,6 +169,31 @@ class SemanticAnalyzerTest {
         ), new File("test.yml"), reporter);
 
         assertTrue(reporter.isEmpty(), () -> "reads of caller-provided state must not warn: " + reporter.all());
+    }
+
+    @Test
+    void unknownVariableIsErrorWithHint() {
+        DiagnosticReporter reporter = new DiagnosticReporter();
+        // 'external' is provided; 'externl' is a typo of it, assigned nowhere -> hard error, not silent 0.
+        analyzer().analyze(program(reporter, "$x = $externl * 2"), new File("test.yml"), reporter);
+
+        assertEquals(1, errors(reporter), () -> reporter.all().toString());
+        Diagnostic bad = reporter.all().stream().filter(d -> d.message().contains("Unknown variable")).findFirst().orElseThrow();
+        assertTrue(bad.message().contains("externl"), bad.message());
+        assertEquals("Did you mean 'external'?", bad.hint());
+    }
+
+    @Test
+    void variableAssignedAnywhereIsInScope() {
+        DiagnosticReporter reporter = new DiagnosticReporter();
+        // Whole-program scope: '$total' is read before its assignment line, but assigned later, so it
+        // must not error (mirrors a block setting a var its caller reads).
+        analyzer().analyze(program(reporter,
+            "$echo = $total + 1",
+            "$total = 5"
+        ), new File("test.yml"), reporter);
+
+        assertEquals(0, errors(reporter), () -> reporter.all().toString());
     }
 
     @Test

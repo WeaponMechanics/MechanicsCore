@@ -22,7 +22,7 @@ public final class TestExpressions {
     public static Expression compile(String text) {
         DiagnosticReporter reporter = new DiagnosticReporter();
         ExprNode node = ExpressionParser.parse(text, new SourceRef(new File("test"), "", -1, text), 0, 0, reporter);
-        Expression expression = ExprLower.lower(node, null, reporter);
+        Expression expression = ExprLower.lower(node, null, null, reporter);
         if (reporter.hasErrors())
             throw new IllegalArgumentException("expression did not compile: " + reporter.all());
         return expression;

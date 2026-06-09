@@ -8,8 +8,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,6 +19,10 @@ public interface InlineSerializer<T> extends Keyed, Serializer<T> {
 
     Pattern NAME_FINDER = Pattern.compile(".+?(?=\\{)");
     String UNIQUE_IDENTIFIER = "uniqueIdentifier";
+
+    /** A key that overrode an earlier one (same normalized name); {@code index} is its value column. */
+    record Duplicate(String key, int index) {
+    }
 
     @Override
     default boolean shouldSerialize(@NotNull SerializeData data) {
@@ -50,6 +56,14 @@ public interface InlineSerializer<T> extends Keyed, Serializer<T> {
     }
 
     static Map<String, MapConfigLike.Holder> inlineFormat(String line) throws FormatException {
+        return inlineFormat(line, new ArrayList<>());
+    }
+
+    /**
+     * Same parse, but records every key that silently overrode an earlier one (by normalized name)
+     * into {@code duplicatesOut}, so the caller can warn on dropped args like {@code A=1, A=2}.
+     */
+    static Map<String, MapConfigLike.Holder> inlineFormat(String line, List<Duplicate> duplicatesOut) throws FormatException {
 
         // Count trailing whitespace, so we can trim() the edges of the string
         // while keeping track of the index of errors in the string.
@@ -109,13 +123,20 @@ public interface InlineSerializer<T> extends Keyed, Serializer<T> {
         }
 
         // This will return a map of strings, lists, and maps.
-        Map<String, MapConfigLike.Holder> map = mapify(line, trailingWhitespace);
+        Map<String, MapConfigLike.Holder> map = mapify(line, trailingWhitespace, duplicatesOut);
         map.put(UNIQUE_IDENTIFIER, new MapConfigLike.Holder(uniqueIdentifier.trim(), 0));
         return map;
     }
 
     static Map<String, MapConfigLike.Holder> mapify(String line, int offset) throws FormatException {
+        return mapify(line, offset, new ArrayList<>());
+    }
+
+    static Map<String, MapConfigLike.Holder> mapify(String line, int offset, List<Duplicate> duplicatesOut) throws FormatException {
         Map<String, MapConfigLike.Holder> map = new HashMap<>();
+        // Normalized keys seen at this level, to flag overrides that mapify (exact) or the later
+        // MapConfigLike normalization would otherwise drop silently.
+        Set<String> seen = new HashSet<>();
         String key = null;
         StringBuilder value = new StringBuilder();
 
@@ -133,7 +154,7 @@ public interface InlineSerializer<T> extends Keyed, Serializer<T> {
                     if (key == null)
                         throw new FormatException(offset + i, "Expected key=value, but was missing key... value=" + value);
 
-                    map.put(key, new MapConfigLike.Holder(value.substring(value.indexOf(" ") == 0 ? 1 : 0), i - value.length()));
+                    putArg(map, seen, duplicatesOut, key, new MapConfigLike.Holder(value.substring(value.indexOf(" ") == 0 ? 1 : 0), i - value.length()));
                 }
 
                 continue;
@@ -145,13 +166,13 @@ public interface InlineSerializer<T> extends Keyed, Serializer<T> {
                 int stop = start + findMatch(c, c == '[' ? ']' : '}', line.substring(start));
 
                 if (c == '{') {
-                    Map<String, MapConfigLike.Holder> tempMap = mapify(line.substring(start, stop), start + offset);
-                    map.put(key, new MapConfigLike.Holder(tempMap, i));
+                    Map<String, MapConfigLike.Holder> tempMap = mapify(line.substring(start, stop), start + offset, duplicatesOut);
+                    putArg(map, seen, duplicatesOut, key, new MapConfigLike.Holder(tempMap, i));
                     if (!value.toString().isBlank())
                         tempMap.put(UNIQUE_IDENTIFIER, new MapConfigLike.Holder(value.toString().trim(), offset + i - value.length()));
                 } else {
-                    List<MapConfigLike.Holder> tempList = listify(line.substring(start, stop), start + offset);
-                    map.put(key, new MapConfigLike.Holder(tempList, offset + i));
+                    List<MapConfigLike.Holder> tempList = listify(line.substring(start, stop), start + offset, duplicatesOut);
+                    putArg(map, seen, duplicatesOut, key, new MapConfigLike.Holder(tempList, offset + i));
                     if (!value.toString().isBlank())
                         throw new FormatException(offset + i, "Found '" + value + "' before a list... It should not be there!");
                 }
@@ -192,7 +213,7 @@ public interface InlineSerializer<T> extends Keyed, Serializer<T> {
                 if (value.isEmpty())
                     throw new FormatException(offset + i, "Found an empty value");
 
-                map.put(key, new MapConfigLike.Holder(value.toString(), offset + i - value.length() + 1));
+                putArg(map, seen, duplicatesOut, key, new MapConfigLike.Holder(value.toString(), offset + i - value.length() + 1));
                 key = null;
                 value.setLength(0);
             }
@@ -207,7 +228,21 @@ public interface InlineSerializer<T> extends Keyed, Serializer<T> {
         return map;
     }
 
+    /** Records a duplicate (by normalized key) before storing, so silent overrides can be warned on. */
+    private static void putArg(Map<String, MapConfigLike.Holder> map, Set<String> seen,
+                               List<Duplicate> duplicatesOut, String key, MapConfigLike.Holder holder) {
+        // key may be null on a malformed line (e.g. a list with no key); the caller throws right after,
+        // so just store it without normalizing.
+        if (key != null && !seen.add(MapConfigLike.normalizeKey(key)))
+            duplicatesOut.add(new Duplicate(key, holder.index()));
+        map.put(key, holder);
+    }
+
     static List<MapConfigLike.Holder> listify(String line, int offset) throws FormatException {
+        return listify(line, offset, new ArrayList<>());
+    }
+
+    static List<MapConfigLike.Holder> listify(String line, int offset, List<Duplicate> duplicatesOut) throws FormatException {
         List<MapConfigLike.Holder> list = new ArrayList<>();
         StringBuilder value = new StringBuilder();
 
@@ -236,7 +271,7 @@ public interface InlineSerializer<T> extends Keyed, Serializer<T> {
                 int start = i + 1;
                 int stop = start + findMatch(c, '}', line.substring(start));
 
-                Map<String, MapConfigLike.Holder> map = mapify(line.substring(start, stop), offset + stop);
+                Map<String, MapConfigLike.Holder> map = mapify(line.substring(start, stop), offset + stop, duplicatesOut);
                 if (!value.toString().isBlank())
                     map.put(UNIQUE_IDENTIFIER, new MapConfigLike.Holder(value.toString().trim(), offset + i - value.length() + 1));
                 list.add(new MapConfigLike.Holder(map, offset + i + 1));

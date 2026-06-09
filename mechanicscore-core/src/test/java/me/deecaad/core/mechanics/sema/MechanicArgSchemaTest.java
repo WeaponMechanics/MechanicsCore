@@ -91,6 +91,7 @@ class MechanicArgSchemaTest {
         @Override public @NotNull Set<String> mechanicNames() { return Set.of("fake"); }
         @Override public @NotNull Set<String> targeterNames() { return Set.of(); }
         @Override public @NotNull Set<String> conditionNames() { return Set.of("check"); }
+        @Override public @NotNull Set<String> providedVariables() { return Set.of("jumps"); }
     }
 
     private static DiagnosticReporter analyze(String line) {
@@ -141,6 +142,24 @@ class MechanicArgSchemaTest {
     void unknownRegistryId_isError() {
         DiagnosticReporter reporter = analyze("Fake{Volume=5, Listeners=notreal{}} @target");
         assertTrue(reporter.hasErrors(), () -> "unknown targeter id should error: " + reporter.all());
+    }
+
+    @Test
+    void duplicateKey_warnsItIsOverridden() {
+        DiagnosticReporter reporter = analyze("Fake{Volume=5, Volume=3} @target");
+        Diagnostic dup = reporter.all().stream()
+            .filter(d -> d.message().contains("Duplicate key")).findFirst().orElse(null);
+        assertNotNull(dup, () -> "a repeated key should warn: " + reporter.all());
+        assertEquals(Severity.WARNING, dup.severity());
+        assertTrue(dup.message().contains("Volume"), dup.message());
+    }
+
+    @Test
+    void duplicateKey_caseInsensitive_stillWarns() {
+        // 'Volume' and 'volume' collapse during normalization; the override must still be flagged.
+        DiagnosticReporter reporter = analyze("Fake{Volume=5, volume=3} @target");
+        assertTrue(reporter.all().stream().anyMatch(d -> d.message().contains("Duplicate key")),
+            () -> "normalized duplicate should warn: " + reporter.all());
     }
 
     @Test

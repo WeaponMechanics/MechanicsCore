@@ -69,6 +69,14 @@ public final class SemanticAnalyzer {
         baseContexts.add(CastScope.SOURCE);
         baseContexts.add(CastScope.TARGET);
         baseContexts.addAll(symbols.providedContexts());
+        // Variables are checked whole-program (not flow-sensitive): a '$x = ...' anywhere makes 'x'
+        // known, so the block-return idiom (a block sets a var its caller reads) never false-positives.
+        // A '$ref' that is neither provided nor assigned anywhere is a hard error, not a silent 0.
+        Set<String> variables = new LinkedHashSet<>(symbols.providedVariables());
+        for (BlockNode block : program.blocks().values())
+            for (StmtNode node : block.statements())
+                if (node instanceof StmtNode.Assign assign)
+                    variables.add(assign.var());
         Map<String, MechanicBlock> blocks = new LinkedHashMap<>();
 
         for (Map.Entry<String, BlockNode> entry : program.blocks().entrySet()) {
@@ -78,7 +86,7 @@ public final class SemanticAnalyzer {
             Set<String> contexts = new LinkedHashSet<>(baseContexts);
             List<Statement> statements = new ArrayList<>();
             for (StmtNode node : block.statements()) {
-                Statement statement = resolveStatement(node, blockNames, contexts, file, reporter);
+                Statement statement = resolveStatement(node, blockNames, contexts, variables, file, reporter);
                 if (statement != null)
                     statements.add(statement);
                 if (node instanceof StmtNode.Bind bind)
@@ -91,31 +99,31 @@ public final class SemanticAnalyzer {
     }
 
     private @Nullable Statement resolveStatement(@NotNull StmtNode node, @NotNull Set<String> blockNames,
-                                                 @NotNull Set<String> contexts, @NotNull File file,
-                                                 @NotNull DiagnosticReporter reporter) {
+                                                 @NotNull Set<String> contexts, @NotNull Set<String> variables,
+                                                 @NotNull File file, @NotNull DiagnosticReporter reporter) {
         return switch (node) {
             case StmtNode.Assign assign -> new Statement.Assignment(assign.var(),
-                ExprLower.lower(assign.value(), contexts, reporter));
+                ExprLower.lower(assign.value(), contexts, variables, reporter));
             case StmtNode.Bind bind -> {
-                Targeter targeter = resolveTargeter(bind.targeter(), contexts, file, reporter);
+                Targeter targeter = resolveTargeter(bind.targeter(), contexts, variables, file, reporter);
                 yield targeter == null ? null : new Statement.Binding(bind.contextName(), targeter);
             }
-            case StmtNode.Invoke invoke -> resolveInvoke(invoke, blockNames, contexts, file, reporter);
+            case StmtNode.Invoke invoke -> resolveInvoke(invoke, blockNames, contexts, variables, file, reporter);
             case StmtNode.Error ignored -> null;
         };
     }
 
     private @Nullable Statement resolveInvoke(@NotNull StmtNode.Invoke invoke, @NotNull Set<String> blockNames,
-                                              @NotNull Set<String> contexts, @NotNull File file,
-                                              @NotNull DiagnosticReporter reporter) {
+                                              @NotNull Set<String> contexts, @NotNull Set<String> variables,
+                                              @NotNull File file, @NotNull DiagnosticReporter reporter) {
         InlineCallNode call = invoke.call();
         String name = call.name();
-        Subject subject = toSubject(invoke.subject(), contexts, file, reporter);
-        List<Condition> conds = resolveConditions(invoke.conditions(), contexts, file, reporter);
+        Subject subject = toSubject(invoke.subject(), contexts, variables, file, reporter);
+        List<Condition> conds = resolveConditions(invoke.conditions(), contexts, variables, file, reporter);
 
         Mechanic mechanicProto = symbols.mechanic(name);
         if (mechanicProto != null) {
-            Mechanic mechanic = serializeOrNull(mechanicProto, call, contexts, file, reporter);
+            Mechanic mechanic = serializeOrNull(mechanicProto, call, contexts, variables, file, reporter);
             return mechanic == null ? null : new Statement.BuiltinInvocation(mechanic, subject, conds);
         }
 
@@ -134,7 +142,8 @@ public final class SemanticAnalyzer {
     }
 
     private @NotNull Subject toSubject(@Nullable SubjectNode node, @NotNull Set<String> contexts,
-                                       @NotNull File file, @NotNull DiagnosticReporter reporter) {
+                                       @NotNull Set<String> variables, @NotNull File file,
+                                       @NotNull DiagnosticReporter reporter) {
         if (node == null)
             return new Subject.Reference(CastScope.TARGET);
         if (node instanceof SubjectNode.Ref ref) {
@@ -143,22 +152,24 @@ public final class SemanticAnalyzer {
             return new Subject.Reference(ref.contextName());
         }
         SubjectNode.Inline inline = (SubjectNode.Inline) node;
-        Targeter targeter = resolveTargeter(inline.targeter(), contexts, file, reporter);
+        Targeter targeter = resolveTargeter(inline.targeter(), contexts, variables, file, reporter);
         return targeter == null ? new Subject.Reference(CastScope.TARGET) : new Subject.Inline(targeter);
     }
 
     private @Nullable Targeter resolveTargeter(@NotNull InlineCallNode call, @NotNull Set<String> contexts,
-                                               @NotNull File file, @NotNull DiagnosticReporter reporter) {
+                                               @NotNull Set<String> variables, @NotNull File file,
+                                               @NotNull DiagnosticReporter reporter) {
         Targeter proto = symbols.targeter(call.name());
         if (proto == null) {
             reporter.error(call.nameLoc(), "Unknown targeter '" + call.name() + "'", suggest(call.name(), symbols.targeterNames()));
             return null;
         }
-        return serializeOrNull(proto, call, contexts, file, reporter);
+        return serializeOrNull(proto, call, contexts, variables, file, reporter);
     }
 
     private @NotNull List<Condition> resolveConditions(@NotNull List<InlineCallNode> nodes, @NotNull Set<String> contexts,
-                                                       @NotNull File file, @NotNull DiagnosticReporter reporter) {
+                                                       @NotNull Set<String> variables, @NotNull File file,
+                                                       @NotNull DiagnosticReporter reporter) {
         List<Condition> result = new ArrayList<>(nodes.size());
         for (InlineCallNode node : nodes) {
             Condition proto = symbols.condition(node.name());
@@ -166,7 +177,7 @@ public final class SemanticAnalyzer {
                 reporter.error(node.nameLoc(), "Unknown condition '" + node.name() + "'", suggest(node.name(), symbols.conditionNames()));
                 continue;
             }
-            Condition condition = serializeOrNull(proto, node, contexts, file, reporter);
+            Condition condition = serializeOrNull(proto, node, contexts, variables, file, reporter);
             if (condition != null)
                 result.add(condition);
         }
@@ -181,8 +192,8 @@ public final class SemanticAnalyzer {
     }
 
     private <T extends Serializer<T>> @Nullable T serializeOrNull(@NotNull T proto, @NotNull InlineCallNode call,
-                                                                  @NotNull Set<String> contexts, @NotNull File file,
-                                                                  @NotNull DiagnosticReporter reporter) {
+                                                                  @NotNull Set<String> contexts, @NotNull Set<String> variables,
+                                                                  @NotNull File file, @NotNull DiagnosticReporter reporter) {
         MapConfigLike config = new MapConfigLike(call.args())
             .setDebugInfo(file, call.loc().source().configPath(), call.loc().source().rawLine());
         SerializeData data = new SerializeData(file, null, config);
@@ -216,12 +227,13 @@ public final class SemanticAnalyzer {
         // Expression args (exprKey): the compiler parses and lowers them through the AST pipeline so
         // they get the same spans/checks as '$x = <expr>', then hands them to the serializer.
         if (schema != null && result instanceof ExpressionConsumer consumer)
-            consumer.acceptExpressions(compileExpressions(schema, call, contexts, reporter));
+            consumer.acceptExpressions(compileExpressions(schema, call, contexts, variables, reporter));
         return result;
     }
 
     private @NotNull Map<String, Expression> compileExpressions(@NotNull ConfigSchema schema, @NotNull InlineCallNode call,
-                                                                @NotNull Set<String> contexts, @NotNull DiagnosticReporter reporter) {
+                                                                @NotNull Set<String> contexts, @NotNull Set<String> variables,
+                                                                @NotNull DiagnosticReporter reporter) {
         Map<String, Expression> compiled = new LinkedHashMap<>();
         for (KeySpec spec : schema.keys()) {
             if (spec.type() != KeyType.EXPRESSION)
@@ -232,7 +244,7 @@ public final class SemanticAnalyzer {
             int column = InlineScan.argColumn(call, holder);
             ExprNode node = ExpressionParser.parse(String.valueOf(holder.value()), call.loc().source(),
                 call.nameLoc().span().line(), column, reporter);
-            compiled.put(spec.name(), ExprLower.lower(node, contexts, reporter));
+            compiled.put(spec.name(), ExprLower.lower(node, contexts, variables, reporter));
         }
         return compiled;
     }
