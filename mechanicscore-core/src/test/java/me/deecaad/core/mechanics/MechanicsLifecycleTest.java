@@ -80,13 +80,27 @@ class MechanicsLifecycleTest {
         @Override public Object groupKey() { return "self"; }
     }
 
-    /** A test SymbolSource: a couple of batchable player effects, a non-batchable one, and ?check. */
+    /** A plugin-specific attachment type, stashed on the scope and read by {@link MarkerCondition}. */
+    private record Marker() {
+    }
+
+    /** A condition that passes only when a {@link Marker} attachment is present on the cast. */
+    static final class MarkerCondition extends Condition {
+        @Override protected boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+            return scope.hasAttachment(Marker.class);
+        }
+        @Override public NamespacedKey getKey() { return new NamespacedKey("test", "hasmarker"); }
+        @Override public Condition serialize(SerializeData data) { return this; }
+    }
+
+    /** A test SymbolSource: a couple of batchable player effects, a non-batchable one, ?check, ?hasmarker. */
     private static final class Symbols implements SymbolSource {
         final RecordingMechanic particle = new RecordingMechanic("particle", TargetKind.PLAYER, true);
         final RecordingMechanic sound = new RecordingMechanic("sound", TargetKind.PLAYER, true);
         final RecordingMechanic damage = new RecordingMechanic("damage", TargetKind.LIVING_ENTITY, false);
         final SelfTargeter self = new SelfTargeter();
         final CheckCondition check = new CheckCondition();
+        final MarkerCondition marker = new MarkerCondition();
 
         @Override public @Nullable Mechanic mechanic(@NotNull String name) {
             return switch (name.toLowerCase()) {
@@ -102,12 +116,16 @@ class MechanicsLifecycleTest {
         }
 
         @Override public @Nullable Condition condition(@NotNull String name) {
-            return name.equalsIgnoreCase("check") ? check : null;
+            return switch (name.toLowerCase()) {
+                case "check" -> check;
+                case "hasmarker" -> marker;
+                default -> null;
+            };
         }
 
         @Override public @NotNull Set<String> mechanicNames() { return Set.of("particle", "sound", "damage"); }
         @Override public @NotNull Set<String> targeterNames() { return Set.of("self"); }
-        @Override public @NotNull Set<String> conditionNames() { return Set.of("check"); }
+        @Override public @NotNull Set<String> conditionNames() { return Set.of("check", "hasmarker"); }
     }
 
     /** Walks the full compiler: parse to sema to optimize. Break here to step through everything. */
@@ -126,13 +144,17 @@ class MechanicsLifecycleTest {
         return Optimizer.optimize(program);
     }
 
-    private static CastScope scope() {
+    private static LivingEntity mockSource() {
         LivingEntity entity = Mockito.mock(LivingEntity.class);
         Mockito.when(entity.getName()).thenReturn("Bob");
         Location location = new Location(null, 0, 0, 0);
         Mockito.when(entity.getLocation()).thenReturn(location);
         Mockito.when(entity.getEyeLocation()).thenReturn(location);
-        return CastScope.builder(entity).budget(CastBudget.defaults()).build();
+        return entity;
+    }
+
+    private static CastScope scope() {
+        return CastScope.builder(mockSource()).budget(CastBudget.defaults()).build();
     }
 
     private static List<Statement> statements(Program program) {
@@ -176,6 +198,28 @@ class MechanicsLifecycleTest {
         assertEquals(1, symbols.damage.count, "damage should pass ?check{If=$dmg > 0} and run once");
         assertEquals(24.0, assertInstanceOf(Value.NumberValue.class, scope.getVariable("dmg")).value(),
             "$dmg should resolve to the folded 24 at runtime");
+    }
+
+    @Test
+    void conditionGatesMechanicOnAttachment() {
+        Symbols symbols = new Symbols();
+        Program program = compile(symbols,
+            "@hit = self{}",
+            "damage{} @hit ?hasmarker{}"
+        );
+
+        // No attachment -> ?hasmarker fails -> mechanic is skipped.
+        program.run(scope());
+        assertEquals(0, symbols.damage.count);
+
+        // Marker attached -> ?hasmarker passes -> mechanic runs. Proves the runtime read path
+        // through Condition.isAllowed0(CastScope, Target).
+        CastScope withMarker = CastScope.builder(mockSource())
+            .budget(CastBudget.defaults())
+            .attachment(Marker.class, new Marker())
+            .build();
+        program.run(withMarker);
+        assertEquals(1, symbols.damage.count);
     }
 
     @Test

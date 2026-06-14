@@ -8,6 +8,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -15,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -39,8 +41,8 @@ public final class CastScope implements PlaceholderData {
     private final Map<String, Value> variables;
     private final Map<String, String> placeholders;
 
-    private @Nullable ItemStack item;
-    private @Nullable String itemTitle;
+    // Lazily allocated; most casts attach nothing.
+    private @Nullable Map<Class<?>, Object> attachments;
     private @Nullable Consumer<TaskImplementation<Void>> taskConsumer;
     private CastBudget budget;
 
@@ -98,15 +100,43 @@ public final class CastScope implements PlaceholderData {
         return variables;
     }
 
+    // Attachments
+    //
+    // Plugin-specific typed state keyed by exact Class. A scope is single-threaded for the duration
+    // of a cast, so no synchronization. Storing under a subclass is not retrievable via a supertype
+    // key; store under the supertype deliberately if polymorphic lookup is wanted.
+
+    public <T> @Nullable T getAttachment(@NotNull Class<T> type) {
+        Objects.requireNonNull(type, "type");
+        return attachments == null ? null : type.cast(attachments.get(type));
+    }
+
+    public boolean hasAttachment(@NotNull Class<?> type) {
+        Objects.requireNonNull(type, "type");
+        return attachments != null && attachments.containsKey(type);
+    }
+
+    public <T> void setAttachment(@NotNull Class<T> type, @NotNull T value) {
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(value, "value");
+        if (attachments == null)
+            attachments = new HashMap<>();
+
+        Object old = attachments.put(type, value);
+        if (old instanceof CastAttachment oldAttachment)
+            placeholders.keySet().removeAll(oldAttachment.placeholders().keySet());
+        if (value instanceof CastAttachment attachment)
+            placeholders.putAll(attachment.placeholders());
+    }
+
+    public <T> @NotNull T requireAttachment(@NotNull Class<T> type) {
+        T value = getAttachment(type);
+        if (value == null)
+            throw new IllegalStateException("No attachment of type " + type.getName() + " on this cast");
+        return value;
+    }
+
     // Misc carried state
-
-    public @Nullable ItemStack getItem() {
-        return item;
-    }
-
-    public @Nullable String getItemTitle() {
-        return itemTitle;
-    }
 
     public @Nullable Consumer<TaskImplementation<Void>> getTaskConsumer() {
         return taskConsumer;
@@ -145,12 +175,20 @@ public final class CastScope implements PlaceholderData {
 
     @Override
     public @Nullable ItemStack item() {
-        return item;
+        ItemData data = getAttachment(ItemData.class);
+        return data == null ? null : data.item();
     }
 
     @Override
     public @Nullable String itemTitle() {
-        return itemTitle;
+        ItemData data = getAttachment(ItemData.class);
+        return data == null ? null : data.title();
+    }
+
+    @Override
+    public @Nullable EquipmentSlot slot() {
+        ItemData data = getAttachment(ItemData.class);
+        return data == null ? null : data.slot();
     }
 
     @Override
@@ -176,13 +214,8 @@ public final class CastScope implements PlaceholderData {
             this.sourceContext = Context.of(new EntityTarget(source));
         }
 
-        public @NotNull Builder item(@Nullable ItemStack item) {
-            scope.item = item;
-            return this;
-        }
-
-        public @NotNull Builder itemTitle(@Nullable String itemTitle) {
-            scope.itemTitle = itemTitle;
+        public <T> @NotNull Builder attachment(@NotNull Class<T> type, @NotNull T value) {
+            scope.setAttachment(type, value);
             return this;
         }
 
