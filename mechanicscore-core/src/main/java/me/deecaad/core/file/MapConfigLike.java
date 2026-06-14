@@ -51,7 +51,7 @@ public class MapConfigLike implements ConfigLike {
 
     @Override
     public Object get(String key, Object def) {
-        return config.getOrDefault(normalizeString(key), new Holder(def, 0)).value;
+        return config.getOrDefault(normalizeString(key), new Holder(def, 0, -1)).value;
     }
 
     @Override
@@ -87,6 +87,7 @@ public class MapConfigLike implements ConfigLike {
         return str.toLowerCase(Locale.ROOT).replace(" ", "").replace("_", "");
     }
 
-    public record Holder(Object value, int index) {
+    /** {@code index} is the value's column; {@code keyIndex} is the key's column (-1 if none, e.g. a list element). */
+    public record Holder(Object value, int index, int keyIndex) {
     }
 }

@@ -121,13 +121,16 @@ class MechanicArgSchemaTest {
 
     @Test
     void hallucinatedArg_warnsWithHintAndSpan() {
-        DiagnosticReporter reporter = analyze("Fake{Volume=5, Volumee=2} @target");
+        String line = "Fake{Volume=5, Volumee=2} @target";
+        DiagnosticReporter reporter = analyze(line);
         Diagnostic unknown = firstOf(reporter, DiagnosticKind.UNKNOWN_KEY);
         assertNotNull(unknown, () -> "Volumee should be flagged: " + reporter.all());
         assertEquals(Severity.WARNING, unknown.severity());
         assertTrue(unknown.message().toLowerCase().contains("volumee"), unknown.message());
         assertEquals("did you mean 'Volume'?", unknown.hint());
-        assertTrue(unknown.primary().line() >= 0, "diagnostic should be re-anchored to a source span");
+        // The caret must land on the key, not its value (regression: it pointed at '2').
+        assertEquals(line.indexOf("Volumee"), unknown.primary().start(), "caret should be on the key");
+        assertEquals(line.indexOf("Volumee") + "Volumee".length(), unknown.primary().end());
     }
 
     @Test
@@ -146,12 +149,16 @@ class MechanicArgSchemaTest {
 
     @Test
     void duplicateKey_warnsItIsOverridden() {
-        DiagnosticReporter reporter = analyze("Fake{Volume=5, Volume=3} @target");
+        String line = "Fake{Volume=5, Volume=3} @target";
+        DiagnosticReporter reporter = analyze(line);
         Diagnostic dup = reporter.all().stream()
             .filter(d -> d.message().contains("Duplicate key")).findFirst().orElse(null);
         assertNotNull(dup, () -> "a repeated key should warn: " + reporter.all());
         assertEquals(Severity.WARNING, dup.severity());
         assertTrue(dup.message().contains("Volume"), dup.message());
+        // The caret must land on the overriding key, not its value (regression: it pointed at '3').
+        assertEquals(line.lastIndexOf("Volume"), dup.primary().start(), "caret should be on the duplicate key");
+        assertEquals(line.lastIndexOf("Volume") + "Volume".length(), dup.primary().end());
     }
 
     @Test
@@ -180,8 +187,8 @@ class MechanicArgSchemaTest {
 
     @Test
     void exprKey_conditionExpression_compiledThroughPipelineWithSpan() {
-        // The If= expression now goes through the AST pipeline (not a separate parser), so an unknown
-        // function inside a condition gets the same diagnostic + real span as '$x = foo(1)' would.
+        // The If= expression compiles through the AST pipeline, so an unknown function inside a
+        // condition gets the same diagnostic + real span as '$x = foo(1)' would.
         DiagnosticReporter reporter = analyze("Fake{Volume=5} @target ?check{If=foo(1)}");
         Diagnostic bad = reporter.all().stream()
             .filter(d -> d.message().contains("Unknown function") && d.message().contains("foo"))

@@ -259,7 +259,7 @@ public final class SemanticAnalyzer {
         MapConfigLike.Holder holder = findHolder(call, key);
         Span span;
         if (holder != null) {
-            int col = InlineScan.argColumn(call, holder);
+            int col = InlineScan.argKeyColumn(call, holder);
             span = Span.of(call.nameLoc().span().line(), col, col + key.length());
         } else {
             span = call.nameLoc().span();

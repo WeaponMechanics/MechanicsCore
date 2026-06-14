@@ -49,7 +49,7 @@ public final class InlineScan {
         // A later key=value silently overrode an earlier one with the same (normalized) key.
         for (InlineSerializer.Duplicate dup : duplicates) {
             int col = innerCol + dup.index();
-            reporter.warning(new Loc(source, Span.of(line, col, col + 1)),
+            reporter.warning(new Loc(source, Span.of(line, col, col + dup.key().length())),
                 "Duplicate key '" + dup.key() + "'; only the last value is used");
         }
 
@@ -66,6 +66,15 @@ public final class InlineScan {
      */
     public static int argColumn(@NotNull InlineCallNode call, @NotNull MapConfigLike.Holder holder) {
         return call.loc().span().start() + holder.index();
+    }
+
+    /**
+     * The rawLine column of an arg key, for diagnostics that point at the key (unknown/duplicate
+     * key) rather than its value. Falls back to the value column if the key column is unknown.
+     */
+    public static int argKeyColumn(@NotNull InlineCallNode call, @NotNull MapConfigLike.Holder holder) {
+        int key = holder.keyIndex();
+        return call.loc().span().start() + (key >= 0 ? key : holder.index());
     }
 
     private static int leadingSpaces(@NotNull String s) {

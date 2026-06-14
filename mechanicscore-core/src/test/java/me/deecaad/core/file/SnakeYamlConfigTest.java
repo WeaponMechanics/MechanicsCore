@@ -90,7 +90,7 @@ class SnakeYamlConfigTest {
 
         Diagnostic raw = Diagnostic.at(Severity.ERROR, DiagnosticKind.INVALID_TYPE,
             SourceRef.ofConfig(file, "Weapon.Damage"), "Expected a number", null);
-        Diagnostic positioned = config.enrich(raw); // now has a real line
+        Diagnostic positioned = config.enrich(raw); // enriched with a real line
 
         assertSame(positioned, config.enrich(positioned));
     }

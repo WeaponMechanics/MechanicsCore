@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Every registered mechanic/targeter/condition must declare a {@link ConfigSchema} that builds
- * headlessly. This catches a forgotten migration (null schema) and a schema that crashes to build.
- * Registries populate without a live plugin now that getKey() uses {@code MechanicsCore.NAMESPACE};
+ * headlessly. This catches a missing schema (null) and a schema that crashes to build.
+ * Registries populate without a live plugin because getKey() uses {@code MechanicsCore.NAMESPACE};
  * MockBukkit backs the Bukkit registries some schemas reference (e.g. DropItem's embedded item).
  */
 class MechanicSchemaCoverageTest {

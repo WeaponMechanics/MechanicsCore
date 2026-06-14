@@ -23,9 +23,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * End-to-end proof that real, registered mechanics validate headlessly (no Minecraft server) through
- * the compiler, using the production {@link GlobalSymbolSource}. This works because getKey() no longer
- * needs a live plugin, so the registries populate and schemas drive validation. This is the closest
- * thing to the external-harness config-verification workflow runnable in-process today.
+ * the compiler, using the production {@link GlobalSymbolSource}. getKey() needs no live plugin, so the
+ * registries populate and schemas drive validation. This is the closest thing to the external-harness
+ * config-verification workflow runnable in-process today.
  */
 class RealMechanicHeadlessValidationTest {
 
