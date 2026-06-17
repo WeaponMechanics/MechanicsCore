@@ -1,6 +1,7 @@
 package me.deecaad.core.file.simple
 
 import me.deecaad.core.file.SerializerException
+import me.deecaad.core.file.ErrorLocation
 import me.deecaad.core.file.SimpleSerializer
 import me.deecaad.core.utils.EnumUtil
 
@@ -12,7 +13,7 @@ class EnumValueSerializer<T : Enum<T>>(
 
     override fun deserialize(
         data: String,
-        errorLocation: String,
+        errorLocation: ErrorLocation,
     ): List<T> {
         var data = data.trim().lowercase()
         var isWildcard = false
@@ -23,7 +24,7 @@ class EnumValueSerializer<T : Enum<T>>(
 
             if (!isAllowWildcard) {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .addMessage("Wildcards are now allowed here... Remove the wildcard symbol '$'")
                     .addMessage("For value: $data")
                     .build()
@@ -34,7 +35,7 @@ class EnumValueSerializer<T : Enum<T>>(
             val values = EnumUtil.parseEnums(enumClass, "$$data")
             if (values.isEmpty()) {
                 throw SerializerException.builder()
-                    .locationRaw(errorLocation)
+                    .located(errorLocation)
                     .addMessage("Wildcard '$$data' did not match any values.")
                     .addMessage("No values found that contain '$data' in their key.")
                     .buildInvalidEnumOption(data, enumClass)
@@ -44,7 +45,7 @@ class EnumValueSerializer<T : Enum<T>>(
             val value =
                 EnumUtil.parseEnums(enumClass, data)
                     ?: throw SerializerException.builder()
-                        .locationRaw(errorLocation)
+                        .located(errorLocation)
                         .buildInvalidEnumOption(data, enumClass)
 
             return value

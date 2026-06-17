@@ -4,13 +4,14 @@ import com.cjcrafter.foliascheduler.util.MinecraftVersions
 import com.cjcrafter.foliascheduler.util.ReflectionUtil
 import com.cryptomorin.xseries.XEntityType
 import com.cryptomorin.xseries.XMaterial
+import com.cryptomorin.xseries.XSound
 import com.cryptomorin.xseries.particles.XParticle
+import me.deecaad.core.diagnostic.DiagnosticKind
 import me.deecaad.core.file.SerializerException.Companion.builder
 import me.deecaad.core.file.simple.DoubleSerializer
 import me.deecaad.core.file.simple.EnumValueSerializer
 import me.deecaad.core.file.simple.RegistryValueSerializer
 import me.deecaad.core.utils.RegistryUtil
-import me.deecaad.core.utils.SerializerUtil.foundAt
 import me.deecaad.core.utils.StringUtil.colorAdventure
 import me.deecaad.core.utils.StringUtil.split
 import me.deecaad.core.utils.matchAny
@@ -20,12 +21,14 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Particle
 import org.bukkit.Registry
+import org.bukkit.Sound
 import org.bukkit.entity.EntityType
 import org.bukkit.inventory.ItemStack
 import java.io.File
 import java.util.Optional
 import java.util.OptionalDouble
 import java.util.OptionalInt
+import java.util.logging.Logger
 import kotlin.collections.ArrayList
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -46,37 +49,61 @@ class SerializeData {
     val config: ConfigLike
 
     /**
-     * The fully serialized configuration to be used in case a nested-serializer uses the path-to
-     * feature. This should not be read directly, instead let
-     * [SerializeData.ConfigAccessor.serialize] check it automatically.
+     * Logger for non-fatal warnings raised while serializing (e.g. a skipped bad tag). Serializers
+     * use this instead of reaching the [me.deecaad.core.MechanicsCore] singleton, so serialization
+     * runs headless (no live plugin). Defaults to a plain JUL logger; the plugin passes its own.
      */
-    var pathToConfig: Configuration? = null
+    val logger: Logger
 
-    /**
-     * If this is true, developers are using [.step]. This is an advanced path-to
-     * feature which allows developers to get values from config NOT STORED in the serialized object,
-     * but still under the configuration section of the serializer. When this is true, we pull values
-     * from 'pathToConfig' instead of 'config'
-     */
-    private var usingStep = false
-
-    constructor(file: File, key: String?, config: ConfigLike) {
+    @JvmOverloads
+    constructor(file: File, key: String?, config: ConfigLike, logger: Logger = DEFAULT_LOGGER) {
         this.file = file
         this.key = key
         this.config = config
+        this.logger = logger
     }
 
     constructor(other: SerializeData, relative: String) {
         this.file = other.file
         this.key = other.getPath(relative)
         this.config = other.config
-
-        copyMutables(other)
+        this.logger = other.logger
     }
 
-    private fun copyMutables(from: SerializeData): SerializeData {
-        this.usingStep = from.usingStep
-        return this
+    companion object {
+        /**
+         * Fallback logger when no plugin logger is supplied (tests, headless verification).
+         */
+        @JvmStatic
+        val DEFAULT_LOGGER: Logger = Logger.getLogger("MechanicsCore")
+
+        /**
+         * Test-only drift guard: when recording is on, every key read through [of]/[ofList]/[has] is
+         * collected, so a test can assert a serializer reads exactly the keys its schema declares.
+         * Guarded by a single boolean check, so production has no measurable cost.
+         */
+        @JvmStatic
+        var recordingAccess: Boolean = false
+
+        @JvmStatic
+        val accessedKeys: MutableSet<String> = java.util.Collections.synchronizedSet(LinkedHashSet())
+
+        @JvmStatic
+        fun startRecording() {
+            accessedKeys.clear()
+            recordingAccess = true
+        }
+
+        @JvmStatic
+        fun stopRecording(): Set<String> {
+            recordingAccess = false
+            return LinkedHashSet(accessedKeys)
+        }
+
+        private fun recordAccess(relative: String?) {
+            if (recordingAccess && relative != null)
+                accessedKeys.add(relative)
+        }
     }
 
     /**
@@ -98,7 +125,7 @@ class SerializeData {
      * @throws IllegalArgumentException If no configuration section exists at the location.
      */
     fun move(relative: String): SerializeData {
-        return SerializeData(this, relative).copyMutables(this)
+        return SerializeData(this, relative)
     }
 
     /**
@@ -114,50 +141,7 @@ class SerializeData {
 
         if (key.isNotEmpty()) key.setLength(key.length - 1)
 
-        return SerializeData(file, key.toString(), config).copyMutables(this)
-    }
-
-    /**
-     * Helper method to "step" into a new configuration section. Uses the
-     * [Serializer.getKeyword] to step into the section. Supports using the
-     * [Serializer.canUsePathTo] to step into other files instead of just nested configuration
-     * sections.
-     *
-     * @param serializer The non-null serializer that supports path-to.
-     * @return The non-null serialize data.
-     * @throws SerializerException If no path-to config is defined.
-     */
-    @Throws(SerializerException::class)
-    fun step(serializer: Serializer<*>): SerializeData {
-        require(!(serializer.keyword == null || !serializer.canUsePathTo())) { "$serializer does not support path-to" }
-
-        // Check that the user is trying to use path-to.
-        val relative = serializer.keyword
-        if (config is BukkitConfig && config.isString(getPath(relative))) {
-            // This exception should be caught by FileReader so this serializer
-            // is saved for late serialization (for path-to support).
-
-            if (pathToConfig == null) {
-                throw PathToSerializerException(
-                    this,
-                    of().location,
-                    mutableListOf(
-                        "You are using path-to, but you haven't defined the path-to configuration yet.",
-                        "This is a bug in the plugin, please report this to the developer.",
-                        "Serializer: " + serializer.name,
-                    ),
-                )
-            }
-
-            val path = config.getString(getPath(relative))
-            val temp = SerializeData(file, path, config) // just pass 'config' for safety's sake
-            temp.copyMutables(this)
-            temp.usingStep = true
-            return temp
-        }
-
-        // Just move in when not using path-to.
-        return move(relative!!)
+        return SerializeData(file, key.toString(), config)
     }
 
     /**
@@ -174,6 +158,7 @@ class SerializeData {
             return back().of(split.last())
         }
 
+        recordAccess(relative)
         return ConfigAccessor(relative)
     }
 
@@ -190,6 +175,7 @@ class SerializeData {
             val split = key!!.split("\\.".toRegex()).dropLastWhile { it.isEmpty() }
             return back().ofList(split.last())
         }
+        recordAccess(relative)
         return ConfigListAccessor(relative)
     }
 
@@ -201,7 +187,8 @@ class SerializeData {
      * @return `true` if the key exists.
      */
     fun has(relative: String?): Boolean {
-        return if (usingStep) pathToConfig!!.contains(getPath(relative)!!) else config.contains(getPath(relative))
+        recordAccess(relative)
+        return config.contains(getPath(relative))
     }
 
     /**
@@ -225,7 +212,8 @@ class SerializeData {
         var key = this.key
         if (!relative.isNullOrEmpty()) key = getPath(relative)
 
-        return SerializerException(foundAt(file, key!!), mutableListOf(*messages))
+        return SerializerException(mutableListOf(*messages),
+            DiagnosticKind.OTHER, file, key, -1)
     }
 
     /**
@@ -247,7 +235,8 @@ class SerializeData {
         var key = this.key
         if (!relative.isNullOrEmpty()) key = getPath(relative)
 
-        return SerializerException(foundAt(file, key!!, index + 1), mutableListOf(*messages))
+        return SerializerException(mutableListOf(*messages),
+            DiagnosticKind.OTHER, file, key, index)
     }
 
     /**
@@ -280,7 +269,7 @@ class SerializeData {
         fun assertExists(): ConfigListAccessor {
             if (!has(relative)) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildMissingRequiredKey(relative!!)
             }
 
@@ -305,12 +294,12 @@ class SerializeData {
 
             // The first step is to assert that the value stored at this key
             // is a list (of any generic-type).
-            val value = if (usingStep) pathToConfig!!.getObject(getPath(relative)!!) else config[getPath(relative)]
+            val value = config[getPath(relative)]
             if (value == null) return listOf()
 
             if (value !is List<*>) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidType("list of $expectedInputFormat", value)
             }
 
@@ -370,7 +359,7 @@ class SerializeData {
 
                     val component = split[j]
                     val argument = arguments[j]
-                    val parsedValue = argument.deserialize(component, getLocation(i))
+                    val parsedValue = argument.deserialize(component, errorLocation(i))
                     parsedData.add(Optional.of(parsedValue))
                 }
 
@@ -385,24 +374,11 @@ class SerializeData {
             return listOfParsedData.toList() // immutable list
         }
 
-        val location: String
-            get() {
-                val stepAddon = if (usingStep) " (File location will be inaccurate since you are using path-to)" else ""
-                return if (relative.isNullOrEmpty()) {
-                    config.getLocation(file, key) + stepAddon
-                } else {
-                    config.getLocation(file, getPath(relative)) + stepAddon
-                }
-            }
+        private fun errorLocation(): ErrorLocation =
+            ErrorLocation(file, if (relative.isNullOrEmpty()) key else getPath(relative), -1)
 
-        fun getLocation(index: Int): String {
-            val stepAddon = if (usingStep) " (File location will be inaccurate since you are using path-to)" else ""
-            return if (relative.isNullOrEmpty()) {
-                foundAt(file, key!!, index + 1) + stepAddon
-            } else {
-                foundAt(file, getPath(relative)!!, index + 1) + stepAddon
-            }
-        }
+        private fun errorLocation(index: Int): ErrorLocation =
+            ErrorLocation(file, if (relative.isNullOrEmpty()) key else getPath(relative), index)
     }
 
     /**
@@ -425,7 +401,7 @@ class SerializeData {
         fun assertExists(): ConfigAccessor {
             if (!has(relative)) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildMissingRequiredKey(relative)
             }
             this.exists = true
@@ -442,7 +418,7 @@ class SerializeData {
          */
         fun `is`(type: Class<*>): Boolean {
             require(!type.isPrimitive) { "Silly developer, $type is a primitive type! Check wrapper classes instead." }
-            val value = if (usingStep) pathToConfig!!.getObject(getPath(relative)!!) else config[getPath(relative)]
+            val value = config[getPath(relative)]
 
             return value != null && type.isAssignableFrom(value.javaClass)
         }
@@ -457,14 +433,14 @@ class SerializeData {
          */
         @Throws(SerializerException::class)
         fun assertType(type: Class<*>): ConfigAccessor {
-            val value = if (usingStep) pathToConfig!!.getObject(getPath(relative)!!) else config[getPath(relative)]
+            val value = config[getPath(relative)]
 
             // Use assertExists for required keys
             if (value != null) {
                 val actual: Class<*> = value.javaClass
                 if (!type.isAssignableFrom(actual)) {
                     throw builder()
-                        .locationRaw(location)
+                        .located(errorLocation())
                         .buildInvalidType(type.simpleName, value)
                 }
             }
@@ -482,7 +458,7 @@ class SerializeData {
          */
         @Throws(SerializerException::class)
         fun getNumber(): Optional<Number> {
-            var value = if (usingStep) pathToConfig!!.getObject(getPath(relative)!!) else config[getPath(relative)]
+            var value = config[getPath(relative)]
 
             // Use assertExists for required keys
             if (value == null) {
@@ -491,14 +467,14 @@ class SerializeData {
 
             // If the value is a string, attempt to parse it as a number
             if (value is String) {
-                value = DoubleSerializer().deserialize(value, location)
+                value = DoubleSerializer().deserialize(value, errorLocation())
             }
 
             try {
                 return Optional.of(value as Number)
             } catch (ex: ClassCastException) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidType("number", value)
             }
         }
@@ -522,7 +498,7 @@ class SerializeData {
             val numValue = num.get().toDouble()
             if (floor(numValue).compareTo(ceil(numValue)) != 0) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .addMessage("Expected an integer WITHOUT any decimal (floating point) value")
                     .buildInvalidType("integer", num)
             }
@@ -554,7 +530,7 @@ class SerializeData {
          */
         @Throws(SerializerException::class)
         fun getBool(): Optional<Boolean> {
-            val value = if (usingStep) pathToConfig!!.getObject(getPath(relative)!!) else config[getPath(relative)]
+            val value = config[getPath(relative)]
             if (value == null) {
                 return Optional.empty()
             }
@@ -569,7 +545,7 @@ class SerializeData {
             }
 
             throw builder()
-                .locationRaw(location)
+                .located(errorLocation())
                 .buildInvalidType("boolean", value)
         }
 
@@ -600,7 +576,7 @@ class SerializeData {
                 val num = value.get().toInt()
                 if (min != null && num < min || max != null && num > max) {
                     throw builder()
-                        .locationRaw(location)
+                        .located(errorLocation())
                         .buildInvalidRange(num, min, max)
                 }
             }
@@ -633,7 +609,7 @@ class SerializeData {
                 val num = value.get().toDouble()
                 if (min != null && num < min || max != null && num > max) {
                     throw builder()
-                        .locationRaw(location)
+                        .located(errorLocation())
                         .buildInvalidRange(num, min, max)
                 }
             }
@@ -641,11 +617,7 @@ class SerializeData {
             return this
         }
 
-        val location: String
-            get() {
-                val stepAddon = if (usingStep) " (File location will be inaccurate since you are using path-to)" else ""
-                return config.getLocation(file, getPath(relative)) + stepAddon
-            }
+        fun errorLocation(): ErrorLocation = ErrorLocation(file, getPath(relative), -1)
 
         /**
          * Gets the data stored at this relative key. Note that this method (basically) requires a previous
@@ -657,7 +629,7 @@ class SerializeData {
          */
         fun <T : Any> get(clazz: Class<T>): Optional<T> {
             assertType(clazz)
-            val value = (if (usingStep) pathToConfig!!.getObject(getPath(relative)!!) else config[getPath(relative)])
+            val value = config[getPath(relative)]
 
             if (value == null) {
                 return Optional.empty()
@@ -678,21 +650,14 @@ class SerializeData {
          </T> */
         @Throws(SerializerException::class)
         fun <T : Enum<T>> getEnum(clazz: Class<T>): Optional<T> {
-            val input =
-                if (usingStep) {
-                    pathToConfig!!.getObject(getPath(relative)!!, String::class.java)
-                } else {
-                    config.getString(
-                        getPath(relative),
-                    )
-                }
+            val input = config.getString(getPath(relative))
 
             // Use assertExists for required keys
             if (input == null) {
                 return Optional.empty()
             }
 
-            val firstEnumFound = EnumValueSerializer(clazz, false).deserialize(input, location).first()
+            val firstEnumFound = EnumValueSerializer(clazz, false).deserialize(input, errorLocation()).first()
             return Optional.of(firstEnumFound)
         }
 
@@ -705,7 +670,7 @@ class SerializeData {
         @Throws(SerializerException::class)
         fun getMaterial(): Optional<XMaterial> {
             var input =
-                if (usingStep) pathToConfig!!.getString(getPath(relative)!!) else config.getString(getPath(relative))
+                config.getString(getPath(relative))
 
             // Use assertExists for required keys
             if (input == null) {
@@ -718,7 +683,7 @@ class SerializeData {
             val xmat = XMaterial.matchXMaterial(input)
             if (xmat.isEmpty) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidEnumOption(input, Material::class.java)
             }
 
@@ -769,7 +734,7 @@ class SerializeData {
         @Throws(SerializerException::class)
         fun getEntityType(): Optional<EntityType> {
             var input =
-                if (usingStep) pathToConfig!!.getString(getPath(relative)!!) else config.getString(getPath(relative))
+                config.getString(getPath(relative))
 
             // Use assertExists for required keys
             if (input == null) {
@@ -782,7 +747,7 @@ class SerializeData {
             val entityType = XEntityType.of(input)
             if (entityType.isEmpty) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidEnumOption(input, EntityType::class.java)
             }
 
@@ -798,6 +763,42 @@ class SerializeData {
         }
 
         /**
+         * Uses [XSound] to parse a [Sound]. Going through XSeries keeps configs working across
+         * Minecraft versions and accepts both the legacy 'ENTITY_GENERIC_EXPLODE' and the namespaced
+         * 'entity.generic.explode' forms.
+         *
+         * @return The sound from config, or empty.
+         * @throws SerializerException If the user defined an invalid sound.
+         */
+        @Throws(SerializerException::class)
+        fun getSound(): Optional<Sound> {
+            var input = config.getString(getPath(relative))
+
+            // Use assertExists for required keys
+            if (input == null) {
+                return Optional.empty()
+            }
+
+            input = input.trim()
+            val xsound = XSound.of(input)
+            if (xsound.isEmpty) {
+                throw builder()
+                    .located(errorLocation())
+                    .buildInvalidOption(input, XSound.REGISTRY.map { it.name() })
+            }
+
+            val parsed =
+                xsound.get().get()
+                    ?: throw exception(
+                        relative,
+                        "Your version, " + MinecraftVersions.getCurrent() + ", doesn't support '" + xsound.get().name() + "'",
+                        "Try using a different sound or update your server to a newer version!",
+                    )
+
+            return Optional.of(parsed)
+        }
+
+        /**
          * Uses [XParticle] to parse the [Particle].
          *
          * @return The particle from config, or defaultValue.
@@ -806,7 +807,7 @@ class SerializeData {
         @Throws(SerializerException::class)
         fun getParticle(): Optional<Particle> {
             var input =
-                if (usingStep) pathToConfig!!.getString(getPath(relative)!!) else config.getString(getPath(relative))
+                config.getString(getPath(relative))
 
             // Use assertExists for required keys
             if (input == null) {
@@ -819,7 +820,7 @@ class SerializeData {
             val particle = XParticle.of(input)
             if (particle.isEmpty) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .buildInvalidEnumOption(input, Particle::class.java)
             }
 
@@ -847,7 +848,7 @@ class SerializeData {
                     ?: throw IllegalArgumentException("Registry for ${clazz.simpleName} does not exist."),
         ): Optional<T> {
             val input =
-                if (usingStep) pathToConfig!!.getString(getPath(relative)!!) else config.getString(getPath(relative))
+                config.getString(getPath(relative))
 
             // Use assertExists for required keys
             if (input == null) {
@@ -857,7 +858,7 @@ class SerializeData {
             val firstItemFound =
                 RegistryValueSerializer(clazz, false, registry).deserialize(
                     input.trim().lowercase(),
-                    location,
+                    errorLocation(),
                 ).first()
 
             return Optional.of(firstItemFound)
@@ -868,7 +869,7 @@ class SerializeData {
          */
         fun getNamespacedKey(): Optional<NamespacedKey> {
             val input =
-                if (usingStep) pathToConfig!!.getString(getPath(relative)!!) else config.getString(getPath(relative))
+                config.getString(getPath(relative))
 
             // Use assertExists for required keys
             if (input == null) {
@@ -878,7 +879,7 @@ class SerializeData {
             val split = input.split(":".toRegex()).toTypedArray()
             if (split.size != 2) {
                 throw builder()
-                    .locationRaw(location)
+                    .located(errorLocation())
                     .addMessage("Expected a namespaced key in the format 'namespace:key'")
                     .example("minecraft:stone")
                     .buildInvalidType("namespaced key", input)
@@ -900,14 +901,7 @@ class SerializeData {
          * @return The converted string from config.
          */
         fun getAdventure(): Optional<String> {
-            val value =
-                if (usingStep) {
-                    pathToConfig!!.getObject(getPath(relative)!!, String::class.java)
-                } else {
-                    config.getString(
-                        getPath(relative),
-                    )
-                }
+            val value = config.getString(getPath(relative))
 
             // Use assertExists for required keys
             if (value == null) {
@@ -927,26 +921,14 @@ class SerializeData {
          * @return A serialized instance.
          * @throws SerializerException If there are any errors in config.
          */
+        @Suppress("UNCHECKED_CAST")
         @Throws(SerializerException::class)
         fun <T : InlineSerializer<T>> serializeRegistry(registry: Registry<T>): Optional<T> {
-            if (config !is MapConfigLike) throw UnsupportedOperationException("Cannot use registries with $config")
-            if (!has(relative)) {
-                return Optional.empty()
+            var result: T? = null
+            forEachRegistryEntry(registry, true) { serializer, nested ->
+                result = (serializer as Serializer<T>).serialize(nested)
             }
-
-            val map = assertExists().get(MutableMap::class.java)
-            val temp: ConfigLike =
-                MapConfigLike(map.get() as MutableMap<String, MapConfigLike.Holder>)
-                    .setDebugInfo(config.file, config.path, config.fullLine)
-            val nested = SerializeData(file, null, temp)
-
-            val key = nested.of(InlineSerializer.UNIQUE_IDENTIFIER).assertExists().get(String::class.java).get()
-            val base = registry.matchAny(key)
-                ?: throw builder()
-                    .locationRaw(location)
-                    .buildInvalidRegistryOption(key, registry)
-
-            return Optional.of(base.serialize(nested))
+            return Optional.ofNullable(result)
         }
 
         /**
@@ -987,47 +969,70 @@ class SerializeData {
             return Optional.of(impliedType.serialize(nested))
         }
 
+        @Suppress("UNCHECKED_CAST")
         @Throws(SerializerException::class)
         fun <T : InlineSerializer<T>> getRegistryList(registry: Registry<T>): List<T> {
-            if (config !is MapConfigLike) throw UnsupportedOperationException("Cannot use registries with $config")
-            if (!has(relative)) return listOf()
-
-            val list = config.getList(getPath(relative)) as List<MapConfigLike.Holder?>
             val returnValue: MutableList<T> = ArrayList()
+            forEachRegistryEntry(registry, false) { serializer, nested ->
+                returnValue.add((serializer as Serializer<T>).serialize(nested))
+            }
+            return returnValue
+        }
 
-            for (i in list.indices) {
-                val map =
-                    list[i]!!.value as? Map<*, *> ?: throw listException(
-                        relative,
-                        i,
-                        "Expected an inline serializer like 'sound(sound=entity.generic.explosion)', but instead got '${list[i]!!.value}'",
-                    )
+        /**
+         * Shared traversal of a registry-of-serializers key. Resolves each chosen serializer by its
+         * [InlineSerializer.UNIQUE_IDENTIFIER] and hands the caller the picked serializer plus the
+         * child [SerializeData] of its inline args, leaving the action to decide what to do (the
+         * schema validator recurses the nested schema; [serializeRegistry]/[getRegistryList]
+         * construct). Throws on an unknown registry id or a malformed list element.
+         *
+         * @param registry The registry of inline serializers.
+         * @param single   true for a single inline value, false for a list of them.
+         * @param action   Receives (picked serializer, child data) per entry.
+         */
+        @Throws(SerializerException::class)
+        fun forEachRegistryEntry(
+            registry: Registry<out Keyed>,
+            single: Boolean,
+            action: java.util.function.BiConsumer<Serializer<*>, SerializeData>,
+        ) {
+            if (config !is MapConfigLike) throw UnsupportedOperationException("Cannot use registries with $config")
+            if (!has(relative)) return
 
-                val id =
-                    (map[InlineSerializer.UNIQUE_IDENTIFIER] as? MapConfigLike.Holder)?.value?.toString()
+            if (single) {
+                val map = assertExists().get(MutableMap::class.java)
+                val temp: ConfigLike =
+                    MapConfigLike(map.get() as MutableMap<String, MapConfigLike.Holder>)
+                        .setDebugInfo(config.file, config.path, config.fullLine)
+                val nested = SerializeData(file, null, temp)
+
+                val key = nested.of(InlineSerializer.UNIQUE_IDENTIFIER).assertExists().get(String::class.java).get()
+                val base = registry.matchAny(key)
+                    ?: throw builder().located(errorLocation()).buildInvalidRegistryOption(key, registry)
+                action.accept(base as Serializer<*>, nested)
+            } else {
+                val list = config.getList(getPath(relative)) as List<MapConfigLike.Holder?>
+                for (i in list.indices) {
+                    val map = list[i]!!.value as? Map<*, *>
                         ?: throw listException(
                             relative,
                             i,
-                            "Could not identify any valid type",
+                            "Expected an inline serializer like 'sound(sound=entity.generic.explosion)', but instead got '${list[i]!!.value}'",
                         )
-
-                val serializer: T = registry.matchAny(id)
-                    ?: throw builder()
-                        .locationRaw(location)
-                        .buildInvalidRegistryOption(id, registry)
-
-                val temp: ConfigLike =
-                    MapConfigLike(map as Map<String, MapConfigLike.Holder>).setDebugInfo(
-                        config.file,
-                        config.path,
-                        config.fullLine,
-                    )
-
-                val nested = SerializeData(file, null, temp)
-                returnValue.add(serializer.serialize(nested))
+                    val id = (map[InlineSerializer.UNIQUE_IDENTIFIER] as? MapConfigLike.Holder)?.value?.toString()
+                        ?: throw listException(relative, i, "Could not identify any valid type")
+                    val serializer = registry.matchAny(id)
+                        ?: throw builder().located(errorLocation()).buildInvalidRegistryOption(id, registry)
+                    val temp: ConfigLike =
+                        MapConfigLike(map as Map<String, MapConfigLike.Holder>).setDebugInfo(
+                            config.file,
+                            config.path,
+                            config.fullLine,
+                        )
+                    val nested = SerializeData(file, null, temp)
+                    action.accept(serializer as Serializer<*>, nested)
+                }
             }
-
-            return returnValue
         }
 
         @Throws(SerializerException::class)
@@ -1115,81 +1120,6 @@ class SerializeData {
             }
 
             val data = SerializeData(this@SerializeData, relative)
-            data.copyMutables(this@SerializeData)
-
-            // Allow path-to compatibility when using nested serializers
-            val isString =
-                if (usingStep) {
-                    pathToConfig!!.getObject(
-                        getPath(relative)!!,
-                        String::class.java,
-                    ) == null
-                } else {
-                    config.isString(getPath(relative))
-                }
-            if (serializer.canUsePathTo() && isString) {
-                if (usingStep) {
-                    throw exception(
-                        relative,
-                        "Tried to use doubly nested path-to. This is is not a supported option.",
-                    )
-                }
-
-                val path = config.getString(getPath(relative))
-
-                // In order for path-to to work, the serializer needs to have a
-                // keyword so the FileReader automatically serializes it.
-                if (serializer.keyword == null) {
-                    throw PathToSerializerException(
-                        data,
-                        location,
-                        mutableListOf(
-                            "'${serializer.javaClass.simpleName}' does not have a keyword, so it cannot be used for path-to",
-                            "This means you are trying to use an unsupported operation, and you cannot use serializers this way",
-                        ),
-                    )
-                }
-
-                // If we don't have access to the serialized config, we cannot
-                // attempt a path-to.
-                if (pathToConfig == null) {
-                    throw PathToSerializerException(
-                        data,
-                        location,
-                        mutableListOf(
-                            "Path-to is not supported in this context",
-                            "To support path-to, we need access to the serialized config",
-                        ),
-                    )
-                }
-
-                // Check to make sure the path points to a serialized object
-                val obj =
-                    pathToConfig!!.getObject(path)
-                        ?: throw exception(
-                            relative,
-                            "Found an invalid path when using 'Path To' feature",
-                            "Path '$path' could not be found. Check for errors above this message.",
-                        )
-
-                // Technically not "perfect" since a serializer can return a
-                // non-serializer object. ItemSerializer is covered with its
-                // own item-registry system, and other cases are unlikely to
-                // happen since the config is too small for them.
-                if (!serializer.javaClass.isInstance(obj)) {
-                    throw exception(
-                        relative,
-                        "Found an invalid object when using 'Path To' feature",
-                        "Path '$path' pointed to an improper object type.",
-                        "Should have been '${serializer.javaClass.simpleName}', but instead got '${obj.javaClass.simpleName}'",
-                        "For value: $obj",
-                    )
-                }
-
-                // Generic fuckery
-                return Optional.of(serializer.javaClass.cast(obj) as T)
-            }
-
             return Optional.of(serializer.serialize(data))
         }
     }

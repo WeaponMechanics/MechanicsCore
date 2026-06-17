@@ -4,17 +4,13 @@ import me.deecaad.core.file.simple.BooleanSerializer;
 import me.deecaad.core.file.simple.DoubleSerializer;
 import me.deecaad.core.file.simple.IntSerializer;
 import me.deecaad.core.file.simple.StringSerializer;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,16 +19,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class SerializerListTest {
 
     private File file;
-    private FileConfiguration config;
+    private SnakeYamlConfig config;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         file = new File("list-config.yml");
-        BufferedReader reader = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/list-config.yml")));
-        config = YamlConfiguration.loadConfiguration(reader);
+        config = SnakeYamlConfig.ofText(new String(getClass().getResourceAsStream("/list-config.yml").readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
 
         System.out.println(file);
-        System.out.println(config.getKeys(false));
+        System.out.println(config.getKeys(null, false));
         System.out.println();
     }
 
@@ -45,7 +40,7 @@ public class SerializerListTest {
     @ParameterizedTest
     @ValueSource(strings = {"Valid"})
     public void test_valid(String key) throws Exception {
-        SerializeData data = new SerializeData(file, "a", new BukkitConfig(config));
+        SerializeData data = new SerializeData(file, "a", config);
 
         try {
             List<List<Optional<Object>>> list = data.ofList("Valid")
@@ -66,7 +61,7 @@ public class SerializerListTest {
             }
         } catch (SerializerException e) {
             e.getMessages().forEach(System.err::println);
-            System.err.println(e.getLocation());
+            System.err.println(e.getPath());
             throw e;
         }
     }
@@ -74,7 +69,7 @@ public class SerializerListTest {
     @ParameterizedTest
     @ValueSource(strings = {"Invalid_0", "Invalid_1", "Invalid_2", "Invalid_3", "Invalid_4", "Invalid_5", "Invalid_6", "Invalid_7"})
     public void test_invalid(String key) {
-        SerializeData data = new SerializeData(file, "a", new BukkitConfig(config));
+        SerializeData data = new SerializeData(file, "a", config);
 
         assertThrows(SerializerException.class, () -> data.ofList(key)
             .addArgument(new StringSerializer())

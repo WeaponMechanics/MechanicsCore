@@ -3,18 +3,14 @@ package me.deecaad.core.mechanics.targeters;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Context;
 import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Iterator;
-
 public class SourceTargeter extends Targeter {
 
-    /**
-     * Default constructor for serializer.
-     */
     public SourceTargeter() {
     }
 
@@ -24,20 +20,20 @@ public class SourceTargeter extends Targeter {
     }
 
     @Override
-    public Iterator<CastData> getTargets0(CastData cast) {
-        cast.setTargetEntity(cast.getSource());
-        return new SingleIterator<>(cast);
+    public @NotNull Context target(@NotNull CastScope scope) {
+        return wrap(scope.source());
     }
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "source");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "source");
     }
 
     @Nullable @Override
     public String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/targeters/source";
     }
+
 
     @NotNull @Override
     public Targeter serialize(@NotNull SerializeData data) throws SerializerException {

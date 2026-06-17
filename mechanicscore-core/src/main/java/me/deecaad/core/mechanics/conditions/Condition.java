@@ -3,13 +3,17 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.file.InlineSerializer;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
-import me.deecaad.core.mechanics.defaultmechanics.Mechanic;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
+import me.deecaad.core.mechanics.scope.TargetKind;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A condition is a simple true/false statement that decides whether a {@link Mechanic} is allowed
- * to be used (on a specific entity, in a specific world, etc.).
+ * A condition is a true/false statement that decides whether a mechanic line is
+ * allowed to run on a given subject {@link Target}. Conditions may also read
+ * named contexts and variables off the {@link CastScope}.
  */
 public abstract class Condition implements InlineSerializer<Condition> {
 
@@ -21,16 +25,39 @@ public abstract class Condition implements InlineSerializer<Condition> {
     }
 
     /**
-     * Returns <code>true</code> if {@link Mechanic} that holds this condition is allowed to be used.
+     * Returns {@code true} if the mechanic line holding this condition is allowed
+     * to run on the given subject.
      *
-     * @param cast The non-null data involving the who/what/where.
+     * @param scope the cast scope.
+     * @param subject the current subject target (may be null when targeting nothing).
      * @return true if the mechanic can be used.
      */
-    public final boolean isAllowed(CastData cast) {
-        return isInverted != isAllowed0(cast);
+    public final boolean isAllowed(@NotNull CastScope scope, @Nullable Target subject) {
+        return isInverted != isAllowed0(scope, subject);
     }
 
-    protected abstract boolean isAllowed0(CastData cast);
+    protected abstract boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject);
+
+    /**
+     * The narrowest target kind this condition needs (optimizer hint). Defaults
+     * to {@code LIVING_ENTITY}; location-only conditions should return {@code LOCATION}.
+     */
+    public TargetKind requiredTarget() {
+        return TargetKind.LIVING_ENTITY;
+    }
+
+    /**
+     * Contributes the parent-arg keys every condition accepts (read in {@link #applyParentArgs}).
+     * Subclasses override and append via {@code super.schemaBuilder()}.
+     */
+    protected ConfigSchema.Builder schemaBuilder() {
+        return ConfigSchema.builder().boolKey("Inverted");
+    }
+
+    @Override
+    public final @NotNull ConfigSchema schema() {
+        return schemaBuilder().build();
+    }
 
     protected Condition applyParentArgs(SerializeData data, Condition condition) throws SerializerException {
         condition.isInverted = data.of("Inverted").getBool().orElse(false);

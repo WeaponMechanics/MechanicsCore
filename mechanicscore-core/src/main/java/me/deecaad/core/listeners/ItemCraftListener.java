@@ -19,7 +19,7 @@ public class ItemCraftListener implements Listener {
 
     static {
 
-        // LAST UPDATE IN VERSION 1.18
+        // Crafting inventory types, current as of Minecraft 1.18
         craftingInventories = new HashSet<>(Arrays.asList("ANVIL", "BEACON",
             "BLAST_FURNACE", "BREWING", "CARTOGRAPHY", "COMPOSTER", "CRAFTING", "ENCHANTING", "FURNACE",
             "GRINDSTONE", "LOOM", "MERCHANT", "SMITHING", "SMOKER", "STONECUTTER", "WORKBENCH"));

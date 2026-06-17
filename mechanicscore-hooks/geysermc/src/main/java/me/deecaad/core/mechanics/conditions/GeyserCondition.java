@@ -3,7 +3,8 @@ package me.deecaad.core.mechanics.conditions;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
 import org.geysermc.geyser.api.GeyserApi;
 import org.jetbrains.annotations.NotNull;
@@ -11,19 +12,16 @@ import org.jetbrains.annotations.Nullable;
 
 public class GeyserCondition extends Condition {
 
-    /**
-     * Default constructor for serializer.
-     */
     public GeyserCondition() {
     }
 
     @Override
-    public boolean isAllowed0(CastData cast) {
-        if (cast.getTarget() == null)
+    public boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        if (subject == null || subject.entity() == null)
             return false;
 
         try {
-            return GeyserApi.api().isBedrockPlayer(cast.getTarget().getUniqueId());
+            return GeyserApi.api().isBedrockPlayer(subject.entity().getUniqueId());
         } catch (Throwable ex) {
             MechanicsCore.getInstance().getDebugger().severe("Tried to use GeyserCondition but Geyser is not installed!", ex);
             return false;

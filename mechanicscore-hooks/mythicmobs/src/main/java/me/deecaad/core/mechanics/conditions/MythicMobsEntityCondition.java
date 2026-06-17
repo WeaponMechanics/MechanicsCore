@@ -5,7 +5,8 @@ import io.lumine.mythic.core.mobs.ActiveMob;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,9 +15,6 @@ public class MythicMobsEntityCondition extends Condition {
 
     private String name;
 
-    /**
-     * Default constructor for serializer.
-     */
     public MythicMobsEntityCondition() {
     }
 
@@ -25,11 +23,11 @@ public class MythicMobsEntityCondition extends Condition {
     }
 
     @Override
-    public boolean isAllowed0(CastData cast) {
-        if (cast.getTarget() == null)
+    public boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        if (subject == null || subject.entity() == null)
             return false;
 
-        ActiveMob mythicMob = MythicBukkit.inst().getMobManager().getActiveMob(cast.getTarget().getUniqueId()).orElse(null);
+        ActiveMob mythicMob = MythicBukkit.inst().getMobManager().getActiveMob(subject.entity().getUniqueId()).orElse(null);
         return mythicMob != null && mythicMob.getName().equals(name);
     }
 
@@ -46,7 +44,6 @@ public class MythicMobsEntityCondition extends Condition {
     @NotNull @Override
     public Condition serialize(@NotNull SerializeData data) throws SerializerException {
         String type = data.of("Entity").assertExists().get(String.class).get();
-
         return applyParentArgs(data, new MythicMobsEntityCondition(type));
     }
 }

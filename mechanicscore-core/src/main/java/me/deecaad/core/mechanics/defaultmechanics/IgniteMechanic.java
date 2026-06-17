@@ -3,7 +3,9 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -12,9 +14,6 @@ public class IgniteMechanic extends Mechanic {
 
     private int ticks;
 
-    /**
-     * Default constructor for serializer
-     */
     public IgniteMechanic() {
     }
 
@@ -24,7 +23,7 @@ public class IgniteMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "ignite");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "ignite");
     }
 
     @Override
@@ -33,19 +32,20 @@ public class IgniteMechanic extends Mechanic {
     }
 
     @Override
-    protected void use0(CastData cast) {
-
-        // We must have an entity to ignite
-        if (cast.getTarget() == null)
+    public void use0(CastScope scope, Target subject) {
+        if (subject == null || subject.entity() == null)
             return;
+        subject.entity().setFireTicks(ticks);
+    }
 
-        cast.getTarget().setFireTicks(ticks);
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().intKey("Time");
     }
 
     @NotNull @Override
     public Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
         int ticks = data.of("Time").getInt().orElse(100);
-
         return applyParentArgs(data, new IgniteMechanic(ticks));
     }
 }

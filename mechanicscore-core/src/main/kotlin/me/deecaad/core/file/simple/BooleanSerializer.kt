@@ -1,6 +1,7 @@
 package me.deecaad.core.file.simple
 
 import me.deecaad.core.file.SerializerException
+import me.deecaad.core.file.ErrorLocation
 import me.deecaad.core.file.SimpleSerializer
 
 class BooleanSerializer : SimpleSerializer<Boolean> {
@@ -8,13 +9,13 @@ class BooleanSerializer : SimpleSerializer<Boolean> {
 
     override fun deserialize(
         data: String,
-        errorLocation: String,
+        errorLocation: ErrorLocation,
     ): Boolean {
         return when (data.lowercase()) {
             "true" -> true
             "false" -> false
             else -> throw SerializerException.Builder()
-                .locationRaw(errorLocation)
+                .located(errorLocation)
                 .buildInvalidType("true/false", data)
         }
     }

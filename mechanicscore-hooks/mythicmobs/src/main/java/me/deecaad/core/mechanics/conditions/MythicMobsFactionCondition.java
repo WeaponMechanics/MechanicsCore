@@ -7,7 +7,8 @@ import io.lumine.mythic.core.mobs.ActiveMob;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -21,9 +22,6 @@ public class MythicMobsFactionCondition extends Condition {
 
     private String faction;
 
-    /**
-     * Default constructor for serializer.
-     */
     public MythicMobsFactionCondition() {
     }
 
@@ -32,16 +30,14 @@ public class MythicMobsFactionCondition extends Condition {
     }
 
     @Override
-    protected boolean isAllowed0(CastData cast) {
-        LivingEntity target = cast.getTarget();
+    protected boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        LivingEntity target = subject == null ? null : subject.entity();
         if (target == null)
             return false;
 
         if (target instanceof Player player) {
             AbstractEntity abstractPlayer = BukkitAdapter.adapt(player);
             Optional<String> maybeFaction = MythicBukkit.inst().getPlayerManager().getFactionProvider().getFaction(abstractPlayer.asPlayer());
-
-            // Supports null faction
             return Objects.equals(maybeFaction.orElse(null), faction);
         }
 
@@ -65,7 +61,6 @@ public class MythicMobsFactionCondition extends Condition {
     @NotNull @Override
     public Condition serialize(@NotNull SerializeData data) throws SerializerException {
         String faction = data.of("Faction").get(String.class).orElse(null);
-
         return applyParentArgs(data, new MythicMobsFactionCondition(faction));
     }
 }

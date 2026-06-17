@@ -1,5 +1,6 @@
 package me.deecaad.core.file.simple
 
+import me.deecaad.core.file.ErrorLocation
 import me.deecaad.core.file.SimpleSerializer
 
 class CsvSerializer<T : Any, S : SimpleSerializer<T>>(
@@ -11,7 +12,7 @@ class CsvSerializer<T : Any, S : SimpleSerializer<T>>(
 
     override fun deserialize(
         data: String,
-        errorLocation: String,
+        errorLocation: ErrorLocation,
     ): List<T> {
         return data.split(", ?".toRegex()).map { serializer.deserialize(it, errorLocation) }
     }

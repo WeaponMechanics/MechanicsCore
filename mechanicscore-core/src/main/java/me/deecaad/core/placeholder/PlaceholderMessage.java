@@ -92,7 +92,13 @@ public class PlaceholderMessage {
     public void fillMap(PlaceholderData data) {
         for (String placeholder : presentPlaceholders) {
             PlaceholderHandler handler = RegistryUtil.matchAny(PlaceholderHandlers.REGISTRY, placeholder);
-            data.placeholders().put(placeholder, handler == null ? null : handler.onRequest(data));
+            if (handler != null)
+                data.placeholders().put(placeholder, handler.onRequest(data));
+            else
+                // Preserve any value the data already provided (e.g. named-context
+                // placeholders like <enemies_size> from a CastScope). Only default
+                // truly-unknown tags to null.
+                data.placeholders().putIfAbsent(placeholder, null);
         }
     }
 

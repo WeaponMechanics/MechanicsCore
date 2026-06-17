@@ -3,11 +3,13 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.serializers.AnyVectorProvider;
 import me.deecaad.core.file.serializers.ItemSerializer;
 import me.deecaad.core.file.serializers.VectorProvider;
 import me.deecaad.core.file.serializers.VectorSerializer;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.utils.EntityTransform;
 import me.deecaad.core.utils.ImmutableVector;
 import org.bukkit.Location;
@@ -25,9 +27,6 @@ public class DropItemMechanic extends Mechanic {
     private ItemStack item;
     private VectorProvider velocity;
 
-    /**
-     * Default constructor for serializers.
-     */
     public DropItemMechanic() {
     }
 
@@ -37,14 +36,16 @@ public class DropItemMechanic extends Mechanic {
     }
 
     @Override
-    public void use0(CastData cast) {
-        World world = cast.getTargetWorld();
-        Location spawnPosition = cast.hasTargetLocation() ? cast.getTargetLocation() : cast.getTarget().getEyeLocation();
+    public void use0(CastScope scope, Target subject) {
+        if (subject == null)
+            return;
+        World world = subject.world();
+        Location spawnPosition = subject.location();
         if (world == null)
             return;
 
         world.dropItem(spawnPosition, item, itemEntity -> {
-            EntityTransform localTransform = cast.getTarget() == null ? null : new EntityTransform(cast.getTarget());
+            EntityTransform localTransform = subject.entity() == null ? null : new EntityTransform(subject.entity());
             Quaterniond localRotation = localTransform == null ? null : localTransform.getLocalRotation();
             itemEntity.setVelocity(velocity.provide(localRotation).multiply(1.0 / 20.0));
         });
@@ -52,16 +53,24 @@ public class DropItemMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "dropitem");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "dropitem");
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().include(new ItemSerializer().schema()).nested("Velocity", VectorSerializer.class);
     }
 
     @Override
     public @NotNull Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
-
         ItemStack item = new ItemSerializer().serialize(data);
         VectorProvider zero = new AnyVectorProvider(false, new ImmutableVector());
         VectorProvider velocity = data.of("Velocity").serialize(VectorSerializer.class).orElse(zero);
-
         return applyParentArgs(data, new DropItemMechanic(item, velocity));
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.LOCATION;
     }
 }

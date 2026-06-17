@@ -1,7 +1,6 @@
 package me.deecaad.core.file;
 
-import me.deecaad.core.MechanicsCore;
-import org.bukkit.configuration.ConfigurationSection;
+import me.deecaad.core.file.verify.ConfigSchema;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,52 +50,6 @@ public interface Serializer<T> {
     }
 
     /**
-     * Basically if this is not null then all other serializers will be used except these which have
-     * useLater() returning not null. useLater() should only return something else than null if path to
-     * configuration option is used.
-     * <p>
-     * Path to should not be never used multiple times inside one serializer!
-     *
-     * @param configurationSection the configuration section
-     * @param path the path to this serializer's path (path to keyword like path.keyword)
-     * @return nonnull if this serializer should be used later
-     */
-    default @Nullable String useLater(ConfigurationSection configurationSection, String path) {
-
-        // Checks if keyword is actually an string
-        // -> If it is, then it means that it is used as path to other location where
-        // this serializer's object should actually be held
-        //
-        // We have to check if there is a String at that key because
-        // ConfigurationSections (for some dumb reason) using .toString
-        // instead of type casting
-        return configurationSection.isString(path) ? configurationSection.getString(path) : null;
-    }
-
-    /**
-     * This should be used in new iteration of serialization for all serializers which had Path_To used.
-     *
-     * @param filledMap the already filled map
-     * @param pathWhereToStore the path where the SAME object at filledMap should also be stored (just
-     *        under different key)
-     * @param pathTo the path where to try to find object from filledMap
-     */
-    default void tryPathTo(Configuration filledMap, String pathWhereToStore, String pathTo) {
-        Object obj = filledMap.getObject(pathTo);
-        if (!this.getClass().isInstance(obj)) {
-            String[] splittedWhereToStore = pathWhereToStore.split("\\.");
-            MechanicsCore.getInstance().getDebugger().severe("Tried to use path to, but didn't find correct object.",
-                "1) Make sure that you wrote path to correctly (" + pathTo + ")",
-                "2) Make sure that the object at path to actually exists.",
-                "3) Make sure that the object at path to doesn't also use path to as this may cause conflicts.",
-                "4) If you feel like you weren't even intending to use path to, make sure that " + splittedWhereToStore[splittedWhereToStore.length - 1] + " doesn't match any serializer keyword!",
-                "This is located at " + pathWhereToStore + " in configurations.");
-            return;
-        }
-        filledMap.set(pathWhereToStore, obj);
-    }
-
-    /**
      * Returns a link to the page on the wiki that describes this serializer. This method is called from
      * {@link SerializeData}, and is used to help the user find potential solutions to their problem.
      *
@@ -104,30 +57,6 @@ public interface Serializer<T> {
      */
     @Nullable default String getWikiLink() {
         return null;
-    }
-
-    /**
-     * Returns <code>true</code> if the serializer allows path-to. You should override this method to
-     * return <code>false</code> if your serializer accepts a {@link String} in the main path of the
-     * serializer. For example, the {@link me.deecaad.core.file.serializers.VectorSerializer} should
-     * override this method to return <code>false</code>.
-     *
-     * @return true if the serializer is complicated enough for path-to.
-     */
-    default boolean canUsePathTo() {
-        return getKeyword() != null;
-    }
-
-    /**
-     * Returns <code>true</code> when the given key can be "added" to this serializer, and should be
-     * saved to the main configuration map. This is useful when using
-     * {@link SerializeData#step(Serializer)} with path-to.
-     *
-     * @param key The non-null key to check
-     * @return true if the key should be saved.
-     */
-    default boolean letPassThrough(@NotNull String key) {
-        return false;
     }
 
     @NotNull default String getName() {
@@ -152,4 +81,16 @@ public interface Serializer<T> {
      * @throws SerializerException If there is an error in config.
      */
     @NotNull T serialize(@NotNull SerializeData data) throws SerializerException;
+
+    /**
+     * Declares every config key this serializer accepts. When non-null, the framework validates raw
+     * config against this schema (presence, type, range, unknown keys) for exact hallucinated-key
+     * detection and JSON Schema export. The schema is validation + export only; construction always
+     * goes through {@link #serialize(SerializeData)}. Defaults to null (no schema declared).
+     *
+     * @return The nullable declared schema.
+     */
+    default @Nullable ConfigSchema schema() {
+        return null;
+    }
 }

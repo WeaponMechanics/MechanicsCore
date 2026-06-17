@@ -6,27 +6,32 @@ import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.serializers.AnyVectorProvider;
 import me.deecaad.core.file.serializers.VectorProvider;
 import me.deecaad.core.file.serializers.VectorSerializer;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Context;
+import me.deecaad.core.mechanics.scope.EntityTarget;
+import me.deecaad.core.mechanics.scope.PointTarget;
+import me.deecaad.core.mechanics.scope.Target;
+import me.deecaad.core.mechanics.scope.TargetKind;
 import me.deecaad.core.utils.EntityTransform;
-import org.joml.Quaterniond;
 import org.bukkit.Location;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.util.Vector;
+import org.joml.Quaterniond;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Iterator;
-
 /**
- * A targeter returns a list of targets. A target can be a {@link Location}, an
- * {@link org.bukkit.entity.Entity}, or a {@link org.bukkit.entity.Player}.
+ * A targeter resolves a {@link CastScope} into a {@link Context} (a set of
+ * targets). Targeters are used to bind named contexts ({@code @enemies = ...})
+ * and as the inline subject of a mechanic line ({@code Damage{} @Nearby{...}}).
  */
 public abstract class Targeter implements InlineSerializer<Targeter> {
 
     private boolean eye;
-    private VectorProvider offset;
+    private @Nullable VectorProvider offset;
+    private @NotNull String from = CastScope.SOURCE;
 
-    /**
-     * Default constructor for serializers.
-     */
     public Targeter() {
     }
 
@@ -44,56 +49,96 @@ public abstract class Targeter implements InlineSerializer<Targeter> {
     }
 
     /**
-     * Returns <code>true</code> if this targeter specifically targets an entity. Entity targeters also
-     * target locations by default, but that location will always be the entity's location.
-     *
-     * <p>
-     * There is 1 caveat, when {@link #getOffset()} is non-null, the targeted location will be different
-     * from the targeted entity.
-     *
-     * @return true if this targeter targets entities, not specific locations.
+     * The name of the context this targeter takes its origin from (defaults to
+     * {@code source}). Used by origin-based targeters like World and Nearby.
+     */
+    public @NotNull String getFrom() {
+        return from;
+    }
+
+    /**
+     * Returns {@code true} if this targeter specifically targets entities.
      */
     public abstract boolean isEntity();
 
     /**
-     * Public method to get every possible target for the mechanic using this targeter. The returned
-     * targets will have the offset ({@link #getOffset()}) already applied.
-     *
-     * @param cast The non-null origin of the cast.
-     * @return The list of targets.
+     * Resolves the targets for this targeter against the given scope.
      */
-    public final @NotNull Iterator<CastData> getTargets(CastData cast) {
-        Iterator<CastData> targets = getTargets0(cast);
+    public abstract @NotNull Context target(@NotNull CastScope scope);
 
-        // Only modify if we need to
-        if (offset != null || eye) {
-            return new Iterator<>() {
-                @Override
-                public boolean hasNext() {
-                    return targets.hasNext();
-                }
-
-                @Override
-                public CastData next() {
-                    CastData target = targets.next();
-
-                    Location origin = (eye && target.getTarget() != null) ? target.getTarget().getEyeLocation() : target.getTargetLocation();
-                    if (offset != null) {
-                        EntityTransform localTransform = target.getTarget() == null ? null : new EntityTransform(target.getTarget());
-                        Quaterniond localRotation = localTransform == null ? null : localTransform.getLocalRotation();
-                        origin.add(offset.provide(localRotation));
-                    }
-
-                    target.setTargetLocation(origin);
-                    return target;
-                }
-            };
-        }
-
-        return targets;
+    /**
+     * Returns a (possibly cheaper) equivalent targeter given that every consumer
+     * only needs the given target kind. Default returns {@code this}. Origin-based
+     * targeters override this to narrow their query (e.g. players only).
+     */
+    public @NotNull Targeter specialize(@NotNull TargetKind demand) {
+        return this;
     }
 
-    protected abstract Iterator<CastData> getTargets0(CastData cast);
+    /**
+     * A key identifying targeters that resolve the identical query, used by the
+     * optimizer to group statements that share a subject. {@code null} (default)
+     * means this targeter is not groupable (e.g. random/relative targeters).
+     */
+    public @Nullable Object groupKey() {
+        return null;
+    }
+
+    /**
+     * Builds an entity target, applying this targeter's eye and offset settings.
+     */
+    protected @NotNull Target entityTarget(@NotNull LivingEntity entity) {
+        Vector resolved = null;
+        if (offset != null) {
+            EntityTransform transform = new EntityTransform(entity);
+            Quaterniond rotation = transform.getLocalRotation();
+            resolved = offset.provide(rotation);
+        }
+        return new EntityTarget(entity, eye, resolved);
+    }
+
+    /**
+     * Builds a location target, applying this targeter's offset. Eye is ignored
+     * for pure-location targets.
+     */
+    protected @NotNull Target pointTarget(@NotNull Location location) {
+        if (offset != null)
+            location.add(offset.provide((Quaterniond) null));
+        return new PointTarget(location);
+    }
+
+    /**
+     * Re-wraps an existing context so this targeter's eye/offset settings apply.
+     * Returns the context unchanged when there are no modifiers.
+     */
+    protected @NotNull Context wrap(@NotNull Context context) {
+        if (!eye && offset == null)
+            return context;
+        java.util.List<Target> out = new java.util.ArrayList<>(context.size());
+        for (Target target : context) {
+            if (target.entity() != null)
+                out.add(entityTarget(target.entity()));
+            else
+                out.add(pointTarget(target.location()));
+        }
+        return Context.of(out);
+    }
+
+    /**
+     * Contributes the parent-arg keys every targeter accepts (read in {@link #applyParentArgs}).
+     * Subclasses override and append via {@code super.schemaBuilder()}.
+     */
+    protected ConfigSchema.Builder schemaBuilder() {
+        return ConfigSchema.builder()
+            .nested("Offset", VectorSerializer.class)
+            .boolKey("Eye")
+            .contextKey("From");
+    }
+
+    @Override
+    public final @NotNull ConfigSchema schema() {
+        return schemaBuilder().build();
+    }
 
     protected Targeter applyParentArgs(SerializeData data, Targeter targeter) throws SerializerException {
         VectorProvider offset = data.of("Offset").serialize(VectorSerializer.class).orElse(null);
@@ -104,6 +149,7 @@ public abstract class Targeter implements InlineSerializer<Targeter> {
 
         targeter.offset = offset;
         targeter.eye = data.of("Eye").getBool().orElse(false);
+        targeter.from = data.of("From").get(String.class).orElse(CastScope.SOURCE);
         return targeter;
     }
 }

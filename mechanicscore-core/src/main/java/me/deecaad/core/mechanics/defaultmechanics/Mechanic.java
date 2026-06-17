@@ -1,48 +1,28 @@
 package me.deecaad.core.mechanics.defaultmechanics;
 
-import com.cjcrafter.foliascheduler.TaskImplementation;
-import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.InlineSerializer;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
 import me.deecaad.core.file.serializers.ChanceSerializer;
-import me.deecaad.core.mechanics.CastData;
-import me.deecaad.core.mechanics.conditions.Condition;
-import me.deecaad.core.mechanics.targeters.Targeter;
-import me.deecaad.core.utils.RandomUtil;
-import org.bukkit.Location;
-
-import java.util.Iterator;
-import java.util.List;
-import java.util.function.Consumer;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
+import me.deecaad.core.mechanics.scope.TargetKind;
+import org.jetbrains.annotations.NotNull;
 
 /**
- * A Mechanic is the most powerful tool available to server-admins through config. A Mechanic is an
- * action, basically a block of code, that the admin writes in YAML format. These actions can be
- * executed conditionally using {@link Condition} and can get specifically targeted using
- * {@link Targeter}.
+ * A Mechanic is a single action an admin writes in config. The behavior lives in
+ * {@link #use0(CastScope, Target)}, which runs once per subject target. Targeting,
+ * conditions, repeat, delay, and chance are handled by the executor, not here.
  */
 public abstract class Mechanic implements InlineSerializer<Mechanic> {
 
-    public Targeter targeter;
-    public List<Condition> conditions;
-    private int repeatAmount;
-    private int repeatInterval;
-    private int delayBeforePlay;
-    private double chance;
+    private int repeatAmount = 1;
+    private int repeatInterval = 1;
+    private int delayBeforePlay = 0;
+    private double chance = 1.0;
 
-    /**
-     * Default constructor for serializer.
-     */
     public Mechanic() {
-    }
-
-    public Targeter getTargeter() {
-        return targeter;
-    }
-
-    public List<Condition> getConditions() {
-        return conditions;
     }
 
     public int getRepeatAmount() {
@@ -62,73 +42,49 @@ public abstract class Mechanic implements InlineSerializer<Mechanic> {
     }
 
     /**
-     * This method will trigger this Mechanic.
+     * Runs this mechanic on a single subject target.
      *
-     * <p>
-     * This method <i>probably shouldn't</i> be overridden. It handles the global repeat, delay,
-     * targeter, and condition code. The behavior of the specific Mechanic is handled by the protected
-     * {@link #use0(CastData)} method.
-     *
-     * @param cast The non-null cast data.
+     * @param scope the cast scope.
+     * @param subject the subject target this mechanic acts on (may be null).
      */
-    public void use(CastData cast) {
+    public abstract void use0(CastScope scope, Target subject);
 
-        // Chance to execute mechanic
-        if (!RandomUtil.chance(chance))
-            return;
-
-        // If there is no need to schedule event, skip the event process.
-        if (repeatAmount == 1 && repeatInterval == 1 && delayBeforePlay == 0) {
-            handleTargetersAndConditions(cast.clone()); // clone since targeters modify the cast
-            return;
-        }
-
-        // Schedule a repeating event to trigger the mechanic multiple times.
-        Location location;
-        if (cast.hasTargetLocation())
-            location = cast.getTargetLocation();
-        else
-            location = cast.getSourceLocation();
-
-        TaskImplementation<Void> task = MechanicsCore.getInstance().getFoliaScheduler().region(location).runAtFixedRate(new Consumer<>() {
-            int runs = 0;
-
-            @Override
-            public void accept(TaskImplementation<Void> scheduledTask) {
-                if (runs++ >= repeatAmount) {
-                    scheduledTask.cancel();
-                    return;
-                }
-
-                handleTargetersAndConditions(cast.clone()); // clone since targeters modify the cast
-            }
-        }, Math.max(delayBeforePlay, 1), Math.max(repeatInterval, 1));
-
-        // This allows developers to consume task ids from playing a Mechanic.
-        // Good for canceling tasks early.
-        if (cast.getTaskIdConsumer() != null)
-            cast.getTaskIdConsumer().accept(task);
-    }
-
-    protected void handleTargetersAndConditions(CastData cast) {
-
-        OUTER : for (Iterator<CastData> it = targeter.getTargets(cast); it.hasNext();) {
-            CastData target = it.next();
-            for (Condition condition : conditions)
-                if (!condition.isAllowed(target))
-                    continue OUTER;
-
-            use0(target);
-        }
+    /**
+     * The narrowest target kind this mechanic needs. Lets the optimizer pick a
+     * cheaper query when every consumer is satisfied by players. Defaults to
+     * {@code LIVING_ENTITY}; location-only mechanics should return {@code LOCATION}.
+     */
+    public TargetKind requiredTarget() {
+        return TargetKind.LIVING_ENTITY;
     }
 
     /**
-     * This method should be overridden to define the behavior of the Mechanic. For example, a Potion
-     * mechanic may use the {@link CastData#getTarget()} method to apply a potion effect.
-     *
-     * @param cast The non-null data including source/target information.
+     * Whether this is a per-target effect with no scheduling that is safe to
+     * group with siblings sharing the same subject query (e.g. particles/sounds).
      */
-    protected abstract void use0(CastData cast);
+    public boolean isBatchablePlayerEffect() {
+        return false;
+    }
+
+    /**
+     * Contributes the parent-arg keys every mechanic accepts (read in {@link #applyParentArgs}).
+     * Subclasses override and append: {@code return super.schemaBuilder().doubleKey("Damage");}.
+     * {@code Chance} is a lenient string key because {@link ChanceSerializer} also accepts
+     * percentages like {@code "50%"}. The chain runs through {@code super}, so a subclass cannot
+     * skip an ancestor's keys.
+     */
+    protected ConfigSchema.Builder schemaBuilder() {
+        return ConfigSchema.builder()
+            .intKey("Repeat_Amount").range(1, null)
+            .intKey("Repeat_Interval").range(1, null)
+            .intKey("Delay_Before_Play").range(0, null)
+            .stringKey("Chance");
+    }
+
+    @Override
+    public final @NotNull ConfigSchema schema() {
+        return schemaBuilder().build();
+    }
 
     public Mechanic applyParentArgs(SerializeData data, Mechanic mechanic) throws SerializerException {
         mechanic.repeatAmount = data.of("Repeat_Amount").assertRange(1, null).getInt().orElse(1);

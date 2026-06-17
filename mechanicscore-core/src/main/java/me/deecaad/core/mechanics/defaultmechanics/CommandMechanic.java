@@ -3,12 +3,13 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.placeholder.PlaceholderMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,9 +19,6 @@ public class CommandMechanic extends Mechanic {
     private boolean console;
     private PlaceholderMessage command;
 
-    /**
-     * Default constructor for serializer.
-     */
     public CommandMechanic() {
     }
 
@@ -38,10 +36,10 @@ public class CommandMechanic extends Mechanic {
     }
 
     @Override
-    public void use0(CastData cast) {
-        Player player = cast.getTarget().getType() == EntityType.PLAYER ? (Player) cast.getTarget() : null;
+    public void use0(CastScope scope, Target subject) {
+        Player player = subject != null && subject.entity() instanceof Player p ? p : null;
 
-        String command = LegacyComponentSerializer.legacySection().serialize(this.command.replaceAndDeserialize(cast));
+        String command = LegacyComponentSerializer.legacySection().serialize(this.command.replaceAndDeserialize(scope));
         if (console)
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
         else if (player != null)
@@ -50,7 +48,7 @@ public class CommandMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "command");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "command");
     }
 
     @Override
@@ -58,10 +56,20 @@ public class CommandMechanic extends Mechanic {
         return "https://cjcrafter.gitbook.io/mechanics/mechanics/command";
     }
 
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().boolKey("Console").stringKey("Command").required();
+    }
+
     @NotNull @Override
     public Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
         boolean console = data.of("Console").getBool().orElse(false);
         String command = data.of("Command").assertExists().get(String.class).get();
         return applyParentArgs(data, new CommandMechanic(console, command));
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.LOCATION;
     }
 }

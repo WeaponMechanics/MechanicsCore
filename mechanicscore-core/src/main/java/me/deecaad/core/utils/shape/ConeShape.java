@@ -18,12 +18,12 @@ public final class ConeShape implements Shape {
 
     /**
      * @param halfAngleRadians Half the cone's opening angle, in radians. {@code 0} = pure +Z;
-     *                         {@code π/2} = full hemisphere.
+     *                         {@code pi/2} = full hemisphere.
      * @param length Distance from the apex along the chosen direction at which the offset is placed.
      */
     public ConeShape(double halfAngleRadians, double length) {
         if (halfAngleRadians < 0 || halfAngleRadians > Math.PI)
-            throw new IllegalArgumentException("halfAngleRadians must be in [0, π]");
+            throw new IllegalArgumentException("halfAngleRadians must be in [0, pi]");
         if (length < 0)
             throw new IllegalArgumentException("length must be >= 0");
         this.halfAngleRadians = halfAngleRadians;

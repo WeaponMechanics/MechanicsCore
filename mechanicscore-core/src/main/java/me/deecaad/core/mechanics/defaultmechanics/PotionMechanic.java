@@ -3,8 +3,10 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.simple.RegistryValueSerializer;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.NamespacedKey;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -15,9 +17,6 @@ public class PotionMechanic extends Mechanic {
 
     private PotionEffect potion;
 
-    /**
-     * Default constructor for serializer.
-     */
     public PotionMechanic() {
     }
 
@@ -30,21 +29,25 @@ public class PotionMechanic extends Mechanic {
     }
 
     @Override
-    public void use0(CastData cast) {
-        if (cast.getTarget() == null)
+    public void use0(CastScope scope, Target subject) {
+        if (subject == null || subject.entity() == null)
             return;
-
-        cast.getTarget().addPotionEffect(potion);
+        subject.entity().addPotionEffect(potion);
     }
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "potion");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "potion");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/mechanics/potion";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().registryKey("Potion", PotionEffectType.class).required().intKey("Time").range(0, null).intKey("Level").range(0, null).enumKey("Particles", ParticleMode.class).boolKey("Hide_Icon");
     }
 
     @NotNull @Override
@@ -62,10 +65,6 @@ public class PotionMechanic extends Mechanic {
         return applyParentArgs(data, new PotionMechanic(effect));
     }
 
-    /**
-     * This enum makes it easier for users to select ambient/hide/show instead of using 2 separate
-     * booleans.
-     */
     public enum ParticleMode {
         HIDE,
         NORMAL,

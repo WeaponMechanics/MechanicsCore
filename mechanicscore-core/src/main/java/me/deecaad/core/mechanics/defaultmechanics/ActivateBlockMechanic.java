@@ -2,6 +2,7 @@ package me.deecaad.core.mechanics.defaultmechanics;
 
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.block.BlockState;
@@ -69,6 +70,13 @@ public abstract class ActivateBlockMechanic<T extends BlockState> extends Mechan
             T tileEntity = closestEntities.poll().tileEntity();
             blockFunction.accept(tileEntity);
         }
+    }
+
+    @Override
+    protected ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder()
+            .intKey("Max_Blocks").range(0, null)
+            .doubleKey("Search_Radius").range(0.0, null);
     }
 
     @Override

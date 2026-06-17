@@ -52,11 +52,8 @@ public class VectorSerializer implements Serializer<VectorProvider> {
             try {
                 randomLength = Double.parseDouble(input.substring(1));
             } catch (NumberFormatException ex) {
-                throw SerializerException.builder()
-                    .locationRaw(data.of().getLocation())
-                    .addMessage("Expected a number after 'r' for random length")
-                    .addMessage("Found value: " + input)
-                    .build();
+                throw data.exception(null, "Expected a number after 'r' for random length",
+                    "Found value: " + input);
             }
 
             return new RandomVectorProvider(randomLength, randomLength);
@@ -81,11 +78,8 @@ public class VectorSerializer implements Serializer<VectorProvider> {
 
             return new AnyVectorProvider(relative, new ImmutableVector(x, y, z));
         } catch (NumberFormatException ex) {
-            throw SerializerException.builder()
-                .locationRaw(data.of().getLocation())
-                .addMessage("Expected 3 numbers in left~up~forward format")
-                .addMessage("Found value: " + input)
-                .build();
+            throw data.exception(null, "Expected 3 numbers in left~up~forward format",
+                "Found value: " + input);
         }
     }
 }

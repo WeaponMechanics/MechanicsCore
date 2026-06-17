@@ -4,8 +4,9 @@ import com.cjcrafter.foliascheduler.util.MinecraftVersions;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
-import org.bukkit.Location;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
@@ -17,9 +18,6 @@ public class MaterialCategoryCondition extends Condition {
 
     private MaterialCategory category;
 
-    /**
-     * Default constructor for serializer.
-     */
     public MaterialCategoryCondition() {
     }
 
@@ -28,24 +26,25 @@ public class MaterialCategoryCondition extends Condition {
     }
 
     @Override
-    public boolean isAllowed0(CastData cast) {
-        Location targetLocation;
-        if (cast.hasTargetLocation())
-            targetLocation = cast.getTargetLocation();
-        else
-            targetLocation = cast.getTarget().getEyeLocation();
-
-        return category.test(targetLocation.getBlock());
+    public boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        if (subject == null)
+            return false;
+        return category.test(subject.location().getBlock());
     }
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "material_category");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "material_category");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/conditions/material-category";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().enumKey("Category", MaterialCategory.class).required();
     }
 
     @NotNull @Override
@@ -54,12 +53,6 @@ public class MaterialCategoryCondition extends Condition {
         return applyParentArgs(data, new MaterialCategoryCondition(category));
     }
 
-    /**
-     * This is used to determine what "kind" of block you are in. Sometimes, we want sounds to have an
-     * echo, but only when the player is in an enclosed space. Instead of running calculations every
-     * time we play the sound, we simply check if we are in cave_air (Vanilla generates caves using
-     * cave_air). This is also good for adventure maps, who can replace normal air with cave_air.
-     */
     public enum MaterialCategory {
 
         ALL {
@@ -102,5 +95,10 @@ public class MaterialCategoryCondition extends Condition {
         };
 
         public abstract boolean test(Block block);
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.LOCATION;
     }
 }

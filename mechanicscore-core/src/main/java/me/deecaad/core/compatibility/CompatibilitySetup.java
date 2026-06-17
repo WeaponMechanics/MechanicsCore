@@ -8,11 +8,11 @@ public class CompatibilitySetup {
     /**
      * Example return values:
      * 
-     * <pre>
+     * <pre>{@code
      * v1_8_R2
      * v1_11_R1
      * v1_13_R3
-     * </pre>
+     * }</pre>
      *
      * @return the server version as string
      */

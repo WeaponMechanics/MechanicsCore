@@ -4,7 +4,9 @@ import com.cjcrafter.foliascheduler.TaskImplementation;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.placeholder.PlaceholderMessage;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
@@ -19,9 +21,6 @@ public class ActionBarMechanic extends Mechanic {
     private PlaceholderMessage message;
     private int time;
 
-    /**
-     * Default constructor for serializer.
-     */
     public ActionBarMechanic() {
     }
 
@@ -43,19 +42,14 @@ public class ActionBarMechanic extends Mechanic {
     }
 
     @Override
-    public void use0(CastData cast) {
-        if (!(cast.getTarget() instanceof Player player))
+    public void use0(CastScope scope, Target subject) {
+        if (subject == null || !(subject.entity() instanceof Player player))
             return;
 
-        // Parse and send the message to the 1 player
-        // TODO this method would benefit from having access to the target list
-        Component component = message.replaceAndDeserialize(cast);
+        Component component = message.replaceAndDeserialize(scope);
         player.sendActionBar(component);
 
-        // Action Bars are *NOT* timed in vanilla Minecraft. To get around this,
-        // we resend the action bar on a timer. Since the action bar lasts for
-        // 40 ticks before fading, the interval we resend the action bar is 40
-        // ticks.
+        // Action bars are not timed in vanilla, so resend on a 40-tick interval.
         if (time > 40) {
             MechanicsCore.getInstance().getFoliaScheduler().entity(player).runAtFixedRate(new Consumer<>() {
                 int ticker = 0;
@@ -67,7 +61,6 @@ public class ActionBarMechanic extends Mechanic {
                         task.cancel();
                         return;
                     }
-
                     player.sendActionBar(component);
                 }
             }, 40 - (time % 40), 40);
@@ -76,7 +69,7 @@ public class ActionBarMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "actionbar");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "actionbar");
     }
 
     @Override
@@ -84,10 +77,25 @@ public class ActionBarMechanic extends Mechanic {
         return "https://cjcrafter.gitbook.io/mechanics/mechanics/action-bar";
     }
 
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().colorKey("Message").required().intKey("Time").range(40, null);
+    }
+
     @NotNull @Override
     public Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
         String message = data.of("Message").assertExists().getAdventure().get();
         int time = data.of("Time").assertRange(40, null).getInt().orElse(40);
         return applyParentArgs(data, new ActionBarMechanic(message, time));
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.PLAYER;
+    }
+
+    @Override
+    public boolean isBatchablePlayerEffect() {
+        return true;
     }
 }

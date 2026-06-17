@@ -1,5 +1,6 @@
 package me.deecaad.core.mechanics;
 
+import me.deecaad.core.mechanics.targeters.NearbyEntitiesTargeter;
 import me.deecaad.core.mechanics.targeters.ScatterTargeter;
 import me.deecaad.core.mechanics.targeters.ServerPlayersTargeter;
 import me.deecaad.core.mechanics.targeters.SourceTargeter;
@@ -27,6 +28,7 @@ public final class Targeters {
     public static final @NotNull MutableRegistry<Targeter> REGISTRY
         = new MutableRegistry.SimpleMutableRegistry<>(new HashMap<>());
 
+    public static final @NotNull Targeter NEARBY_ENTITIES = register(new NearbyEntitiesTargeter());
     public static final @NotNull Targeter SCATTER = register(new ScatterTargeter());
     public static final @NotNull Targeter SERVER_PLAYERS = register(new ServerPlayersTargeter());
     public static final @NotNull Targeter SOURCE = register(new SourceTargeter());

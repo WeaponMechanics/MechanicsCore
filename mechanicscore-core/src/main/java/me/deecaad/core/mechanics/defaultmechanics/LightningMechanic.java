@@ -3,7 +3,9 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -14,9 +16,6 @@ public class LightningMechanic extends Mechanic {
 
     private boolean isEffect;
 
-    /**
-     * Default constructor for serializer
-     */
     public LightningMechanic() {
     }
 
@@ -30,7 +29,7 @@ public class LightningMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "lightning");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "lightning");
     }
 
     @Override
@@ -39,12 +38,13 @@ public class LightningMechanic extends Mechanic {
     }
 
     @Override
-    protected void use0(CastData cast) {
-        Location strikeLocation = cast.getTargetLocation();
-        World world = cast.getTargetWorld();
-        if (strikeLocation == null || world == null) {
+    public void use0(CastScope scope, Target subject) {
+        if (subject == null)
             return;
-        }
+        Location strikeLocation = subject.location();
+        World world = subject.world();
+        if (world == null)
+            return;
 
         if (isEffect)
             world.strikeLightningEffect(strikeLocation);
@@ -52,10 +52,19 @@ public class LightningMechanic extends Mechanic {
             world.strikeLightning(strikeLocation);
     }
 
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().boolKey("Effect");
+    }
+
     @NotNull @Override
     public Mechanic serialize(@NotNull SerializeData data) throws SerializerException {
         boolean isEffect = data.of("Effect").getBool().orElse(false);
-
         return applyParentArgs(data, new LightningMechanic(isEffect));
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.LOCATION;
     }
 }

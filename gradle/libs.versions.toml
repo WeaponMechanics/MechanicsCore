@@ -28,6 +28,8 @@ xSeries = "13.7.0"
 
 # Testing dependencies
 junit = "6.1.0"
+mockito = "5.14.2"
+mockBukkit = "4.110.0"
 
 
 [libraries]
@@ -66,3 +68,5 @@ junitApi              = { module = "org.junit.jupiter:junit-jupiter-api", versio
 junitParams           = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
 junitEngine           = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
 junitPlatformLauncher = { module = "org.junit.platform:junit-platform-launcher" }
+mockito               = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockBukkit            = { module = "org.mockbukkit.mockbukkit:mockbukkit-v1.21", version.ref = "mockBukkit" }

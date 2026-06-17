@@ -1,20 +1,24 @@
 package me.deecaad.core.file;
 
 import me.deecaad.core.MechanicsLogger;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
+import me.deecaad.core.diagnostic.Diagnostic;
+import me.deecaad.core.diagnostic.DiagnosticRenderer;
+import me.deecaad.core.diagnostic.Severity;
+import me.deecaad.core.file.verify.ConfigSchema;
+import me.deecaad.core.file.verify.SchemaValidator;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class FileReader {
 
     private final MechanicsLogger debug;
-    private final List<PathToSerializer> pathToSerializers;
-    private final List<NestedPathToSerializer> nestedPathToSerializers;
     private final Map<String, Serializer<?>> serializers;
     private final List<ValidatorData> validatorDatas;
     private final Map<String, IValidator> validators;
@@ -23,8 +27,6 @@ public class FileReader {
         this.debug = debug;
         this.serializers = new HashMap<>();
         this.validators = new HashMap<>();
-        this.pathToSerializers = new ArrayList<>();
-        this.nestedPathToSerializers = new ArrayList<>();
         this.validatorDatas = new ArrayList<>();
         addSerializers(serializers);
         addValidators(validators);
@@ -131,7 +133,7 @@ public class FileReader {
 
         // Only run this once
         // That's why fillAllFilesLoop method is required
-        usePathToSerializersAndValidators(filledMap);
+        useValidators(filledMap);
 
         return filledMap;
     }
@@ -177,22 +179,39 @@ public class FileReader {
      * @return the map with file's configurations
      */
     public @NotNull Configuration fillOneFile(File file) {
+        SnakeYamlConfig configuration;
+        try {
+            configuration = SnakeYamlConfig.ofFile(file);
+        } catch (IOException | InvalidConfigurationException ex) {
+            debug.warning("Failed to load " + file + "!", ex);
+            return new FastConfiguration();
+        }
+        return fillOneFile(configuration, file);
+    }
+
+    /**
+     * Fills one already-loaded config into a map and returns its configuration. The {@code file} is
+     * used only for diagnostics. Callers that pre-process the raw config (e.g. template expansion)
+     * use this overload so the same parsed config drives serialization.
+     *
+     * @param configuration the loaded config
+     * @param file the source file (for diagnostics)
+     * @return the map with file's configurations
+     */
+    public @NotNull Configuration fillOneFile(SnakeYamlConfig configuration, File file) {
         Configuration filledMap = new FastConfiguration();
 
         // If a serializer is found, it's path is saved here. Any
         // NON SERIALIZER variable within a serializer is then "skipped"
         // Meaning booleans, numbers, etc. are skipped
         String startsWithDeny = null;
-        Serializer<?> savedSerializer = null;
 
-        YamlConfiguration configuration = YamlConfiguration.loadConfiguration(file);
-        for (String key : configuration.getKeys(true)) {
+        for (String key : configuration.getKeys(null, true)) {
 
             // Remove the starsWithDeny if the key does no longer start with it
             // Booleans, numbers, etc. can then be saved again
             if (startsWithDeny != null && !key.startsWith(startsWithDeny)) {
                 startsWithDeny = null;
-                savedSerializer = null;
             }
 
             String[] keySplit = key.split("\\.");
@@ -219,7 +238,7 @@ public class FileReader {
                     }
                 }
 
-                // Check if this key is a serializer, and that it isn't the header and handle pathTo
+                // Check if this key is a serializer, and that it isn't the header
                 Serializer<?> serializer = this.serializers.get(lastKey);
                 if (serializer != null) {
 
@@ -231,60 +250,51 @@ public class FileReader {
                         continue;
                     }
 
-                    if (!serializer.shouldSerialize(new SerializeData(file, key, new BukkitConfig(configuration)))) {
+                    if (!serializer.shouldSerialize(new SerializeData(file, key, configuration))) {
                         debug.finest("Skipping " + key + " due to skip");
                         continue;
                     }
 
-                    String pathTo = serializer.useLater(configuration, key);
-                    if (serializer.canUsePathTo() && pathTo != null) {
-                        pathToSerializers.add(new PathToSerializer(serializer, key, pathTo));
-                    } else {
-                        try {
+                    try {
 
-                            // SerializerException can be thrown whenever the
-                            // user input an invalid value. We should log the
-                            // exception.
-                            Object valid = serializer.serialize(new SerializeData(file, key, new BukkitConfig(configuration)));
+                        // SerializerException can be thrown whenever the
+                        // user input an invalid value. We should log the
+                        // exception.
+                        Object valid = serializeWithSchema(serializer, new SerializeData(file, key, configuration));
+
+                        // GATED means the schema already reported a hard error and skipped construction.
+                        // Treat the key as failed (do not store), without logging a second time.
+                        if (valid != GATED)
                             filledMap.set(key, valid);
 
-                            // Only update the startsWithDeny if this is the "main serializer"
-                            // If this serialization happened within serializer (meaning this is child serializer),
-                            // startsWithDeny is not null
-                            if (startsWithDeny == null) {
-                                startsWithDeny = key;
-                                savedSerializer = serializer;
-                            }
-
-                        } catch (PathToSerializerException ex) {
-                            nestedPathToSerializers.add(new NestedPathToSerializer(serializer, key, ex));
-                            if (startsWithDeny == null) {
-                                startsWithDeny = key;
-                                savedSerializer = serializer;
-                            }
-                        } catch (SerializerException ex) {
-                            ex.log(debug);
-                            if (startsWithDeny == null) {
-                                startsWithDeny = key;
-                                savedSerializer = serializer;
-                            }
-                        } catch (Exception ex) {
-
-                            // Any Exception other than SerializerException
-                            // should be fixed by the dev of the serializer.
-                            throw new InternalError("Unhandled caught exception from serializer " + serializer + "!", ex);
+                        // Only update the startsWithDeny if this is the "main serializer"
+                        // If this serialization happened within serializer (meaning this is child serializer),
+                        // startsWithDeny is not null
+                        if (startsWithDeny == null) {
+                            startsWithDeny = key;
                         }
+
+                    } catch (SerializerException ex) {
+                        DiagnosticRenderer.log(debug, configuration.enrich(ex.toDiagnostic()));
+                        if (startsWithDeny == null) {
+                            startsWithDeny = key;
+                        }
+                    } catch (Exception ex) {
+
+                        // Any Exception other than SerializerException
+                        // should be fixed by the dev of the serializer.
+                        throw new InternalError("Unhandled caught exception from serializer " + serializer + "!", ex);
                     }
                     continue;
                 }
             }
 
-            if (startsWithDeny != null && key.startsWith(startsWithDeny) && (savedSerializer == null || !savedSerializer.letPassThrough(key))) {
+            if (startsWithDeny != null && key.startsWith(startsWithDeny)) {
                 continue;
             }
 
             // We don't want to store these
-            if (configuration.isConfigurationSection(key))
+            if (configuration.get(key) instanceof Map)
                 continue;
 
             Object object = configuration.get(key);
@@ -295,35 +305,46 @@ public class FileReader {
     }
 
     /**
-     * Uses all path to serializers and validators. This should be used AFTER normal serialization.
+     * Sentinel returned by {@link #serializeWithSchema} when the schema gate already reported a hard
+     * error and construction was skipped. The caller treats the key as failed without re-logging.
+     */
+    static final Object GATED = new Object();
+
+    /**
+     * Serializes through {@link Serializer#serialize(SerializeData)} (the constructor). When the
+     * serializer declares a {@link Serializer#schema()}, the schema is validated first and its
+     * diagnostics are logged. The schema is the gate: if it found a hard error the object cannot be
+     * built, so this returns {@link #GATED} instead of calling {@code serialize}, which would just
+     * re-report the same problem. Unknown keys are warnings, so they never gate.
+     */
+    private Object serializeWithSchema(Serializer<?> serializer, SerializeData data) throws SerializerException {
+        ConfigSchema schema = serializer.schema();
+        if (schema != null) {
+            List<Diagnostic> diagnostics = new ArrayList<>();
+            SchemaValidator.validate(schema, data, diagnostics);
+            boolean blocked = false;
+            for (Diagnostic diagnostic : diagnostics) {
+                DiagnosticRenderer.log(debug, data.getConfig().enrich(diagnostic));
+                blocked |= diagnostic.severity() == Severity.ERROR;
+            }
+            if (blocked)
+                return GATED;
+        }
+        return serializer.serialize(data);
+    }
+
+    /**
+     * Runs all validators. This should be used AFTER normal serialization (validators inspect the
+     * fully serialized config).
      *
      * @param filledMap the filled mappings
-     * @return the map with used path to serializers and validators
+     * @return the map after running validators
      */
-    public Configuration usePathToSerializersAndValidators(Configuration filledMap) {
+    public Configuration useValidators(Configuration filledMap) {
 
-        // Handle nested-path-to serializers
-        for (NestedPathToSerializer nestedPathTo : nestedPathToSerializers) {
-            try {
-                SerializeData data = new SerializeData(nestedPathTo.ex.getSerializeData().getFile(), nestedPathTo.path, nestedPathTo.ex.getSerializeData().getConfig());
-                data.setPathToConfig(filledMap);
-                Object serialized = data.of().serialize(nestedPathTo.serializer);
-                filledMap.set(nestedPathTo.path, serialized);
-            } catch (SerializerException ex) {
-                ex.log(debug);
-            }
-        }
-
-        // Handle path-to serializers
-        for (PathToSerializer pathToSerializer : pathToSerializers) {
-            pathToSerializer.serializer.tryPathTo(filledMap, pathToSerializer.pathWhereToStore, pathToSerializer.pathTo);
-        }
-
-        // Handle validators
         for (ValidatorData validatorData : validatorDatas) {
 
-            SerializeData data = new SerializeData(validatorData.file, validatorData.path, new BukkitConfig(validatorData.configurationSection));
-            data.setPathToConfig(filledMap);
+            SerializeData data = new SerializeData(validatorData.file, validatorData.path, validatorData.config);
 
             if (!validatorData.validator.shouldValidate(data)) {
                 debug.fine("Skipping " + validatorData.path + " due to skip");
@@ -333,36 +354,12 @@ public class FileReader {
             try {
                 validatorData.validator.validate(filledMap, data);
             } catch (SerializerException ex) {
-                ex.log(debug);
+                DiagnosticRenderer.log(debug, validatorData.config.enrich(ex.toDiagnostic()));
             } catch (Exception ex) {
                 throw new InternalError("Unhandled caught exception from validator " + validatorData.validator + "!", ex);
             }
         }
         return filledMap;
-    }
-
-    /**
-     * Stores temporary data to help with the 'Path To' feature of serializers, specifically when used
-     * nested in {@link SerializeData}.
-     *
-     * @param serializer Type of the serialized object.
-     * @param path The "base-key" location of the outer serialized object.
-     * @param ex The failure which contains copy-from and paste-to locations.
-     */
-    public record NestedPathToSerializer(Serializer<?> serializer, String path, PathToSerializerException ex) {
-    }
-
-    /**
-     * Stores temporary data to help with the 'Path To' feature of serializers. This is saved, so we can
-     * do a "second loop" of serialization which can re-use values that have already been serialized.
-     * This is useful for REALLY long configuration sections, so they don't need to be copy-pasted
-     * between multiple files (just put it once!)
-     *
-     * @param serializer Type of the serialized object.
-     * @param pathWhereToStore Where in config should we store the value.
-     * @param pathTo Where should we pull the values from.
-     */
-    public record PathToSerializer(Serializer<?> serializer, String pathWhereToStore, String pathTo) {
     }
 
     /**
@@ -372,9 +369,9 @@ public class FileReader {
      *
      * @param validator Which validator to use.
      * @param file Which file the config is from.
-     * @param configurationSection The configuration section in question.
+     * @param config The config the section belongs to.
      * @param path The string path to the configuration section.
      */
-    public record ValidatorData(IValidator validator, File file, ConfigurationSection configurationSection, String path) {
+    public record ValidatorData(IValidator validator, File file, ConfigLike config, String path) {
     }
 }

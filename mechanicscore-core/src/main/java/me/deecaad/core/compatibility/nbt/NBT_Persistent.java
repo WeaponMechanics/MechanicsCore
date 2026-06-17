@@ -8,9 +8,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Due to class loading issues, this logic (that was originally implemented in
- * {@link NBTCompatibility}) is now implemented here. This way, on 1.12.2,
- * {@link PersistentDataType} is not loaded.
+ * Isolates {@link PersistentDataType} usage so it is not class-loaded on 1.12.2, where it does not
+ * exist. {@link NBTCompatibility} must not reference it directly.
  */
 public abstract class NBT_Persistent implements NBTCompatibility {
 

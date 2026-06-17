@@ -1,10 +1,9 @@
 package me.deecaad.core.file;
 
-import me.deecaad.core.utils.SerializerUtil;
-import me.deecaad.core.utils.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -52,7 +51,7 @@ public class MapConfigLike implements ConfigLike {
 
     @Override
     public Object get(String key, Object def) {
-        return config.getOrDefault(normalizeString(key), new Holder(def, 0)).value;
+        return config.getOrDefault(normalizeString(key), new Holder(def, 0, -1)).value;
     }
 
     @Override
@@ -71,21 +70,24 @@ public class MapConfigLike implements ConfigLike {
     }
 
     @Override
-    public String getLocation(File localFile, String localPath) {
-        Holder holder = config.get(normalizeString(localPath));
-        if (holder == null)
-            return SerializerUtil.foundAt(file, path);
-
-        String indent = "    ";
-        return SerializerUtil.foundAt(file, path) + "\n"
-            + indent + fullLine + "\n"
-            + StringUtil.repeat(" ", indent.length() + holder.index()) + "^";
+    public Collection<String> getKeys(String path, boolean deep) {
+        return List.copyOf(config.keySet());
     }
 
     public @NotNull String normalizeString(@NotNull String str) {
+        return normalizeKey(str);
+    }
+
+    /**
+     * The canonical config-key normalization (lowercase, strip spaces and underscores). The
+     * unknown-key diff in SchemaValidator must use this exact rule so inline keys match how they
+     * are stored here.
+     */
+    public static @NotNull String normalizeKey(@NotNull String str) {
         return str.toLowerCase(Locale.ROOT).replace(" ", "").replace("_", "");
     }
 
-    public record Holder(Object value, int index) {
+    /** {@code index} is the value's column; {@code keyIndex} is the key's column (-1 if none, e.g. a list element). */
+    public record Holder(Object value, int index, int keyIndex) {
     }
 }

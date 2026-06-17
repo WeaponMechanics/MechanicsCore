@@ -4,6 +4,7 @@ import dev.jorel.commandapi.SuggestionInfo;
 import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.jorel.commandapi.arguments.CustomArgument;
 import dev.jorel.commandapi.arguments.GreedyStringArgument;
+import me.deecaad.core.file.ErrorLocation;
 import me.deecaad.core.file.SimpleSerializer;
 import org.bukkit.command.CommandSender;
 
@@ -153,7 +154,7 @@ public class CustomMapArgument extends CustomArgument<Map<String, Object>, Strin
             Object deserialized;
             try {
                 // Let your serializer parse the string
-                deserialized = serializer.deserialize(valueString, "command input");
+                deserialized = serializer.deserialize(valueString, ErrorLocation.UNKNOWN);
             } catch (Exception ex) {
                 // In your code, you might catch SerializerException specifically
                 // But here we just catch everything

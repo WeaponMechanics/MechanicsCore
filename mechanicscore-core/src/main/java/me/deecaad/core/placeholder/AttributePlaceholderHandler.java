@@ -21,7 +21,7 @@ public class AttributePlaceholderHandler extends NumericPlaceholderHandler {
     }
 
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), attribute.getKey().getKey());
+        return new NamespacedKey(MechanicsCore.NAMESPACE, attribute.getKey().getKey());
     }
 
     @Override

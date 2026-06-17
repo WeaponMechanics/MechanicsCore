@@ -4,10 +4,14 @@ import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.MapConfigLike;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.simple.RegistryValueSerializer;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.BlockType;
+import org.bukkit.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,13 +22,9 @@ import java.util.Set;
 
 public class OnGroundCondition extends Condition {
 
-    // If null -> "any block"
     private @Nullable Set<BlockType> blocks;
     private double distanceFromGround;
 
-    /**
-     * Default constructor for serializer.
-     */
     public OnGroundCondition() {
     }
 
@@ -34,24 +34,27 @@ public class OnGroundCondition extends Condition {
     }
 
     @Override
-    protected boolean isAllowed0(CastData cast) {
-        if (cast.getTarget() == null) return false;
-        if (!cast.getTarget().isOnGround()) return false;
+    protected boolean isAllowed0(@NotNull CastScope scope, @Nullable Target subject) {
+        if (subject == null || subject.entity() == null)
+            return false;
+        LivingEntity entity = subject.entity();
+        if (!entity.isOnGround())
+            return false;
 
-        // No block filter -> any block is acceptable
-        if (blocks == null) return true;
+        if (blocks == null)
+            return true;
 
-        var loc = cast.getTarget().getLocation();
-        if (loc.getWorld() == null) return false;
+        Location loc = entity.getLocation();
+        if (loc.getWorld() == null)
+            return false;
 
-        // Just below the feet
         var standingMat = loc.clone().subtract(0.0, distanceFromGround, 0.0).getBlock().getType();
         return blocks.contains(standingMat.asBlockType());
     }
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "onground");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "onground");
     }
 
     @Override
@@ -60,17 +63,17 @@ public class OnGroundCondition extends Condition {
     }
 
     @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().doubleKey("distanceFromGround").range(0.0, null).rawListKey("blocks");
+    }
+
+    @Override
     public @NotNull Condition serialize(@NotNull SerializeData data) throws SerializerException {
-        // When sampling the block beneath the target, using a 0.0 offset reads the block at the feet position
-        // (often AIR). A small positive offset samples slightly below the feet, which resolves to the block
-        // the entity is standing on (works better for slabs/carpets/snow layers), so defaulting to 0.01
-        // should do the trick
         double distance = data.of("distanceFromGround").assertRange(0.0, null).getDouble().orElse(0.01);
 
         Optional<List<?>> opt = data.of("blocks").get(List.class).map(l -> (List<?>) l);
         List<?> raw = opt.orElse(null);
 
-        // Missing key or explicitly empty list then we match ANY block
         if (raw == null || raw.isEmpty()) {
             return applyParentArgs(data, new OnGroundCondition(null, distance));
         }
@@ -83,11 +86,10 @@ public class OnGroundCondition extends Condition {
 
         for (MapConfigLike.Holder holder : materials) {
             String token = String.valueOf(holder.value());
-            parsed.addAll(serializer.deserialize(token, data.of("blocks").getLocation()));
+            parsed.addAll(serializer.deserialize(token, data.of("blocks").errorLocation()));
         }
 
         if (parsed.isEmpty()) {
-            // Can happen if a tag exists but resolves to 0 blocks
             throw data.exception("blocks",
                     "The 'blocks' list for on_ground resolved to nothing. Double-check your block ids/tags.");
         }

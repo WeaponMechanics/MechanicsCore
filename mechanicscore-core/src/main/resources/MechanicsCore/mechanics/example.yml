@@ -1,0 +1,23 @@
+# Global mechanic blocks.
+#
+# Every top-level key here is a reusable block, callable by name from any
+# Mechanics list (in this plugin or any plugin built on MechanicsCore). Blocks
+# share the cast's variable scope, so set the variables a block reads before you
+# call it. Blocks may call other blocks and may call themselves (recursion is
+# bounded by a configurable call-depth budget).
+#
+# Example usage from a normal config:
+#   Mechanics:
+#     - '$bounces = 5'
+#     - 'ChainLightning{}'
+
+ChainLightning:
+  Mechanics:
+    - '$bounces = $bounces - 1'
+    - 'Lightning{} @target'
+    - 'ChainLightning{} @NearbyEntities{Radius=5.0} ?Check{If=$bounces > 0}'
+
+Burst:
+  Mechanics:
+    - 'Sound{Sound=ENTITY_GENERIC_EXPLODE} @World{World=world}'
+    - 'Sound{Sound=ENTITY_LIGHTNING_BOLT_THUNDER} @World{World=world}'

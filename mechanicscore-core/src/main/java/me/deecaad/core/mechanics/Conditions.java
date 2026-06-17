@@ -1,6 +1,7 @@
 package me.deecaad.core.mechanics;
 
 import me.deecaad.core.mechanics.conditions.BiomeCondition;
+import me.deecaad.core.mechanics.conditions.CheckCondition;
 import me.deecaad.core.mechanics.conditions.Condition;
 import me.deecaad.core.mechanics.conditions.EntityTypeCondition;
 import me.deecaad.core.mechanics.conditions.GlidingCondition;
@@ -34,6 +35,7 @@ public final class Conditions {
         = new MutableRegistry.SimpleMutableRegistry<>(new HashMap<>());
 
     public static final @NotNull Condition BIOME = register(new BiomeCondition());
+    public static final @NotNull Condition CHECK = register(new CheckCondition());
     public static final @NotNull Condition ENTITY_TYPE = register(new EntityTypeCondition());
     public static final @NotNull Condition GLIDING = register(new GlidingCondition());
     public static final @NotNull Condition HAS_PERMISSION = register(new HasPermissionCondition());

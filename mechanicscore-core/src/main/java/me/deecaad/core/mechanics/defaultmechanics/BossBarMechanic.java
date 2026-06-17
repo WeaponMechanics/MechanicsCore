@@ -3,8 +3,10 @@ package me.deecaad.core.mechanics.defaultmechanics;
 import me.deecaad.core.MechanicsCore;
 import me.deecaad.core.file.SerializeData;
 import me.deecaad.core.file.SerializerException;
+import me.deecaad.core.file.verify.ConfigSchema;
 import me.deecaad.core.file.serializers.ChanceSerializer;
-import me.deecaad.core.mechanics.CastData;
+import me.deecaad.core.mechanics.scope.CastScope;
+import me.deecaad.core.mechanics.scope.Target;
 import me.deecaad.core.placeholder.PlaceholderMessage;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
@@ -53,13 +55,11 @@ public class BossBarMechanic extends Mechanic {
     }
 
     @Override
-    public void use0(CastData cast) {
-        if (!(cast.getTarget() instanceof Player player))
+    public void use0(CastScope scope, Target subject) {
+        if (subject == null || !(subject.entity() instanceof Player player))
             return;
 
-        // Parse and send the message to the 1 player
-        // TODO this method would benefit from having access to the target list
-        Component chat = title.replaceAndDeserialize(cast);
+        Component chat = title.replaceAndDeserialize(scope);
         BossBar bossBar = BossBar.bossBar(chat, progress, color, style);
 
         player.showBossBar(bossBar);
@@ -68,12 +68,17 @@ public class BossBarMechanic extends Mechanic {
 
     @Override
     public @NotNull NamespacedKey getKey() {
-        return new NamespacedKey(MechanicsCore.getInstance(), "bossbar");
+        return new NamespacedKey(MechanicsCore.NAMESPACE, "bossbar");
     }
 
     @Override
     public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/mechanics/boss-bar";
+    }
+
+    @Override
+    protected @NotNull ConfigSchema.Builder schemaBuilder() {
+        return super.schemaBuilder().colorKey("Title").required().enumKey("Color", BossBar.Color.class).enumKey("Style", BossBar.Overlay.class).stringKey("Progress").intKey("Time").range(0, null);
     }
 
     @NotNull @Override
@@ -83,7 +88,16 @@ public class BossBarMechanic extends Mechanic {
         BossBar.Overlay style = data.of("Style").getEnum(BossBar.Overlay.class).orElse(BossBar.Overlay.PROGRESS);
         float progress = (float) (double) data.of("Progress").serialize(ChanceSerializer.class).orElse(1.0);
         int time = data.of("Time").assertRange(0, null).getInt().orElse(100);
-
         return applyParentArgs(data, new BossBarMechanic(title, color, style, progress, time));
+    }
+
+    @Override
+    public me.deecaad.core.mechanics.scope.TargetKind requiredTarget() {
+        return me.deecaad.core.mechanics.scope.TargetKind.PLAYER;
+    }
+
+    @Override
+    public boolean isBatchablePlayerEffect() {
+        return true;
     }
 }

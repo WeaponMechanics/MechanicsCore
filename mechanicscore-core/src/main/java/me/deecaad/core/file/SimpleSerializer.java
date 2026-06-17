@@ -26,10 +26,10 @@ public interface SimpleSerializer<T> extends Serializer<T> {
      * Parses an object from a string.
      *
      * @param data The string to parse.
-     * @param errorLocation The location of the error in the file.
+     * @param errorLocation The structured source position used when an error is thrown.
      * @return The parsed object.
      */
-    @NotNull T deserialize(@NotNull String data, @NotNull String errorLocation) throws SerializerException;
+    @NotNull T deserialize(@NotNull String data, @NotNull ErrorLocation errorLocation) throws SerializerException;
 
     /**
      * Returns the set of all possible values that can be parsed by this serializer.
@@ -46,13 +46,10 @@ public interface SimpleSerializer<T> extends Serializer<T> {
     default @NotNull T serialize(@NotNull SerializeData data) throws SerializerException {
         // SimpleSerializers expect only one string value
         if (data.of().is(List.class)) {
-            throw SerializerException.builder()
-                .locationRaw(data.of().getLocation())
-                .addMessage("Expected a single " + getTypeName() + ", but found a list")
-                .build();
+            throw data.exception(null, "Expected a single " + getTypeName() + ", but found a list");
         }
 
         String value = data.of().assertExists().get(Object.class).get().toString();
-        return deserialize(value, data.of().getLocation());
+        return deserialize(value, data.of().errorLocation());
     }
 }
