@@ -13,14 +13,14 @@ import java.util.logging.Level;
  * compiler-style gutter snippet and logs it as one block via the plugin Debugger. The whole snippet
  * is one log call so the {@code [time LEVEL]: [Plugin]} prefix shows once, not per line.
  *
- * <pre>
+ * <pre>{@code
  * unknown key 'Hi'
  *     AK_47.yml:5:7 (AK_47->Info->Weapon_Item->Hi)
  *   3 |     Weapon_Item:
  *   4 |       Type: "FEATHER"
  *   5 |       Hi: "FEATHER"
  *     |       ^^ did you mean 'Type'?
- * </pre>
+ * }</pre>
  *
  * Severity is conveyed by the log level and ANSI color, so the message carries no "Error:"/"Warning:"
  * prefix. Color is emitted for the console; the server's log file appender strips the codes. Diagnostics

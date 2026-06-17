@@ -127,14 +127,12 @@ public final class DistanceUtil {
      * server would send clients packets. It is a good practice to limit how far away you send your
      * packet. <blockquote>
      * 
-     * <pre>
-     * <code>
-     *     Location origin = /* not shown *&#47;;
-     *     Object packet = /* not shown *&#47;;
+     * <pre>{@code
+     *     Location origin = ...;  // not shown
+     *     Object packet = ...;    // not shown
      *     int distance = Math.min(DistanceUtils.getRange(), 50);
-     *     DistanceUtils.sendPacket(origin, packet, distance)
-     * </code>
-     * </pre>
+     *     DistanceUtils.sendPacket(origin, packet, distance);
+     * }</pre>
      * 
      * </blockquote>
      *

@@ -16,13 +16,13 @@ import java.util.List;
  *
  * <p>Modifier methods ({@code required}, {@code range}, {@code condition}) apply to
  * the most recently added key, allowing fluent one-liners:
- * <pre>
+ * <pre>{@code
  * ConfigSchema.builder()
  *     .nested("Offset", Vec2Serializer.class)
  *     .intKey("Length").required().range(0, null)
  *     .doubleKey("R").range(0.0, 1.0)
  *     .build();
- * </pre>
+ * }</pre>
  */
 public record ConfigSchema(@NotNull List<KeySpec> keys, boolean allowUnknown) {
 

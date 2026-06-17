@@ -17,6 +17,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -36,46 +37,71 @@ public class MechanicSerializer implements Serializer<Program> {
         this(Set.of(), Set.of());
     }
 
-    public MechanicSerializer(@NotNull Set<String> providedContexts) {
-        this(providedContexts, Set.of());
-    }
-
-    /**
-     * @param providedContexts  Context names the host seeds into the {@link me.deecaad.core.mechanics.scope.CastScope}
-     *                          before running this list, beyond {@code source}/{@code target}. Sema checks
-     *                          {@code @context} references against them, so the host must seed the same names
-     *                          at cast time. A host with extra contexts constructs this directly and serializes
-     *                          {@code data.move("Mechanics")} (the reflective {@code serialize(Class)} path uses
-     *                          the no-arg form).
-     * @param providedVariables {@code $variable} names the host seeds before running. A {@code $ref} that is
-     *                          neither provided nor assigned in the list is a hard error.
-     */
-    public MechanicSerializer(@NotNull Set<String> providedContexts, @NotNull Set<String> providedVariables) {
+    private MechanicSerializer(@NotNull Set<String> providedContexts, @NotNull Set<String> providedVariables) {
         this.providedContexts = Set.copyOf(providedContexts);
         this.providedVariables = Set.copyOf(providedVariables);
     }
 
     /**
-     * Sugar for a host serializer nesting a {@code Mechanics:} list that seeds extra contexts at cast
-     * time. Compiles {@code data.move("Mechanics")} declaring the given context names (beyond
-     * {@code source}/{@code target}), so {@code @context} references in the list are checked. The host
-     * must seed the same names into the {@link me.deecaad.core.mechanics.scope.CastScope} when it runs.
+     * Starts a serializer that declares the vocabulary a host seeds into the
+     * {@link me.deecaad.core.mechanics.scope.CastScope} before running this list. Sema checks
+     * {@code @context}/{@code $variable} references against the declared names, so the host must seed
+     * the same names at cast time. Hand the built serializer to the call site that reads the list:
      *
-     * <pre>
-     * Program mechanics = MechanicSerializer.compile(data, "Entities", "Blocks", "Up");
-     * </pre>
+     * <pre>{@code
+     * Program mechanics = data.of("Mechanics").serialize(
+     *     MechanicSerializer.builder()
+     *         .context("Victim")
+     *         .variable("damage")
+     *         .build()
+     * ).orElseThrow();
+     * }</pre>
      */
-    public static @NotNull Program compile(@NotNull SerializeData data, @NotNull String... providedContexts) throws SerializerException {
-        return new MechanicSerializer(Set.of(providedContexts)).serialize(data.move("Mechanics"));
+    public static @NotNull Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Declares the extra contexts and {@code $variables} a {@code Mechanics:} list resolves against,
+     * beyond the {@code source}/{@code target} builtins, at the call site that serializes it.
+     */
+    public static final class Builder {
+
+        private final Set<String> contexts = new LinkedHashSet<>();
+        private final Set<String> variables = new LinkedHashSet<>();
+
+        private Builder() {
+        }
+
+        public @NotNull Builder context(@NotNull String name) {
+            contexts.add(name);
+            return this;
+        }
+
+        public @NotNull Builder contexts(@NotNull String... names) {
+            for (String name : names)
+                contexts.add(name);
+            return this;
+        }
+
+        public @NotNull Builder variable(@NotNull String name) {
+            variables.add(name);
+            return this;
+        }
+
+        public @NotNull Builder variables(@NotNull String... names) {
+            for (String name : names)
+                variables.add(name);
+            return this;
+        }
+
+        public @NotNull MechanicSerializer build() {
+            return new MechanicSerializer(contexts, variables);
+        }
     }
 
     @Override
-    public String getKeyword() {
-        return "Mechanics";
-    }
-
-    @Nullable @Override
-    public String getWikiLink() {
+    public @Nullable String getWikiLink() {
         return "https://cjcrafter.gitbook.io/mechanics/";
     }
 
