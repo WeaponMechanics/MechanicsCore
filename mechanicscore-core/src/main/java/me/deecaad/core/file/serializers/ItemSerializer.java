@@ -63,6 +63,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -523,12 +524,18 @@ public class ItemSerializer implements Serializer<ItemStack> {
         ItemStack result = itemStack.clone();
         result.setAmount(resultAmount);
 
-        // Namespaced keys for recipes were added in MC 1.12
-        ShapedRecipe recipe = new ShapedRecipe(new NamespacedKey(MechanicsCore.getInstance(), data.getKey()), result);
+        String rawKey = data.getKey();
+        if (rawKey == null) {
+            rawKey = "inline_recipe_" + UUID.randomUUID().toString().replace("-", "");
+        }
+        String recipeId = rawKey.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9/._-]", "_");
+
+        NamespacedKey recipeKey = new NamespacedKey(MechanicsCore.getInstance(), recipeId);
+        ShapedRecipe recipe = new ShapedRecipe(recipeKey, result);
 
         // Bukkit.getRecipe was added in 1.16. We have a try-catch block
         // below in this method to handle 1.12 through 1.15
-        if (MinecraftVersions.NETHER_UPDATE.isAtLeast() && Bukkit.getRecipe(recipe.getKey()) != null) {
+        if (MinecraftVersions.NETHER_UPDATE.isAtLeast() && Bukkit.getRecipe(recipeKey) != null) {
             return itemStack;
         }
 
